@@ -131,3 +131,29 @@ security find-identity -v -p codesigning
 Use this command to check notarization logs:
 ```bash
 xcrun altool --notarization-info <REQUEST_UUID> --username "your-apple-id" --password "app-specific-password"
+```
+
+# Use `thought-logger` with Claude Desktop
+
+1. Start ThoughtLogger to start the MCP server.
+2. Create Claude's configuration file if it does not exist.
+   On OSX: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   On Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+3. Replace the file's contents with this:
+   ```json
+   {
+     "mcpServers": {
+       "remote": {
+         "command": "npx",
+         "args": [
+           "-y",
+           "mcp-remote",
+           "http://localhost:8765/mcp"
+         ]
+       }
+     }
+   }
+   ```
+4. If Claude Desktop is running, restart it.
+5. You should see a hammer icon in the bottom right corner of the input box. Click it to verify that the `keylogs` command appears.
+6. Ask Claude about your keylogs!
