@@ -2,6 +2,7 @@ export interface ScreenshotPreferences {
   screenshotActive: boolean;
   screenshotPeriod: number;
   screenshotQuality: number;
+  screenshotTemporary: boolean;
 }
 
 export interface SummaryPreferences {
@@ -18,6 +19,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   screenshotActive: true,
   screenshotPeriod: 60 * 4,
   screenshotQuality: 35,
+  screenshotTemporary: false,
   blockedApps: [
     "Signal",
     "Signal Desktop",

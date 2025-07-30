@@ -5,6 +5,7 @@ import { Preferences } from "../preferences";
 import { desktopCapturer, app } from "electron";
 
 import fetch from "node-fetch";
+import { loadPreferences } from "../main";
 
 // Import keytar safely
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -169,6 +170,13 @@ export async function saveScreenshot(img: Buffer): Promise<void> {
     // Extract and save text
     const extractedText = await extractTextFromImage(img);
     await fs.writeFile(textFilePath, extractedText);
+
+    const { screenshotTemporary } = await loadPreferences();
+
+    if (screenshotTemporary) {
+      // Delete screenshot when we're done extracting.
+      await fs.unlink(filePath);
+    }
   } catch (error) {
     console.error("Failed to take screenshot or extract text:", error);
   }
