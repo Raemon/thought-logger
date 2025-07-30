@@ -61,6 +61,8 @@ async function saveApiKey(apiKey: string): Promise<void> {
 }
 
 async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
+  const base64Image = imageBuffer.toString("base64");
+  const imageUrl = `data:image/jpeg;base64,${base64Image}`;
   try {
     const apiKey = await getApiKey();
     if (!apiKey) {
@@ -77,16 +79,28 @@ async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-pro-vision",
+          model: "google/gemini-2.0-flash-001",
           messages: [
             {
               role: "user",
               content: [
                 {
                   type: "text",
-                  text: "Please extract all visible text from this image.",
+                  text:
+                    "Please extract the following information from this image:\n" +
+                    "- the names of any projects the user is working on\n" +
+                    "- the currently open filename or document\n" +
+                    "- the title of the focused window\n" +
+                    "- if the current application is a chat app, extract the name of the current room or channel\n" +
+                    "- each section of the screen with text in it, with an exact copy of all text summary\n" +
+                    "- summary any images on the screen",
                 },
-                { type: "image", image: imageBuffer.toString("base64") },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: imageUrl,
+                  },
+                },
               ],
             },
           ],
