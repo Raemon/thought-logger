@@ -79,21 +79,15 @@ async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.0-flash-001",
+          model: "google/gemini-2.5-flash",
+          require_parameters: true,
           messages: [
             {
               role: "user",
               content: [
                 {
                   type: "text",
-                  text:
-                    "Please extract the following information from this image:\n" +
-                    "- the names of any projects the user is working on\n" +
-                    "- the currently open filename or document\n" +
-                    "- the title of the focused window\n" +
-                    "- if the current application is a chat app, extract the name of the current room or channel\n" +
-                    "- each section of the screen with text in it, with an exact copy of all text summary\n" +
-                    "- summary any images on the screen",
+                  text: "Summarize the contents of this screenshot.",
                 },
                 {
                   type: "image_url",
@@ -104,9 +98,48 @@ async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
               ],
             },
           ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "screenshot_summary",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  project: {
+                    type: "string",
+                    description: "project the user is working on",
+                  },
+                  document: {
+                    type: "string",
+                    description: "the user's open document",
+                  },
+                  window_title: {
+                    type: "string",
+                    description: "title of the active window",
+                  },
+                  channel: {
+                    type: "string",
+                    description: "name of the open room or channel",
+                  },
+                  sections: {
+                    type: "string",
+                    description:
+                      "each section of the screen with text in it, with an exact copy of all text summary",
+                  },
+                  images: {
+                    type: "string",
+                    description: "summary any images on the screen",
+                  },
+                },
+              },
+              additionalProperties: false,
+            },
+          },
         }),
       },
     );
+    console.log(response);
 
     if (!response.ok) {
       const errorData = await response.json();
