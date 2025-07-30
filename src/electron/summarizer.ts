@@ -275,7 +275,7 @@ async function needsWeekSummary(date: Date): Promise<boolean> {
   }
 
   try {
-    fs.access(weeklyPath);
+    await fs.access(weeklyPath);
     return false;
   } catch {
     return true;
