@@ -5,6 +5,10 @@ export function ScreenshotController() {
   const [prefs, setPrefs] =
     useState<ScreenshotPreferences>(DEFAULT_PREFERENCES);
 
+  useEffect(() => {
+    window.preferences.getPreferences().then((prefs) => setPrefs(prefs));
+  }, []);
+
   const updatePreferences = async (
     newPrefs: Partial<ScreenshotPreferences>,
   ) => {
