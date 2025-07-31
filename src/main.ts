@@ -246,10 +246,12 @@ async function getRecentLogs(): Promise<SerializedLog[]> {
       logs[dateString].appPath = file;
     } else if (fileName.match(/processed\.chronological/)) {
       logs[dateString].chronoPath = file;
-    } else if (fileName.match(/\.aisummary/) || path.extname(file) === ".txt") {
-      logs[dateString].summaryContents = await fs.readFile(file, "utf-8");
     } else {
       logs[dateString].rawPath = file;
+    }
+
+    if (fileName.match(/\.aisummary/) || path.extname(file) === ".txt") {
+      logs[dateString].summaryContents = await fs.readFile(file, "utf-8");
     }
   }
 
