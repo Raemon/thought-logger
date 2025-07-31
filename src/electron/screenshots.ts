@@ -6,6 +6,17 @@ import { desktopCapturer, app } from "electron";
 
 import fetch from "node-fetch";
 import { loadPreferences } from "../main";
+import { z } from "zod";
+
+const ScreenshotText = z.object({
+  project: z
+    .string()
+    .describe("name of the project the user is currently working on"),
+  document: z.string().describe("name of the document the user has open"),
+  summary: z.string().describe("summary of the screenshot"),
+});
+
+type ScreenshotText = z.infer<typeof ScreenshotText>;
 
 // Import keytar safely
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,14 +72,16 @@ async function saveApiKey(apiKey: string): Promise<void> {
   }
 }
 
-async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
+async function extractTextFromImage(
+  imageBuffer: Buffer,
+): Promise<ScreenshotText> {
   const base64Image = imageBuffer.toString("base64");
   const imageUrl = `data:image/jpeg;base64,${base64Image}`;
   try {
     const apiKey = await getApiKey();
     if (!apiKey) {
       console.error("API key not found in keychain");
-      return "ERROR: OpenRouter API key is not set. Use saveOpenRouterApiKey() to set your API key.";
+      throw "ERROR: OpenRouter API key is not set. Use saveOpenRouterApiKey() to set your API key.";
     }
 
     const response = await fetch(
@@ -88,7 +101,7 @@ async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
               content: [
                 {
                   type: "text",
-                  text: "Summarize the contents of this screenshot.",
+                  text: "Summarize the contents of this screenshot. Include the application is in use, project names, filename or document title. If a chat app is in use, give the channel name. Include each section of the screen with text in it, with an exact copy of all text. Include a summary of images on the screen. Organize the summary into titled sections.",
                 },
                 {
                   type: "image_url",
@@ -104,43 +117,12 @@ async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
             json_schema: {
               name: "screenshot_summary",
               strict: true,
-              schema: {
-                type: "object",
-                properties: {
-                  project: {
-                    type: "string",
-                    description: "project the user is working on",
-                  },
-                  document: {
-                    type: "string",
-                    description: "the user's open document",
-                  },
-                  window_title: {
-                    type: "string",
-                    description: "title of the active window",
-                  },
-                  channel: {
-                    type: "string",
-                    description: "name of the open room or channel",
-                  },
-                  sections: {
-                    type: "string",
-                    description:
-                      "each section of the screen with text in it, with an exact copy of all text summary",
-                  },
-                  images: {
-                    type: "string",
-                    description: "summary any images on the screen",
-                  },
-                },
-              },
-              additionalProperties: false,
+              schema: z.toJSONSchema(ScreenshotText),
             },
           },
         }),
       },
     );
-    console.log(response);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -152,24 +134,26 @@ async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
     const data = (await response.json()) as {
       choices: { message: { content: string } }[];
     };
-    return data.choices[0].message.content;
+    const result = JSON.parse(data.choices[0].message.content);
+    return ScreenshotText.parse(result);
   } catch (error) {
     console.error("Failed to extract text from image:", error);
-    return `ERROR: Failed to extract text: ${error.message}`;
+    throw `ERROR: Failed to extract text: ${error.message}`;
   }
 }
 
 export async function saveScreenshot(img: Buffer): Promise<void> {
+  // Extract and save text
+  const extractedText = await extractTextFromImage(img);
+  const { project, document } = extractedText;
   const filePath = currentScreenshotFile();
-  const textFilePath = filePath.replace(".jpg", ".txt");
+  const textFilePath = filePath.replace(".jpg", `.${project}.${document}.txt`);
 
   try {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, img);
 
-    // Extract and save text
-    const extractedText = await extractTextFromImage(img);
-    await fs.writeFile(textFilePath, extractedText);
+    await fs.writeFile(textFilePath, extractedText.summary);
 
     const { screenshotTemporary } = await loadPreferences();
 
