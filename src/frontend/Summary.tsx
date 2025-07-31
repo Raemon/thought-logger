@@ -6,21 +6,6 @@ setDefaultOptions({
   weekStartsOn: 1,
 });
 
-const getFormattedFile = (content: string): string => {
-  if (!content) return "Loading...";
-  if (!content.match(/1\. /)) {
-    return content;
-  }
-  const newContent = "1. " + content.split("1.")[1];
-  const paragraphs = newContent.split(/\n\s*\n/);
-  // Check if the last paragraph starts with a number
-  const last = paragraphs[paragraphs.length - 1];
-  if (last && !/^\d/.test(last.trim())) {
-    paragraphs.pop();
-  }
-  return paragraphs.join("\n\n");
-};
-
 function formatDateHeader(date: Date, weekly: boolean = false) {
   const weekStart = startOfWeek(date);
   const weekEnd = endOfWeek(date);
@@ -108,9 +93,7 @@ export default function Summary({ log }: { log: SerializedLog }): ReactElement {
           }
         >
           {log.loading && "Generating a summary..."}
-          {log.summaryContents &&
-            !log.loading &&
-            getFormattedFile(log.summaryContents)}
+          {log.summaryContents && !log.loading && log.summaryContents}
         </div>
       </div>
     </div>

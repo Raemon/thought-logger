@@ -53,6 +53,8 @@ export async function recentFiles(): Promise<string[]> {
     for (const filePath of allEntries) {
       // Skip .DS_Store files
       if (path.basename(filePath) === ".DS_Store") continue;
+      // Skip screenshots
+      if (path.extname(filePath) === ".jpg") continue;
 
       const stat = await fs.stat(filePath);
       datedPaths.push({ path: filePath, mtime: stat.mtimeMs });
@@ -225,7 +227,12 @@ async function getRecentLogs(): Promise<SerializedLog[]> {
     const fileName = path.basename(file);
     const result = fileName.match(/[^.]+/);
     const dateString = result[0];
-    let date = parse(dateString, "yyyy-MM-dd", new Date());
+    let date = parse(dateString, "yyyy-MM-dd HH_mm_ss", new Date());
+
+    if (isNaN(date.getTime())) {
+      date = parse(dateString, "yyyy-MM-dd", new Date());
+    }
+
     if (isNaN(date.getTime())) {
       date = parse(dateString, "YYYY-'W'ww", new Date(), {
         useAdditionalWeekYearTokens: true,
@@ -239,7 +246,7 @@ async function getRecentLogs(): Promise<SerializedLog[]> {
       logs[dateString].appPath = file;
     } else if (fileName.match(/processed\.chronological/)) {
       logs[dateString].chronoPath = file;
-    } else if (fileName.match(/\.aisummary/)) {
+    } else if (fileName.match(/\.aisummary/) || path.extname(file) === ".txt") {
       logs[dateString].summaryContents = await fs.readFile(file, "utf-8");
     } else {
       logs[dateString].rawPath = file;
