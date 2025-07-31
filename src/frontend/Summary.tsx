@@ -40,18 +40,20 @@ export default function Summary({ log }: { log: SerializedLog }): ReactElement {
         <span className="mr-auto">
           {formatDateHeader(date, log.scope === SerializedScopeTypes.Week)}
         </span>
-        <button
-          className={
-            (log.loading
-              ? "bg-gray-300 opacity-50 cursor-not-allowed "
-              : "bg-blue-500 hover:bg-blue-700 ") +
-            "text-white font-bold rounded ml-2 px-2 py-0.5 text-xs"
-          }
-          onClick={() => window.userData.generateAISummary(log)}
-          disabled={log.loading}
-        >
-          regenerate summary
-        </button>
+        {log.rawPath && !log.rawPath.includes("/screenshots/") && (
+          <button
+            className={
+              (log.loading
+                ? "bg-gray-300 opacity-50 cursor-not-allowed "
+                : "bg-blue-500 hover:bg-blue-700 ") +
+              "text-white font-bold rounded ml-2 px-2 py-0.5 text-xs"
+            }
+            onClick={() => window.userData.generateAISummary(log)}
+            disabled={log.loading}
+          >
+            regenerate summary
+          </button>
+        )}
         {log.rawPath && (
           <button
             className="ml-2 px-2 py-2 text-xs text-blue-800 font-normal"
