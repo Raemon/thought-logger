@@ -51,7 +51,7 @@ export function currentScreenshotFile(): string {
       minute: "2-digit",
       second: "2-digit",
     })
-    .replace(/:/g, ".");
+    .replace(/:/g, "_");
 
   // Construct path
   const folderPath = path.join(

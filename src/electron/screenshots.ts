@@ -2,9 +2,22 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { currentScreenshotFile } from "./paths";
 import { Preferences } from "../preferences";
-import { desktopCapturer, app } from "electron";
+import { desktopCapturer, app, systemPreferences } from "electron";
 
 import fetch from "node-fetch";
+import { loadPreferences } from "../main";
+import { z } from "zod";
+import { getCurrentApplication } from "../keylogger";
+
+const ScreenshotText = z.object({
+  project: z
+    .string()
+    .describe("name of the project the user is currently working on"),
+  document: z.string().describe("name of the document the user has open"),
+  summary: z.string().describe("summary of the screenshot"),
+});
+
+type ScreenshotText = z.infer<typeof ScreenshotText>;
 
 // Import keytar safely
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,12 +73,18 @@ async function saveApiKey(apiKey: string): Promise<void> {
   }
 }
 
-async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
+async function extractTextFromImage(
+  imageBuffer: Buffer,
+  model: string,
+  prompt: string,
+): Promise<ScreenshotText> {
+  const base64Image = imageBuffer.toString("base64");
+  const imageUrl = `data:image/jpeg;base64,${base64Image}`;
   try {
     const apiKey = await getApiKey();
     if (!apiKey) {
       console.error("API key not found in keychain");
-      return "ERROR: OpenRouter API key is not set. Use saveOpenRouterApiKey() to set your API key.";
+      throw "ERROR: OpenRouter API key is not set. Use saveOpenRouterApiKey() to set your API key.";
     }
 
     const response = await fetch(
@@ -77,19 +96,33 @@ async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-pro-vision",
+          model: model,
+          require_parameters: true,
           messages: [
             {
               role: "user",
               content: [
                 {
                   type: "text",
-                  text: "Please extract all visible text from this image.",
+                  text: prompt,
                 },
-                { type: "image", image: imageBuffer.toString("base64") },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: imageUrl,
+                  },
+                },
               ],
             },
           ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "screenshot_summary",
+              strict: true,
+              schema: z.toJSONSchema(ScreenshotText),
+            },
+          },
         }),
       },
     );
@@ -104,36 +137,63 @@ async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
     const data = (await response.json()) as {
       choices: { message: { content: string } }[];
     };
-    return data.choices[0].message.content;
+    const result = JSON.parse(data.choices[0].message.content);
+    return ScreenshotText.parse(result);
   } catch (error) {
     console.error("Failed to extract text from image:", error);
-    return `ERROR: Failed to extract text: ${error.message}`;
+    throw `ERROR: Failed to extract text: ${error.message}`;
   }
 }
 
-export async function saveScreenshot(img: Buffer): Promise<void> {
+export async function saveScreenshot(
+  img: Buffer,
+  currentApplication: string,
+): Promise<void> {
+  // Extract and save text
+  const { screenshotModel, screenshotPrompt } = await loadPreferences();
+  const prompt =
+    screenshotPrompt[currentApplication] || screenshotPrompt.default;
+  const extractedText = await extractTextFromImage(
+    img,
+    screenshotModel,
+    prompt,
+  );
+  const { project, document } = extractedText;
   const filePath = currentScreenshotFile();
-  const textFilePath = filePath.replace(".jpg", ".txt");
+  const textFilePath = filePath.replace(".jpg", `.${project}.${document}.txt`);
 
   try {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, img);
 
-    // Extract and save text
-    const extractedText = await extractTextFromImage(img);
-    await fs.writeFile(textFilePath, extractedText);
+    await fs.writeFile(textFilePath, extractedText.summary);
+
+    const { screenshotTemporary } = await loadPreferences();
+
+    if (screenshotTemporary) {
+      // Delete screenshot when we're done extracting.
+      await fs.unlink(filePath);
+    }
   } catch (error) {
     console.error("Failed to take screenshot or extract text:", error);
   }
 }
 
 async function takeScreenshot(quality: number) {
-  const sources = await desktopCapturer.getSources({
-    types: ["screen"],
-    thumbnailSize: { width: 1920, height: 1080 },
-  });
-  const img = sources[0].thumbnail.toJPEG(quality);
-  await saveScreenshot(img);
+  try {
+    if (systemPreferences.getMediaAccessStatus("screen")) {
+      throw "Thought Logger does not have permission to capture the screen.";
+    }
+    const sources = await desktopCapturer.getSources({
+      types: ["screen"],
+      thumbnailSize: { width: 1920, height: 1080 },
+    });
+    const img = sources[0].thumbnail.toJPEG(quality);
+    const currentApplication = getCurrentApplication();
+    await saveScreenshot(img, currentApplication);
+  } catch (e) {
+    console.error(`Failed to capture screenshot: ${e}`);
+  }
 }
 
 let screenshotIntervalID: ReturnType<typeof setInterval> | null = null;

@@ -360,3 +360,7 @@ export async function initializeKeylogger() {
 export function updateKeyloggerPreferences(newPrefs: Preferences) {
   preferences = newPrefs;
 }
+
+export function getCurrentApplication(): string {
+  return currentApplication;
+}

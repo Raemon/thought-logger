@@ -76,7 +76,9 @@ async function getOpenRouterApiKey(): Promise<string> {
   return apiKey;
 }
 
-export async function getAvailableModels(): Promise<string[]> {
+export async function getAvailableModels(
+  imageSupport: boolean = false,
+): Promise<string[]> {
   const apiKey = await getOpenRouterApiKey();
   const response = await fetch("https://openrouter.ai/api/v1/models", {
     method: "GET",
@@ -89,7 +91,19 @@ export async function getAvailableModels(): Promise<string[]> {
   });
 
   const body = await response.json();
-  return body.data.map((model: { id: string }) => model.id);
+  return body.data
+    .filter(
+      (model: {
+        architecture: {
+          input_modalities: string[];
+        };
+        supported_parameters: string[];
+      }) =>
+        !imageSupport ||
+        (model.architecture.input_modalities.includes("image") &&
+          model.supported_parameters.includes("structured_outputs")),
+    )
+    .map((model: { id: string }) => model.id);
 }
 
 async function generateAISummary(
