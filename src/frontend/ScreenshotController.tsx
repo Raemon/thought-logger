@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { ScreenshotPreferences } from "../preferences";
+import { DEFAULT_PREFERENCES, ScreenshotPreferences } from "../preferences";
 
 export function ScreenshotController() {
-  const [prefs, setPrefs] = useState<ScreenshotPreferences>({
-    screenshotActive: true,
-    screenshotPeriod: 60 * 4,
-    screenshotQuality: 35,
-  });
+  const [prefs, setPrefs] =
+    useState<ScreenshotPreferences>(DEFAULT_PREFERENCES);
 
   useEffect(() => {
-    window.preferences.getPreferences().then(setPrefs);
+    window.preferences.getPreferences().then((prefs) => setPrefs(prefs));
   }, []);
 
   const updatePreferences = async (
@@ -32,6 +29,18 @@ export function ScreenshotController() {
             onChange={(event) =>
               updatePreferences({
                 screenshotActive: event.currentTarget.checked,
+              })
+            }
+          />
+        </div>
+        <div className="inline-flex justify-between">
+          <label>Delete screenshots after summarizing:</label>
+          <input
+            type="checkbox"
+            checked={prefs.screenshotTemporary}
+            onChange={(event) =>
+              updatePreferences({
+                screenshotTemporary: event.currentTarget.checked,
               })
             }
           />
