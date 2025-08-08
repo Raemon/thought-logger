@@ -6,21 +6,6 @@ setDefaultOptions({
   weekStartsOn: 1,
 });
 
-const getFormattedFile = (content: string): string => {
-  if (!content) return "Loading...";
-  if (!content.match(/1\. /)) {
-    return content;
-  }
-  const newContent = "1. " + content.split("1.")[1];
-  const paragraphs = newContent.split(/\n\s*\n/);
-  // Check if the last paragraph starts with a number
-  const last = paragraphs[paragraphs.length - 1];
-  if (last && !/^\d/.test(last.trim())) {
-    paragraphs.pop();
-  }
-  return paragraphs.join("\n\n");
-};
-
 function formatDateHeader(date: Date, weekly: boolean = false) {
   const weekStart = startOfWeek(date);
   const weekEnd = endOfWeek(date);
@@ -55,18 +40,20 @@ export default function Summary({ log }: { log: SerializedLog }): ReactElement {
         <span className="mr-auto">
           {formatDateHeader(date, log.scope === SerializedScopeTypes.Week)}
         </span>
-        <button
-          className={
-            (log.loading
-              ? "bg-gray-300 opacity-50 cursor-not-allowed "
-              : "bg-blue-500 hover:bg-blue-700 ") +
-            "text-white font-bold rounded ml-2 px-2 py-0.5 text-xs"
-          }
-          onClick={() => window.userData.generateAISummary(log)}
-          disabled={log.loading}
-        >
-          regenerate summary
-        </button>
+        {log.rawPath && !log.rawPath.includes("/screenshots/") && (
+          <button
+            className={
+              (log.loading
+                ? "bg-gray-300 opacity-50 cursor-not-allowed "
+                : "bg-blue-500 hover:bg-blue-700 ") +
+              "text-white font-bold rounded ml-2 px-2 py-0.5 text-xs"
+            }
+            onClick={() => window.userData.generateAISummary(log)}
+            disabled={log.loading}
+          >
+            regenerate summary
+          </button>
+        )}
         {log.rawPath && (
           <button
             className="ml-2 px-2 py-2 text-xs text-blue-800 font-normal"
@@ -108,9 +95,7 @@ export default function Summary({ log }: { log: SerializedLog }): ReactElement {
           }
         >
           {log.loading && "Generating a summary..."}
-          {log.summaryContents &&
-            !log.loading &&
-            getFormattedFile(log.summaryContents)}
+          {log.summaryContents && !log.loading && log.summaryContents}
         </div>
       </div>
     </div>

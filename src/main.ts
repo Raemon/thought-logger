@@ -18,6 +18,7 @@ import {
 } from "./electron/summarizer";
 import { SerializedLog, SerializedScopeTypes } from "./types/files.d";
 import { parse, setDay, setDefaultOptions, isEqual } from "date-fns";
+import log from "./logging";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
@@ -35,15 +36,14 @@ export async function loadPreferences(): Promise<Preferences> {
   }
 }
 
-export async function recentFiles(): Promise<string[]> {
+const TWO_WEEKS_IN_SECONDS = 60 * 60 * 24 * 7;
+
+export async function recentFiles(
+  ageInSeconds: number = TWO_WEEKS_IN_SECONDS,
+): Promise<string[]> {
   const userDataPath = app.getPath("userData");
   const filesDir = path.join(userDataPath, "files");
   try {
-    // For example: read the "files" directory recursively,
-    // collect file paths, sort them (newest first),
-    // and return the first N results.
-    // The specifics of listing "recent" are up to your logic:
-    // e.g., you could check subfolders, filter by extension, or sort by stat.mtime.
     const allEntries: string[] = [];
 
     await walkDir(filesDir, allEntries);
@@ -53,6 +53,8 @@ export async function recentFiles(): Promise<string[]> {
     for (const filePath of allEntries) {
       // Skip .DS_Store files
       if (path.basename(filePath) === ".DS_Store") continue;
+      // Skip screenshots
+      if (path.extname(filePath) === ".jpg") continue;
 
       const stat = await fs.stat(filePath);
       datedPaths.push({ path: filePath, mtime: stat.mtimeMs });
@@ -60,9 +62,12 @@ export async function recentFiles(): Promise<string[]> {
     datedPaths.sort((a, b) => b.mtime - a.mtime);
 
     // Return a limited list, e.g. 20 items
-    return datedPaths.slice(0, 20).map((x) => x.path);
+    const nowMs = Date.now();
+    return datedPaths
+      .filter((x) => nowMs - x.mtime <= ageInSeconds * 1000)
+      .map((x) => x.path);
   } catch (error) {
-    console.error("Failed to list recent files:", error);
+    log.error("Failed to list recent files:", error);
     return [];
   }
 }
@@ -172,7 +177,7 @@ ipcMain.on("OPEN_FILE", (_event, filePath) => {
 
 ipcMain.on("OPEN_EXTERNAL_URL", (_event, url) => {
   shell.openExternal(url).catch((err) => {
-    console.error("Failed to open external URL:", err);
+    log.error("Failed to open external URL:", err);
   });
 });
 
@@ -184,14 +189,16 @@ ipcMain.handle("SAVE_API_KEY", (_event, apiKey: string) => {
   return saveOpenRouterApiKey(apiKey);
 });
 
-ipcMain.handle("GET_AVAILABLE_MODELS", () => getAvailableModels());
+ipcMain.handle("GET_AVAILABLE_MODELS", (_event, imageSupport) =>
+  getAvailableModels(imageSupport),
+);
 
 ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
   try {
     const content = await fs.readFile(filePath, "utf-8");
     return content;
   } catch (error) {
-    console.error("Failed to read file:", error);
+    log.error("Failed to read file:", error);
     throw error;
   }
 });
@@ -225,7 +232,12 @@ async function getRecentLogs(): Promise<SerializedLog[]> {
     const fileName = path.basename(file);
     const result = fileName.match(/[^.]+/);
     const dateString = result[0];
-    let date = parse(dateString, "yyyy-MM-dd", new Date());
+    let date = parse(dateString, "yyyy-MM-dd HH_mm_ss", new Date());
+
+    if (isNaN(date.getTime())) {
+      date = parse(dateString, "yyyy-MM-dd", new Date());
+    }
+
     if (isNaN(date.getTime())) {
       date = parse(dateString, "YYYY-'W'ww", new Date(), {
         useAdditionalWeekYearTokens: true,
@@ -236,7 +248,7 @@ async function getRecentLogs(): Promise<SerializedLog[]> {
 
     // Skip logs if we fail to parse their date.
     if (isNaN(date.getTime())) {
-      console.error(`Failed to parse date for ${path}`);
+      log.error(`Failed to parse date for ${file}`);
       continue;
     }
 
@@ -245,13 +257,36 @@ async function getRecentLogs(): Promise<SerializedLog[]> {
       logs[dateString].appPath = file;
     } else if (fileName.match(/processed\.chronological/)) {
       logs[dateString].chronoPath = file;
-    } else if (fileName.match(/\.aisummary/)) {
-      logs[dateString].summaryContents = await fs.readFile(file, "utf-8");
     } else {
       logs[dateString].rawPath = file;
+    }
+
+    if (fileName.match(/\.aisummary/) || path.extname(file) === ".txt") {
+      logs[dateString].summaryContents = await fs.readFile(file, "utf-8");
     }
   }
 
   return Object.values(logs);
 }
+
 ipcMain.handle("GET_RECENT_LOGS", getRecentLogs);
+
+async function getRecentApps(): Promise<string[]> {
+  let apps = new Set<string>();
+
+  const dayOldFiles = await recentFiles(60 * 60 * 24);
+  const appFiles = dayOldFiles.filter((f) =>
+    f.includes("processed.by-app.log"),
+  );
+
+  for (let f of appFiles) {
+    const content = await fs.readFile(f);
+    const appRegex = /=== (.*) ===/g;
+    const matches = content.toLocaleString().matchAll(appRegex);
+    matches.forEach((m) => apps.add(m[1]));
+  }
+
+  return Array.from(apps);
+}
+
+ipcMain.handle("GET_RECENT_APPS", getRecentApps);

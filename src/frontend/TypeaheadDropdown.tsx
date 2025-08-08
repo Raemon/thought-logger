@@ -1,4 +1,4 @@
-import React, { ReactElement, useState } from "react";
+import React, { ReactElement, useEffect, useState } from "react";
 
 export default function TypeaheadDropdown({
     value,
@@ -10,6 +10,14 @@ export default function TypeaheadDropdown({
     items: string[];
 }): ReactElement {
     const [focused, setFocused] = useState<boolean>(false);
+    const [displayedItems, setDisplayedItems] = useState<string[]>(items);
+    const [selected, setSelected] = useState<number>(0);
+
+    useEffect(() => {
+        setDisplayedItems(items.filter((item) => item.includes(value)));
+        setSelected(0);
+    }, [value]);
+
     return (
         <div className="inline-block relative w-fit">
             <input
@@ -17,11 +25,23 @@ export default function TypeaheadDropdown({
                 value={value}
                 onChange={(e) => {
                     onChange(e.currentTarget.value);
+                    setFocused(true);
                 }}
                 onKeyDown={(e) => {
-                    if (e.key === "Tab") {
-                        e.preventDefault();
-                        onChange(items.find((item) => item.includes(value)));
+                    switch (e.key) {
+                        case "Enter":
+                            e.preventDefault();
+                            onChange(
+                                items.find((item) => item.includes(value)),
+                            );
+                            setFocused(false);
+                            break;
+                        case "ArrowDown":
+                            setSelected(selected + 1);
+                            break;
+                        case "ArrowUp":
+                            setSelected(selected - 1);
+                            break;
                     }
                 }}
                 onFocus={() => setFocused(true)}
@@ -29,13 +49,12 @@ export default function TypeaheadDropdown({
             />
             {focused && (
                 <ul className="absolute left-0 bg-slate-50 border-2 rounded w-full">
-                    {items
-                        .filter((item) => item.includes(value))
-                        .map((item) => (
-                            <li className="p-2 first:bg-sky-200 w-full">
-                                {item}
-                            </li>
-                        ))}
+                    {displayedItems.map((item, idx) => {
+                        const className =
+                            "p-2 w-full" +
+                            (idx === selected ? " bg-sky-200" : "");
+                        return <li className={className}>{item}</li>;
+                    })}
                 </ul>
             )}
         </div>
