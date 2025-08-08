@@ -16,6 +16,7 @@ const userData: UserData = {
   generateAISummary: (log: SerializedLog) =>
     ipcRenderer.invoke("GENERATE_AI_SUMMARY", log),
   getRecentLogs: () => ipcRenderer.invoke("GET_RECENT_LOGS"),
+  getRecentApps: () => ipcRenderer.invoke("GET_RECENT_APPS"),
   onUpdateRecentLogs: (callback: (logs: SerializedLog[]) => void) =>
     ipcRenderer.on("UPDATE_RECENT_LOGS", (_event, logs) => callback(logs)),
 };
@@ -30,5 +31,6 @@ contextBridge.exposeInMainWorld("preferences", {
 contextBridge.exposeInMainWorld("openRouter", {
   checkApiKey: () => ipcRenderer.invoke("CHECK_API_KEY"),
   saveApiKey: (apiKey: string) => ipcRenderer.invoke("SAVE_API_KEY", apiKey),
-  getAvailableModels: () => ipcRenderer.invoke("GET_AVAILABLE_MODELS"),
+  getAvailableModels: (imageSupport: boolean = false) =>
+    ipcRenderer.invoke("GET_AVAILABLE_MODELS", imageSupport),
 });
