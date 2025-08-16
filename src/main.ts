@@ -232,11 +232,7 @@ async function getRecentLogs(): Promise<SerializedLog[]> {
     const fileName = path.basename(file);
     const result = fileName.match(/[^.]+/);
     const dateString = result[0];
-    let date = parse(dateString, "yyyy-MM-dd HH_mm_ss", new Date());
-
-    if (isNaN(date.getTime())) {
-      date = parse(dateString, "yyyy-MM-dd", new Date());
-    }
+    let date = parse(dateString, "yyyy-MM-dd", new Date());
 
     if (isNaN(date.getTime())) {
       date = parse(dateString, "YYYY-'W'ww", new Date(), {

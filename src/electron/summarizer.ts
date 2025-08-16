@@ -11,6 +11,8 @@ import {
   setDefaultOptions,
   parse,
   format,
+  isSameWeek,
+  isSameDay,
 } from "date-fns";
 import { SerializedLog, SerializedScopeTypes } from "../types/files.d";
 import log from "../logging";
@@ -210,6 +212,12 @@ async function processLogFile(fileInfo: LogFileInfo): Promise<void> {
 }
 
 async function needsSummary(fileInfo: LogFileInfo): Promise<boolean> {
+  const today = new Date();
+
+  if (isSameDay(today, fileInfo.date)) {
+    return false;
+  }
+
   try {
     await fs.access(fileInfo.summaryPath);
     console.log(
@@ -281,6 +289,12 @@ function weeklySummaryPath(date: Date): string {
 }
 
 async function needsWeekSummary(date: Date): Promise<boolean> {
+  const today = new Date();
+
+  if (isSameWeek(today, date)) {
+    return false;
+  }
+
   const files = await getWeekKeyLogs(date);
   const weeklyPath = weeklySummaryPath(date);
 
