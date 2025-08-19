@@ -14,7 +14,9 @@
     "lint": "eslint --ext .ts,.tsx .",
     "typecheck": "tsc --noEmit",
     "postinstall": "electron-builder install-app-deps",
-    "summarize": "ts-node src/electron/summarizer.ts"
+    "summarize": "ts-node src/electron/summarizer.ts",
+    "test:renderer": "vitest --run --config vite.renderer.config.ts",
+    "test": "yarn run test:renderer"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.6.0",
@@ -73,9 +75,7 @@
       {
         "from": "node_modules/keytar/build/Release/",
         "to": ".",
-        "filter": [
-          "*.node"
-        ]
+        "filter": ["*.node"]
       }
     ]
   }
