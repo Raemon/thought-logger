@@ -1,5 +1,5 @@
 import React from "react";
-import { afterAll, beforeAll, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { FileInfo } from "../../src/frontend/FileInfo";
@@ -43,16 +43,6 @@ const userData: UserData = {
 };
 
 vi.stubGlobal("userData", userData);
-
-beforeAll(() => {
-  vi.useFakeTimers();
-  const date = new Date(2025, 8, 19);
-  vi.setSystemTime(date);
-});
-
-afterAll(() => {
-  vi.useRealTimers();
-});
 
 test("Renders the logs", async () => {
   const { asFragment, getByText } = render(<FileInfo />);

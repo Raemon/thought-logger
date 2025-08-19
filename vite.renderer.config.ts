@@ -5,6 +5,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
   test: {
     include: ["tests/renderer/**/*.spec.{ts,tsx}"],
+    setupFiles: ["tests/setup.ts"],
     browser: {
       provider: "playwright",
       enabled: true,
