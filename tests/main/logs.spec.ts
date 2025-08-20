@@ -36,6 +36,22 @@ it("runs correctly", async () => {
           "2025-08-19.processed.chronological.log": "",
         },
       },
+      screenshots: {
+        "2025-08": {
+          "2025-08-20": {
+            "2025-08-20 10_30_00.jpg": "",
+            "2025-08-20 10_30_00.txt": "",
+            "2025-08-20 11_00_00.jpg": "",
+            "2025-08-20 12_45_00.txt": "",
+          },
+          "2025-08-17": {
+            "2025-08-17 10_30_00.jpg": "",
+            "2025-08-17 10_30_00.txt": "",
+            "2025-08-17 11_00_00.jpg": "",
+            "2025-08-17 12_45_00.txt": "",
+          },
+        },
+      },
     },
   };
 
@@ -68,7 +84,59 @@ it("runs correctly", async () => {
           date: new Date(2025, 7, 20),
         },
       ],
-      screenshots: [],
+      screenshots: [
+        {
+          date: new Date(2025, 7, 20, 10, 30),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.txt",
+        },
+        {
+          date: new Date(2025, 7, 20, 11),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 11_00_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 11_00_00.txt",
+        },
+        {
+          date: new Date(2025, 7, 20, 12, 45),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.txt",
+        },
+      ],
+      loading: false,
+      scope: SummaryScopeTypes.Day,
+    },
+    {
+      contents: "",
+      date: new Date(2025, 7, 17),
+      keylogs: [],
+      screenshots: [
+        {
+          date: new Date(2025, 7, 17, 10, 30),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-17/2025-08-17 10_30_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-17/2025-08-17 10_30_00.txt",
+        },
+        {
+          date: new Date(2025, 7, 17, 11),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-17/2025-08-17 11_00_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-17/2025-08-17 11_00_00.txt",
+        },
+        {
+          date: new Date(2025, 7, 17, 12, 45),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-17/2025-08-17 12_45_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-17/2025-08-17 12_45_00.txt",
+        },
+      ],
       loading: false,
       scope: SummaryScopeTypes.Day,
     },
