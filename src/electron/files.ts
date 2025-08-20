@@ -18,7 +18,9 @@ function groupByWeek<T>(record: Record<string, T>): Map<string, T[]> {
 
   for (let dateString of Object.keys(record)) {
     const date = parse(dateString, "yyyy-MM-dd", new Date());
-    const week = format(startOfWeek(date), "yyyy-MM-dd");
+    const week = format(startOfWeek(date), "YYYY-'W'ww", {
+      useAdditionalWeekYearTokens: true,
+    });
 
     if (groups.has(week)) {
       const groupData = groups.get(week);
@@ -45,6 +47,17 @@ async function readFilesFromDirectory(path: string): Promise<Dirent[]> {
       withFileTypes: true,
     })
     .then((files) => files.filter((file) => file.isFile()));
+}
+
+async function maybeReadContents(path: string): Promise<string | null> {
+  try {
+    await fs.access(path);
+  } catch (error) {
+    log.info(`No file at ${path}.`);
+    return null;
+  }
+
+  return fs.readFile(path, { encoding: "utf-8" });
 }
 
 export async function getRecentSummaries(): Promise<Summary[]> {
@@ -102,9 +115,24 @@ export async function getRecentSummaries(): Promise<Summary[]> {
     const availableScreenshots = screenshots[dateString]
       ? Object.values(screenshots[dateString])
       : ([] as Screenshot[]);
+
+    const date = parse(dateString, "yyyy-MM-dd", new Date());
+    const monthString = format(date, "yyyy-MM");
+
+    const summaryPath = path.join(
+      userDataPath,
+      "files",
+      "keylogs",
+      monthString,
+      `${dateString}.aisummary.log`,
+    );
+
+    const contents = await maybeReadContents(summaryPath);
+
     dailySummaries[dateString] = dailySummaries[dateString] || {
-      contents: "",
-      date: parse(dateString, "yyyy-MM-dd", new Date()),
+      path: summaryPath,
+      contents,
+      date,
       keylogs: availableKeylogs,
       screenshots: availableScreenshots,
       loading: false,
@@ -124,9 +152,19 @@ export async function getRecentSummaries(): Promise<Summary[]> {
   const weeklySummaries: Summary[] = [];
 
   for (let week of weeks) {
-    const date = parse(week, "yyyy-MM-dd", new Date());
+    const date = parse(week, "YYYY-'W'ww", new Date(), {
+      useAdditionalWeekYearTokens: true,
+    });
+    const summaryPath = path.join(
+      userDataPath,
+      "files",
+      `${week}.aisummary.log`,
+    );
+    const contents = await maybeReadContents(summaryPath);
+
     weeklySummaries.push({
-      contents: "",
+      path: summaryPath,
+      contents,
       date,
       keylogs: weeklyKeylogs.get(week)
         ? weeklyKeylogs.get(week)

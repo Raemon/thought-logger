@@ -38,5 +38,6 @@ export interface Summary {
   keylogs: Keylog[];
   screenshots: Screenshot[];
   scope: SummaryScopeTypes;
-  contents: string;
+  contents?: string;
+  path: string;
 }

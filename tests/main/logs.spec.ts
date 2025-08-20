@@ -58,7 +58,8 @@ describe("#getRecentSummaries", () => {
 
     const expectedSummaries: Summary[] = [
       {
-        contents: "",
+        path: "/files/keylogs/2025-08/2025-08-19.aisummary.log",
+        contents: null,
         date: new Date(2025, 7, 19),
         keylogs: [
           {
@@ -74,7 +75,8 @@ describe("#getRecentSummaries", () => {
         scope: SummaryScopeTypes.Day,
       },
       {
-        contents: "",
+        path: "/files/keylogs/2025-08/2025-08-20.aisummary.log",
+        contents: null,
         date: new Date(2025, 7, 20),
         keylogs: [
           {
@@ -112,7 +114,8 @@ describe("#getRecentSummaries", () => {
         scope: SummaryScopeTypes.Day,
       },
       {
-        contents: "",
+        path: "/files/keylogs/2025-08/2025-08-17.aisummary.log",
+        contents: null,
         date: new Date(2025, 7, 17),
         keylogs: [],
         screenshots: [
@@ -172,7 +175,8 @@ describe("#getRecentSummaries", () => {
 
     const weeklySummary: Summary = {
       date: new Date(2025, 7, 11),
-      contents: "",
+      path: "/files/2025-W33.aisummary.log",
+      contents: null,
       keylogs: [
         {
           appPath: "/files/keylogs/2025-08/2025-08-14.processed.by-app.log",
@@ -221,6 +225,25 @@ describe("#getRecentSummaries", () => {
     };
 
     vol.fromNestedJSON(filesystem, "/");
-    expect(getRecentSummaries()).resolves.toStrictEqual([]);
+    await expect(getRecentSummaries()).resolves.toStrictEqual([]);
+  });
+
+  it("loads daily summary contents", async () => {
+    const filesystem = {
+      files: {
+        keylogs: {
+          "2025-08": {
+            "2025-08-20.aisummary.log": "This is a daily summary.",
+          },
+        },
+      },
+    };
+
+    vol.fromNestedJSON(filesystem, "/");
+    const summaries = await getRecentSummaries();
+    const dailySummary = summaries.find(
+      (summary) => summary.scope === SummaryScopeTypes.Day,
+    );
+    expect(dailySummary.contents).toBe("This is a daily summary.");
   });
 });
