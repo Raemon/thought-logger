@@ -184,3 +184,51 @@ export async function getRecentSummaries(): Promise<Summary[]> {
 
   return weeklySummaries.concat(Object.values(dailySummaries));
 }
+
+const TWO_WEEKS_IN_SECONDS = 60 * 60 * 24 * 7;
+
+async function walkDir(dir: string, allEntries: string[]) {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      await walkDir(full, allEntries);
+    } else {
+      allEntries.push(full);
+    }
+  }
+}
+
+export async function recentFiles(
+  ageInSeconds: number = TWO_WEEKS_IN_SECONDS,
+): Promise<string[]> {
+  const userDataPath = app.getPath("userData");
+  const filesDir = path.join(userDataPath, "files");
+  try {
+    const allEntries: string[] = [];
+
+    await walkDir(filesDir, allEntries);
+
+    // Sort by modification time descending
+    const datedPaths: { path: string; mtime: number }[] = [];
+    for (const filePath of allEntries) {
+      // Skip .DS_Store files
+      if (path.basename(filePath) === ".DS_Store") continue;
+      // Skip screenshots
+      if (path.extname(filePath) === ".jpg") continue;
+
+      const stat = await fs.stat(filePath);
+      datedPaths.push({ path: filePath, mtime: stat.mtimeMs });
+    }
+    datedPaths.sort((a, b) => b.mtime - a.mtime);
+
+    // Return a limited list, e.g. 20 items
+    const nowMs = Date.now();
+    return datedPaths
+      .filter((x) => nowMs - x.mtime <= ageInSeconds * 1000)
+      .map((x) => x.path);
+  } catch (error) {
+    log.error("Failed to list recent files:", error);
+    return [];
+  }
+}

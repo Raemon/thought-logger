@@ -5,7 +5,7 @@ import { Preferences } from "../preferences";
 import { desktopCapturer, app, systemPreferences } from "electron";
 
 import fetch from "node-fetch";
-import { loadPreferences } from "../main";
+import { loadPreferences } from "../preferences";
 import { z } from "zod";
 import { getCurrentApplication } from "../keylogger";
 

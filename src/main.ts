@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import started from "electron-squirrel-startup";
 import { initializeKeylogger, updateKeyloggerPreferences } from "./keylogger";
 import { checkPermissions } from "./electron/permissions";
-import { Preferences, DEFAULT_PREFERENCES } from "./preferences";
+import { Preferences, savePreferences, loadPreferences } from "./preferences";
 import {
   toggleScheduledScreenshots,
   checkAndGetApiKey,
@@ -19,67 +19,13 @@ import {
 import { SerializedLog, SerializedScopeTypes } from "./types/files.d";
 import { parse, setDay, setDefaultOptions, isEqual } from "date-fns";
 import log from "./logging";
+import { recentFiles } from "./electron/files";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
 
 const filesPath = path.join(userDataPath, "files");
 const screenshotFolder = path.join(userDataPath, "files", "screenshots");
-const preferencesPath = path.join(userDataPath, "preferences.json");
-
-export async function loadPreferences(): Promise<Preferences> {
-  try {
-    const data = await fs.readFile(preferencesPath, "utf-8");
-    return { ...DEFAULT_PREFERENCES, ...JSON.parse(data) };
-  } catch {
-    return DEFAULT_PREFERENCES;
-  }
-}
-
-const TWO_WEEKS_IN_SECONDS = 60 * 60 * 24 * 7;
-
-export async function recentFiles(
-  ageInSeconds: number = TWO_WEEKS_IN_SECONDS,
-): Promise<string[]> {
-  const userDataPath = app.getPath("userData");
-  const filesDir = path.join(userDataPath, "files");
-  try {
-    const allEntries: string[] = [];
-
-    await walkDir(filesDir, allEntries);
-
-    // Sort by modification time descending
-    const datedPaths: { path: string; mtime: number }[] = [];
-    for (const filePath of allEntries) {
-      // Skip .DS_Store files
-      if (path.basename(filePath) === ".DS_Store") continue;
-      // Skip screenshots
-      if (path.extname(filePath) === ".jpg") continue;
-
-      const stat = await fs.stat(filePath);
-      datedPaths.push({ path: filePath, mtime: stat.mtimeMs });
-    }
-    datedPaths.sort((a, b) => b.mtime - a.mtime);
-
-    // Return a limited list, e.g. 20 items
-    const nowMs = Date.now();
-    return datedPaths
-      .filter((x) => nowMs - x.mtime <= ageInSeconds * 1000)
-      .map((x) => x.path);
-  } catch (error) {
-    log.error("Failed to list recent files:", error);
-    return [];
-  }
-}
-
-async function savePreferences(
-  prefs: Partial<Preferences>,
-): Promise<Preferences> {
-  const currentPrefs = await loadPreferences();
-  const newPrefs = { ...currentPrefs, ...prefs };
-  await fs.writeFile(preferencesPath, JSON.stringify(newPrefs, null, 2));
-  return newPrefs;
-}
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -158,18 +104,6 @@ ipcMain.handle(
     updateKeyloggerPreferences(newPrefs);
   },
 );
-
-async function walkDir(dir: string, allEntries: string[]) {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      await walkDir(full, allEntries);
-    } else {
-      allEntries.push(full);
-    }
-  }
-}
 
 ipcMain.on("OPEN_FILE", (_event, filePath) => {
   shell.openPath(filePath);

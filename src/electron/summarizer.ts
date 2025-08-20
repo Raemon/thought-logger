@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { app } from "electron";
 import { rebuildLogByApp, rebuildChronologicalLog } from "../keylogger";
-import { loadPreferences, recentFiles } from "../main";
 import {
   startOfWeek,
   endOfWeek,
@@ -14,8 +13,10 @@ import {
   isSameWeek,
   isSameDay,
 } from "date-fns";
-import { SerializedLog, SerializedScopeTypes } from "../types/files.d";
+import { SerializedLog, SerializedScopeTypes, Summary } from "../types/files.d";
 import log from "../logging";
+import { loadPreferences } from "../preferences";
+import { recentFiles } from "./files";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -57,7 +58,7 @@ try {
 const SERVICE_NAME = "ThoughtLogger";
 const ACCOUNT_NAME = "OpenRouter";
 
-interface OpenRouterResponse {
+export interface OpenRouterResponse {
   choices: Array<{
     message: {
       content: string;
@@ -425,3 +426,7 @@ app.whenReady().then(async () => {
     log.error("Failed to generate summaries:", error);
   }
 });
+
+export async function summarize(summary: Summary): Promise<void> {
+  return;
+}
