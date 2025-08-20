@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "node:fs/promises";
-import { format, parse, setDefaultOptions } from "date-fns";
+import { format, parse, setDefaultOptions, startOfWeek } from "date-fns";
 import { app } from "electron";
 import {
   Keylog,
@@ -11,12 +11,30 @@ import {
 
 setDefaultOptions({ weekStartsOn: 1 });
 
+function groupByWeek<T>(record: Record<string, T>): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+
+  for (let dateString of Object.keys(record)) {
+    const date = parse(dateString, "yyyy-MM-dd", new Date());
+    const week = format(startOfWeek(date), "yyyy-MM-dd");
+
+    if (groups.has(week)) {
+      const groupData = groups.get(week);
+      groupData.push(record[dateString]);
+    } else {
+      groups.set(week, [record[dateString]]);
+    }
+  }
+
+  return groups;
+}
+
 export async function getRecentSummaries(): Promise<Summary[]> {
   const userDataPath = app.getPath("userData");
   const keylogsPath = path.join(userDataPath, "files", "keylogs");
   const screenshotsPath = path.join(userDataPath, "files", "screenshots");
 
-  const summaries: Record<string, Summary> = {};
+  const dailySummaries: Record<string, Summary> = {};
   const keylogs: Record<string, Keylog> = {};
   const screenshots: Record<string, Record<string, Screenshot>> = {};
 
@@ -76,7 +94,7 @@ export async function getRecentSummaries(): Promise<Summary[]> {
     const availableScreenshots = screenshots[dateString]
       ? Object.values(screenshots[dateString])
       : ([] as Screenshot[]);
-    summaries[dateString] = summaries[dateString] || {
+    dailySummaries[dateString] = dailySummaries[dateString] || {
       contents: "",
       date: parse(dateString, "yyyy-MM-dd", new Date()),
       keylogs: availableKeylogs,
@@ -86,5 +104,37 @@ export async function getRecentSummaries(): Promise<Summary[]> {
     };
   }
 
-  return Object.values(summaries);
+  const weeklyKeylogs = groupByWeek(keylogs);
+  const weeklyScreenshots = groupByWeek(screenshots);
+
+  const weeks: string[] = Array.from(
+    new Set(
+      weeklyKeylogs.keys().toArray().concat(weeklyScreenshots.keys().toArray()),
+    ),
+  );
+
+  const weeklySummaries: Summary[] = [];
+
+  for (let week of weeks) {
+    const date = parse(week, "yyyy-MM-dd", new Date());
+    weeklySummaries.push({
+      contents: "",
+      date,
+      keylogs: weeklyKeylogs.get(week)
+        ? weeklyKeylogs.get(week)
+        : ([] as Keylog[]),
+      loading: false,
+      scope: SummaryScopeTypes.Week,
+      screenshots: weeklyScreenshots.get(week)
+        ? weeklyScreenshots
+            .get(week)
+            .reduce(
+              (acc, screenshot) => acc.concat(Object.values(screenshot)),
+              [],
+            )
+        : ([] as Screenshot[]),
+    });
+  }
+
+  return weeklySummaries.concat(Object.values(dailySummaries));
 }

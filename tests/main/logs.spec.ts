@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 describe("#getRecentSummaries", () => {
-  it("generates daily summaries from keylogs and screenshots", async () => {
+  it("infers daily summaries from keylogs and screenshots", async () => {
     const filesystem = {
       files: {
         keylogs: {
@@ -144,6 +144,74 @@ describe("#getRecentSummaries", () => {
     ];
     vol.fromNestedJSON(filesystem, "/");
     const summaries = await getRecentSummaries();
-    expect(summaries).toStrictEqual(expectedSummaries);
+    expect(
+      summaries.filter((summary) => summary.scope === SummaryScopeTypes.Day),
+    ).toStrictEqual(expectedSummaries);
+  });
+
+  it("infers weekly summaries", async () => {
+    const filesystem = {
+      files: {
+        keylogs: {
+          "2025-08": {
+            "2025-08-14.log": "",
+          },
+        },
+        screenshots: {
+          "2025-08": {
+            "2025-08-13": {
+              "2025-08-13 10_30_00.jpg": "",
+              "2025-08-13 10_30_00.txt": "",
+              "2025-08-13 11_00_00.jpg": "",
+              "2025-08-13 12_45_00.txt": "",
+            },
+          },
+        },
+      },
+    };
+
+    const weeklySummary: Summary = {
+      date: new Date(2025, 7, 11),
+      contents: "",
+      keylogs: [
+        {
+          appPath: "/files/keylogs/2025-08/2025-08-14.processed.by-app.log",
+          chronoPath:
+            "/files/keylogs/2025-08/2025-08-14.processed.chronological.log",
+          rawPath: "/files/keylogs/2025-08/2025-08-14.log",
+          date: new Date(2025, 7, 14),
+        },
+      ],
+      loading: false,
+      scope: SummaryScopeTypes.Week,
+      screenshots: [
+        {
+          date: new Date(2025, 7, 13, 10, 30),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-13/2025-08-13 10_30_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-13/2025-08-13 10_30_00.txt",
+        },
+        {
+          date: new Date(2025, 7, 13, 11),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-13/2025-08-13 11_00_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-13/2025-08-13 11_00_00.txt",
+        },
+        {
+          date: new Date(2025, 7, 13, 12, 45),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-13/2025-08-13 12_45_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-13/2025-08-13 12_45_00.txt",
+        },
+      ],
+    };
+    vol.fromNestedJSON(filesystem, "/");
+    const summaries = await getRecentSummaries();
+    expect(
+      summaries.find((summary) => summary.scope === SummaryScopeTypes.Week),
+    ).toStrictEqual(weeklySummary);
   });
 });
