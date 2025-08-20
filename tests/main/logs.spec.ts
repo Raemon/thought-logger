@@ -214,4 +214,13 @@ describe("#getRecentSummaries", () => {
       summaries.find((summary) => summary.scope === SummaryScopeTypes.Week),
     ).toStrictEqual(weeklySummary);
   });
+
+  it("doesn't fail when directories are missing", async () => {
+    const filesystem = {
+      files: {},
+    };
+
+    vol.fromNestedJSON(filesystem, "/");
+    expect(getRecentSummaries()).resolves.toStrictEqual([]);
+  });
 });

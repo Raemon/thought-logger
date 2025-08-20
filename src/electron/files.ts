@@ -8,6 +8,8 @@ import {
   Summary,
   SummaryScopeTypes,
 } from "../types/files.d";
+import { Dirent } from "node:fs";
+import log from "src/logging";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -29,6 +31,22 @@ function groupByWeek<T>(record: Record<string, T>): Map<string, T[]> {
   return groups;
 }
 
+async function readFilesFromDirectory(path: string): Promise<Dirent[]> {
+  try {
+    await fs.access(path);
+  } catch (error) {
+    log.error(`Couldn't access ${path}: ${error}`);
+    return [];
+  }
+
+  return fs
+    .readdir(path, {
+      recursive: true,
+      withFileTypes: true,
+    })
+    .then((files) => files.filter((file) => file.isFile()));
+}
+
 export async function getRecentSummaries(): Promise<Summary[]> {
   const userDataPath = app.getPath("userData");
   const keylogsPath = path.join(userDataPath, "files", "keylogs");
@@ -38,12 +56,7 @@ export async function getRecentSummaries(): Promise<Summary[]> {
   const keylogs: Record<string, Keylog> = {};
   const screenshots: Record<string, Record<string, Screenshot>> = {};
 
-  const keylogFiles = await fs
-    .readdir(keylogsPath, {
-      recursive: true,
-      withFileTypes: true,
-    })
-    .then((files) => files.filter((file) => file.isFile()));
+  const keylogFiles = await readFilesFromDirectory(keylogsPath);
 
   for (let file of keylogFiles) {
     const fileName = path.basename(file.name);
@@ -60,12 +73,7 @@ export async function getRecentSummaries(): Promise<Summary[]> {
     };
   }
 
-  const screenshotFiles = await fs
-    .readdir(screenshotsPath, {
-      recursive: true,
-      withFileTypes: true,
-    })
-    .then((files) => files.filter((file) => file.isFile()));
+  const screenshotFiles = await readFilesFromDirectory(screenshotsPath);
 
   for (let file of screenshotFiles) {
     const fileName = path.basename(file.name);
