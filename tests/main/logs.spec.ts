@@ -29,9 +29,12 @@ beforeEach(() => {
 
 it("runs correctly", async () => {
   const filesystem = {
-    keylogs: {
-      "2025-08": {
-        "2025-08-20.log": "",
+    files: {
+      keylogs: {
+        "2025-08": {
+          "2025-08-20.log": "",
+          "2025-08-19.processed.chronological.log": "",
+        },
       },
     },
   };
@@ -39,13 +42,30 @@ it("runs correctly", async () => {
   const expectedSummaries: Summary[] = [
     {
       contents: "",
-      date: new Date(2025, 8, 20),
+      date: new Date(2025, 7, 19),
       keylogs: [
         {
-          appPath: "/2025-08/2025-08-20.processed.by-app.log",
-          chronoPath: "/2025-08/2025-08-20.processed.chronological.log",
-          rawPath: "/2025-08/2025-08-20.log",
-          date: new Date(2025, 8, 20),
+          appPath: "/files/keylogs/2025-08/2025-08-19.processed.by-app.log",
+          chronoPath:
+            "/files/keylogs/2025-08/2025-08-19.processed.chronological.log",
+          rawPath: "/files/keylogs/2025-08/2025-08-19.log",
+          date: new Date(2025, 7, 19),
+        },
+      ],
+      screenshots: [],
+      loading: false,
+      scope: SummaryScopeTypes.Day,
+    },
+    {
+      contents: "",
+      date: new Date(2025, 7, 20),
+      keylogs: [
+        {
+          appPath: "/files/keylogs/2025-08/2025-08-20.processed.by-app.log",
+          chronoPath:
+            "/files/keylogs/2025-08/2025-08-20.processed.chronological.log",
+          rawPath: "/files/keylogs/2025-08/2025-08-20.log",
+          date: new Date(2025, 7, 20),
         },
       ],
       screenshots: [],
@@ -53,7 +73,7 @@ it("runs correctly", async () => {
       scope: SummaryScopeTypes.Day,
     },
   ];
-  vol.fromNestedJSON(filesystem);
+  vol.fromNestedJSON(filesystem, "/");
   const summaries = await getRecentSummaries();
   expect(summaries).toStrictEqual(expectedSummaries);
 });
