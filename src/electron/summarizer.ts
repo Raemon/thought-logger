@@ -202,11 +202,13 @@ export async function summarize(summary: Summary): Promise<void> {
       logData += `${filename}:\n${text}\n\n`;
     }
     const { dailySummaryPrompt, summaryModel } = await loadPreferences();
-    summary.contents = await generateAISummary(
+    const text = await generateAISummary(
       logData,
       dailySummaryPrompt,
       summaryModel,
     );
+    await fs.writeFile(summary.path, text);
+    summary.contents = text;
   } catch (error) {
     log.error(
       `Failed to generate summary for ${path.basename(summary.path)}:`,
