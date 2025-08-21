@@ -46,8 +46,9 @@ try {
     // Provide a fallback implementation that logs error but doesn't crash
     keytar = {
       getPassword: async (): Promise<string | null> => null,
-      setPassword: async (): Promise<void> =>
-        log.error("Unable to save password: keytar not available"),
+      setPassword: async (): Promise<void> => {
+        log.error("Unable to save password: keytar not available");
+      },
     };
   }
 }
