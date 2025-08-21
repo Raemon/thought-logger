@@ -9,7 +9,7 @@ import {
   SummaryScopeTypes,
 } from "../types/files.d";
 import { Dirent } from "node:fs";
-import log from "src/logging";
+import log from "../logging";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
