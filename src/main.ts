@@ -11,12 +11,12 @@ import { startLocalServer } from "./electron/server";
 import {
   startDailySummaryCheck,
   getAvailableModels,
-  rebuildSummary,
+  summarize,
 } from "./electron/summarizer";
-import { SerializedLog, SerializedScopeTypes } from "./types/files.d";
-import { parse, setDay, setDefaultOptions, isEqual } from "date-fns";
+import { Summary } from "./types/files.d";
+import { setDefaultOptions, isEqual } from "date-fns";
 import log from "./logging";
-import { recentFiles } from "./electron/files";
+import { getRecentSummaries, recentFiles } from "./electron/files";
 import { getApiKey, saveApiKey } from "./electron/credentials";
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -135,67 +135,27 @@ ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
   }
 });
 
-ipcMain.handle("GENERATE_AI_SUMMARY", async (_event, log: SerializedLog) => {
-  const oldLogs = await getRecentLogs();
+ipcMain.handle("GENERATE_AI_SUMMARY", async (_event, summary: Summary) => {
+  const oldLogs = await getRecentSummaries();
   for (let i in oldLogs) {
     const { date, scope } = oldLogs[i];
-    if (isEqual(date, log.date) && scope === log.scope) {
+    if (isEqual(date, summary.date) && scope === summary.scope) {
       oldLogs[i].loading = true;
     }
   }
-  updateRecentLogs(oldLogs);
-  await rebuildSummary(log);
-  const newLogs = await getRecentLogs();
-  updateRecentLogs(newLogs);
+  updateSummaries(oldLogs);
+  await summarize(summary);
+  const newLogs = await getRecentSummaries();
+  updateSummaries(newLogs);
 });
 
-function updateRecentLogs(logs: SerializedLog[]): void {
+function updateSummaries(summaries: Summary[]): void {
   BrowserWindow.getAllWindows().forEach((win) =>
-    win.webContents.send("UPDATE_RECENT_LOGS", logs),
+    win.webContents.send("UPDATE_RECENT_LOGS", summaries),
   );
 }
 
-async function getRecentLogs(): Promise<SerializedLog[]> {
-  const files = await recentFiles();
-  const logs: Record<string, SerializedLog> = {};
-
-  for (let file of files) {
-    let scope = SerializedScopeTypes.Day;
-    const fileName = path.basename(file);
-    const result = fileName.match(/[^.]+/);
-    const dateString = result[0];
-    let date = parse(dateString, "yyyy-MM-dd", new Date());
-
-    if (isNaN(date.getTime())) {
-      date = parse(dateString, "YYYY-'W'ww", new Date(), {
-        useAdditionalWeekYearTokens: true,
-      });
-      date = setDay(date, 0);
-      scope = SerializedScopeTypes.Week;
-    }
-
-    // Skip logs if we fail to parse their date.
-    if (isNaN(date.getTime())) {
-      log.error(`Failed to parse date for ${file}`);
-      continue;
-    }
-
-    logs[dateString] = logs[dateString] || { date, scope, loading: false };
-    if (fileName.match(/processed\.by-app/)) {
-      logs[dateString].appPath = file;
-    } else if (fileName.match(/processed\.chronological/)) {
-      logs[dateString].chronoPath = file;
-    } else if (fileName.match(/\.aisummary/)) {
-      logs[dateString].summaryContents = await fs.readFile(file, "utf-8");
-    } else {
-      logs[dateString].rawPath = file;
-    }
-  }
-
-  return Object.values(logs);
-}
-
-ipcMain.handle("GET_RECENT_LOGS", getRecentLogs);
+ipcMain.handle("GET_RECENT_LOGS", getRecentSummaries);
 
 async function getRecentApps(): Promise<string[]> {
   let apps = new Set<string>();

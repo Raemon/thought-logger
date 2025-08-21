@@ -3,19 +3,19 @@ import {
   PermissionStatus,
 } from "../electron/permissions";
 import { Preferences } from "../preferences";
-import { SerializedLog } from "./files";
+import { Summary } from "./files";
 
 declare global {
   interface UserData {
     openUserDataFolder: () => void;
     getUserDataFolder: () => Promise<string>;
-    getRecentLogs: () => Promise<SerializedLog[]>;
+    getRecentLogs: () => Promise<Summary[]>;
     getRecentApps: () => Promise<string[]>;
     openFile: (filePath: string) => void;
     openExternalUrl: (url: string) => void;
     readFile: (filePath: string) => Promise<string>;
-    generateAISummary: (log: SerializedLog) => Promise<string>;
-    onUpdateRecentLogs: (callback: (logs: SerializedLog[]) => void) => void;
+    generateAISummary: (log: Summary) => Promise<string>;
+    onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => void;
   }
 
   interface Window {

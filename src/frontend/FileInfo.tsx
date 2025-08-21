@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { format, compareDesc } from "date-fns";
 
-import Summary from "./Summary";
-import { SerializedLog, SerializedScopeTypes } from "../types/files.d";
+import SummaryComponent from "./Summary";
+import { Summary, SummaryScopeTypes } from "../types/files.d";
 
 function openFolder() {
   window.userData.openUserDataFolder();
@@ -10,7 +10,7 @@ function openFolder() {
 
 export function FileInfo() {
   const [dataFolder, setDataFolder] = useState("(loading)");
-  const [serializedLogs, setSerializedLogs] = useState<SerializedLog[]>([]);
+  const [serializedLogs, setSerializedLogs] = useState<Summary[]>([]);
 
   useEffect(() => {
     window.userData.getUserDataFolder().then(setDataFolder);
@@ -21,7 +21,7 @@ export function FileInfo() {
   // FIXME Probably doesn't need to happen every render
   const tocByMonth: Record<string, Record<string, string[]>> = {};
   serializedLogs
-    .filter(({ scope }) => scope === SerializedScopeTypes.Day)
+    .filter(({ scope }) => scope === SummaryScopeTypes.Day)
     .forEach(({ date }) => {
       const month = format(date, "yyyy-MM");
       const week = format(date, "yyyy-'W'ww");
@@ -144,7 +144,7 @@ export function FileInfo() {
           {serializedLogs
             .sort((a, b) => compareDesc(a.date, b.date))
             .map((log) => (
-              <Summary key={log.date.toISOString()} log={log} />
+              <SummaryComponent key={log.date.toISOString()} log={log} />
             ))}
         </div>
       </div>

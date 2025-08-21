@@ -157,21 +157,6 @@ exports[`Renders the logs 1`] = `
             >
               regenerate summary
             </button>
-            <button
-              class="ml-2 px-2 py-2 text-xs text-blue-800 font-normal"
-            >
-              Raw
-            </button>
-            <button
-              class="ml-2 px-2 py-0.5 text-xs text-green-800 font-normal"
-            >
-              By App
-            </button>
-            <button
-              class="ml-2 px-2 py-0.5 text-xs text-green-800 font-normal"
-            >
-              Chronological
-            </button>
           </div>
           <div
             class="flex flex-col gap-1"
