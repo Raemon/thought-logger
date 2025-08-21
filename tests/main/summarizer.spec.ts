@@ -171,6 +171,53 @@ describe("#summarize", () => {
     );
   });
 
+  it("calls the API with the right prompt for summary weekly scope", async () => {
+    const mockResponse: OpenRouterResponse = {
+      choices: [
+        {
+          message: {
+            content: "This is a weekly summary.",
+          },
+        },
+      ],
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
+
+    const filesystem = {
+      "/2025-08-13.log": "This is keylog data.",
+    };
+    vol.fromJSON(filesystem);
+
+    const summary: Summary = {
+      date: new Date(),
+      keylogs: [
+        {
+          appPath: "/2025-08-13.by-app.log",
+          chronoPath: "/2025-08-13.chronological.log",
+          date: new Date(),
+          rawPath: "/2025-08-13.log",
+        },
+      ],
+      loading: false,
+      path: "/2028-08-10.aisummary.log",
+      scope: SummaryScopeTypes.Week,
+      screenshots: [],
+      contents: null,
+    };
+
+    await summarize(summary);
+    expect(mockFetch).toHaveBeenCalledExactlyOnceWith(
+      "https://openrouter.ai/api/v1/chat/completions",
+      expect.objectContaining({
+        body: expect.stringContaining(testWeeklyPrompt),
+      }),
+    );
+  });
+
   it("doesn't regenerate existing summaries", async () => {
     const filesystem = {
       "/2028-08-20.aisummary.log": "This is a daily summary",

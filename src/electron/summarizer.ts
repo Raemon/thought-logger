@@ -201,10 +201,13 @@ export async function summarize(summary: Summary): Promise<void> {
       let filename = path.basename(keylog.rawPath);
       logData += `${filename}:\n${text}\n\n`;
     }
-    const { dailySummaryPrompt, summaryModel } = await loadPreferences();
+    const { dailySummaryPrompt, weeklySummaryPrompt, summaryModel } =
+      await loadPreferences();
     const text = await generateAISummary(
       logData,
-      dailySummaryPrompt,
+      summary.scope === SummaryScopeTypes.Day
+        ? dailySummaryPrompt
+        : weeklySummaryPrompt,
       summaryModel,
     );
     await fs.writeFile(summary.path, text);
