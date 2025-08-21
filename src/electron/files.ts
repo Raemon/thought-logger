@@ -146,11 +146,10 @@ export async function getRecentSummaries(): Promise<Summary[]> {
   const weeklyKeylogs = groupByWeek(keylogs);
   const weeklyScreenshots = groupByWeek(screenshots);
 
-  const weeks: string[] = Array.from(
-    new Set(
-      weeklyKeylogs.keys().toArray().concat(weeklyScreenshots.keys().toArray()),
-    ),
-  );
+  const weeks: string[] = weeklyKeylogs
+    .keys()
+    .toArray()
+    .concat(weeklyScreenshots.keys().toArray());
 
   const weeklySummaries: Summary[] = [];
 
