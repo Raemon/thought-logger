@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { vol, fs } from "memfs";
 
-import { OpenRouterResponse, summarize } from "../../src/electron/summarizer";
+import {
+  needsSummary,
+  OpenRouterResponse,
+  summarize,
+} from "../../src/electron/summarizer";
 import { Summary, SummaryScopeTypes } from "../../src/types/files.d";
 import { Preferences } from "src/types/preferences";
 
@@ -165,5 +169,38 @@ describe("#summarize", () => {
         body: expect.stringContaining(testDailyPrompt),
       }),
     );
+  });
+
+  it("doesn't regenerate existing summaries", async () => {
+    const filesystem = {
+      "/2028-08-20.aisummary.log": "This is a daily summary",
+    };
+    vol.fromJSON(filesystem);
+
+    const summary: Summary = {
+      date: new Date(2025, 7, 20),
+      keylogs: [],
+      loading: false,
+      path: "/2028-08-20.aisummary.log",
+      scope: SummaryScopeTypes.Day,
+      screenshots: [],
+      contents: null,
+    };
+
+    await expect(needsSummary(summary)).resolves.toBe(false);
+  });
+
+  it("doesn't generate a summary for today", async () => {
+    const summary: Summary = {
+      date: new Date(2025, 7, 21),
+      keylogs: [],
+      loading: false,
+      path: "/2028-08-20.aisummary.log",
+      scope: SummaryScopeTypes.Day,
+      screenshots: [],
+      contents: null,
+    };
+
+    await expect(needsSummary(summary)).resolves.toBe(false);
   });
 });

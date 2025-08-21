@@ -142,9 +142,9 @@ export async function needsSummary(summary: Summary): Promise<boolean> {
   } catch {
     return (
       (summary.scope === SummaryScopeTypes.Day &&
-        isSameDay(today, summary.date)) ||
+        !isSameDay(today, summary.date)) ||
       (summary.scope === SummaryScopeTypes.Week &&
-        isSameWeek(today, summary.date))
+        !isSameWeek(today, summary.date))
     );
   }
 }
