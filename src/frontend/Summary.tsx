@@ -38,9 +38,17 @@ export default function SummaryComponent({
 }): ReactElement {
   const date = log.date;
   const dateStr = format(date, "yyyy-MM-dd");
+  const weekStr = format(date, "YYYY'W'ww", {
+    useAdditionalWeekYearTokens: true,
+  });
   const firstKeylog = log.keylogs[0];
+  const week = log.scope === SummaryScopeTypes.Week;
   return (
-    <div key={dateStr} className="mb-2.5" id={`day-${dateStr}`}>
+    <div
+      key={dateStr}
+      className="mb-2.5"
+      id={week ? `week-${weekStr}` : `day-${dateStr}`}
+    >
       <div className="mb-1 font-bold flex items-center">
         <span className="mr-auto">
           {formatDateHeader(date, log.scope === SummaryScopeTypes.Week)}

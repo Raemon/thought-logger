@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { format, compareDesc } from "date-fns";
+import React, { useEffect, useState } from "react";
+import { format, compareDesc, compareAsc } from "date-fns";
 
 import SummaryComponent from "./Summary";
 import { Summary, SummaryScopeTypes } from "../types/files.d";
@@ -19,7 +19,7 @@ export function FileInfo() {
   }, []);
 
   // FIXME Probably doesn't need to happen every render
-  const tocByMonth: Record<string, Record<string, string[]>> = {};
+  const tocByMonth: Record<string, Record<string, Date[]>> = {};
   serializedLogs
     .filter(({ scope }) => scope === SummaryScopeTypes.Day)
     .forEach(({ date }) => {
@@ -27,7 +27,7 @@ export function FileInfo() {
       const week = format(date, "yyyy-'W'ww");
       if (!tocByMonth[month]) tocByMonth[month] = {};
       if (!tocByMonth[month][week]) tocByMonth[month][week] = [];
-      tocByMonth[month][week].push(format(date, "yyyy-MM-dd"));
+      tocByMonth[month][week].push(date);
     });
 
   return (
@@ -106,33 +106,32 @@ export function FileInfo() {
                     </div>
                     <div style={{ marginLeft: 10 }}>
                       {days
-                        .sort((a, b) => b.localeCompare(a))
-                        .map((day) => (
-                          <div key={day}>
-                            <a
-                              href={`#day-${day}`}
-                              className="text-blue-700 hover:underline"
-                              style={{ fontSize: 13 }}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                const el = document.getElementById(
-                                  `day-${day}`,
-                                );
-                                if (el)
-                                  el.scrollIntoView({
-                                    behavior: "smooth",
-                                    block: "start",
-                                  });
-                              }}
-                            >
-                              {new Date(day).toLocaleDateString("en-US", {
-                                weekday: "short",
-                                day: "numeric",
-                                month: "short",
-                              })}
-                            </a>
-                          </div>
-                        ))}
+                        .sort((a, b) => compareAsc(a, b))
+                        .map((day) => {
+                          const dateString = format(day, "yyyy-MM-dd");
+                          return (
+                            <div key={dateString}>
+                              <a
+                                href={`#day-${dateString}`}
+                                className="text-blue-700 hover:underline"
+                                style={{ fontSize: 13 }}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  const el = document.getElementById(
+                                    `day-${dateString}`,
+                                  );
+                                  if (el)
+                                    el.scrollIntoView({
+                                      behavior: "smooth",
+                                      block: "start",
+                                    });
+                                }}
+                              >
+                                {format(day, "EEE, MMM d")}
+                              </a>
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
                 ))}
