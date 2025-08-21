@@ -2,6 +2,7 @@ import path from "path";
 import fs from "node:fs/promises";
 import {
   differenceInHours,
+  differenceInSeconds,
   format,
   parse,
   setDefaultOptions,
@@ -119,7 +120,12 @@ async function getScreenshots(): Promise<
   return screenshots;
 }
 
-export async function getRecentSummaries(): Promise<Summary[]> {
+const TWO_WEEKS_IN_SECONDS = 60 * 60 * 24 * 7;
+
+export async function getRecentSummaries(
+  ageInSeconds: number = TWO_WEEKS_IN_SECONDS,
+): Promise<Summary[]> {
+  const now = new Date();
   const dailySummaries: Record<string, Summary> = {};
   const keylogs: Record<string, Keylog> = await getKeylogs();
   const screenshots: Record<
@@ -132,14 +138,18 @@ export async function getRecentSummaries(): Promise<Summary[]> {
   );
 
   for (let dateString of dateStrings) {
+    const date = parse(dateString, "yyyy-MM-dd", new Date());
+
+    if (differenceInSeconds(now, date) >= ageInSeconds) {
+      continue;
+    }
+
     const availableKeylogs = keylogs[dateString]
       ? [keylogs[dateString]]
       : ([] as Keylog[]);
     const availableScreenshots = screenshots[dateString]
       ? Object.values(screenshots[dateString])
       : ([] as Screenshot[]);
-
-    const date = parse(dateString, "yyyy-MM-dd", new Date());
     const monthString = format(date, "yyyy-MM");
 
     const summaryPath = path.join(
