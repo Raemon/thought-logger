@@ -98,11 +98,12 @@ async function getScreenshots(): Promise<
   const screenshotsPath = path.join(userDataPath, "files", "screenshots");
   const screenshots: Record<string, Record<string, Screenshot>> = {};
 
-  const screenshotFiles = await readFilesFromDirectory(screenshotsPath);
+  const files = await readFilesFromDirectory(screenshotsPath);
 
-  for (let file of screenshotFiles) {
+  for (let file of files) {
     const fileName = path.basename(file.name);
     const dir = file.parentPath;
+    const ext = path.extname(file.name);
     const result = fileName.match(/[^.]+/);
     const dateString = result[0];
     let date = parse(dateString, "yyyy-MM-dd HH_mm_ss", new Date());
@@ -110,11 +111,18 @@ async function getScreenshots(): Promise<
     const dayString = format(date, "yyyy-MM-dd");
 
     screenshots[dayString] = screenshots[dayString] || {};
-    screenshots[dayString][dateString] = {
+    const screenshot = screenshots[dayString][dateString] || {
       imagePath: path.join(dir, dateString + ".jpg"),
       summaryPath: path.join(dir, dateString + ".txt"),
       date,
     };
+    if (ext === ".jpg") {
+      screenshot.imagePath = path.join(file.parentPath, file.name);
+    } else if (ext === ".txt") {
+      screenshot.summaryPath = path.join(file.parentPath, file.name);
+    }
+
+    screenshots[dayString][dateString] = screenshot;
   }
 
   return screenshots;

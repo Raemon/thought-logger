@@ -47,7 +47,7 @@ describe("#getRecentSummaries", () => {
             },
             "2025-08-17": {
               "2025-08-17 10_30_00.jpg": "",
-              "2025-08-17 10_30_00.txt": "",
+              "2025-08-17 10_30_00.project.document.txt": "",
               "2025-08-17 11_00_00.jpg": "",
               "2025-08-17 12_45_00.txt": "",
             },
@@ -124,7 +124,7 @@ describe("#getRecentSummaries", () => {
             imagePath:
               "/files/screenshots/2025-08/2025-08-17/2025-08-17 10_30_00.jpg",
             summaryPath:
-              "/files/screenshots/2025-08/2025-08-17/2025-08-17 10_30_00.txt",
+              "/files/screenshots/2025-08/2025-08-17/2025-08-17 10_30_00.project.document.txt",
           },
           {
             date: new Date(2025, 7, 17, 11),
