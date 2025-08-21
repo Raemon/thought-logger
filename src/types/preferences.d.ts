@@ -8,6 +8,7 @@ export interface ScreenshotPreferences {
     default: string;
     [model: string]: string;
   };
+  screenshotSummaryWindow: number;
 }
 
 export interface SummaryPreferences {
@@ -30,6 +31,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
     default:
       "Summarize the contents of this screenshot. Include the application is in use, project names, filename or document title. If a chat app is in use, give the channel name. Include each section of the screen with text in it, with an exact copy of all text. Include a summary of images on the screen. Organize the summary into titled sections.",
   },
+  screenshotSummaryWindow: 300,
   blockedApps: [
     "Signal",
     "Signal Desktop",

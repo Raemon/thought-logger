@@ -58,6 +58,7 @@ vi.mock(import("../../src/preferences"), async (importOriginal) => {
         dailySummaryPrompt: testDailyPrompt,
         summaryModel: testModel,
         weeklySummaryPrompt: testWeeklyPrompt,
+        screenshotSummaryWindow: 5,
       } as Preferences),
   };
 });
@@ -249,5 +250,79 @@ describe("#summarize", () => {
     };
 
     await expect(needsSummary(summary)).resolves.toBe(false);
+  });
+
+  it("includes the user-specified number of words from screenshots", async () => {
+    const mockResponse: OpenRouterResponse = {
+      choices: [
+        {
+          message: {
+            content: "This is a daily summary.",
+          },
+        },
+      ],
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
+
+    const filesystem = {
+      files: {
+        screenshots: {
+          "2025-08": {
+            "2025-08-20": {
+              "2025-08-20 10_30_00.jpg": "",
+              "2025-08-20 10_30_00.txt":
+                "This is some included text. This is excluded text.",
+              "2025-08-20 11_00_00.jpg": "",
+              "2025-08-20 12_45_00.txt":
+                "This is more text, included. You shouldn't include this text",
+            },
+          },
+        },
+      },
+    };
+    vol.fromNestedJSON(filesystem, "/");
+
+    const summary: Summary = {
+      date: new Date(),
+      keylogs: [],
+      loading: false,
+      path: "/2028-08-20.aisummary.log",
+      scope: SummaryScopeTypes.Day,
+      screenshots: [
+        {
+          date: new Date(2025, 7, 20, 10, 30),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.txt",
+        },
+        {
+          date: new Date(2025, 7, 20, 12, 45),
+          imagePath:
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.jpg",
+          summaryPath:
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.txt",
+        },
+      ],
+      contents: null,
+    };
+
+    await summarize(summary);
+    expect(mockFetch).toHaveBeenCalledExactlyOnceWith(
+      "https://openrouter.ai/api/v1/chat/completions",
+      expect.objectContaining({
+        body: expect.stringContaining(
+          "Screenshot Summaries:\\n" +
+            "Taken on 2025-08-20 10_30_00:\\n" +
+            "This is some included text.\\n\\n" +
+            "Taken on 2025-08-20 12_45_00:\\n" +
+            "This is more text, included.\\n\\n",
+        ),
+      }),
+    );
   });
 });

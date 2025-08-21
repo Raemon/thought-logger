@@ -58,7 +58,7 @@ async function readFilesFromDirectory(path: string): Promise<Dirent[]> {
     .then((files) => files.filter((file) => file.isFile()));
 }
 
-async function maybeReadContents(path: string): Promise<string | null> {
+export async function maybeReadContents(path: string): Promise<string | null> {
   try {
     await fs.access(path);
   } catch (error) {

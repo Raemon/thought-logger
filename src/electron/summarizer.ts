@@ -6,7 +6,7 @@ import { setDefaultOptions, isSameWeek, isSameDay } from "date-fns";
 import { Keylog, Summary, SummaryScopeTypes } from "../types/files.d";
 import log from "../logging";
 import { loadPreferences } from "../preferences";
-import { getRecentSummaries } from "./files";
+import { getRecentSummaries, maybeReadContents } from "./files";
 import { getApiKey } from "./credentials";
 
 setDefaultOptions({ weekStartsOn: 1 });
@@ -196,13 +196,33 @@ export async function summarize(summary: Summary): Promise<void> {
   console.log(`Generating summary for ${path.basename(summary.path)}`);
   try {
     let logData: string = "";
+    const {
+      dailySummaryPrompt,
+      weeklySummaryPrompt,
+      summaryModel,
+      screenshotSummaryWindow,
+    } = await loadPreferences();
+
+    logData += "Keylogger data:\n";
+
     for (let keylog of summary.keylogs) {
       let text = await fs.readFile(keylog.rawPath, { encoding: "utf-8" });
       let filename = path.basename(keylog.rawPath);
       logData += `${filename}:\n${text}\n\n`;
     }
-    const { dailySummaryPrompt, weeklySummaryPrompt, summaryModel } =
-      await loadPreferences();
+
+    logData += "Screenshot Summaries:\n";
+
+    for (let screenshot of summary.screenshots) {
+      let text = await maybeReadContents(screenshot.summaryPath);
+      if (text === null) {
+        continue;
+      }
+      let excerpt = text.split(" ").slice(0, screenshotSummaryWindow).join(" ");
+      let filename = path.basename(screenshot.summaryPath, ".txt");
+      logData += `Taken on ${filename}:\n${excerpt}\n\n`;
+    }
+
     const text = await generateAISummary(
       logData,
       summary.scope === SummaryScopeTypes.Day
