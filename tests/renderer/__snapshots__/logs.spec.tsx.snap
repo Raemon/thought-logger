@@ -59,7 +59,7 @@ exports[`Renders the logs 1`] = `
           <div
             class="font-semibold"
           >
-            2025-09
+            2025-08
           </div>
           <div
             style="margin-left: 10px;"
@@ -72,9 +72,9 @@ exports[`Renders the logs 1`] = `
               >
                 <a
                   class="text-blue-500 hover:underline"
-                  href="#week-2025-W38"
+                  href="#week-2025-W34"
                 >
-                  2025-W38
+                  2025-W34
                 </a>
               </div>
               <div
@@ -83,10 +83,10 @@ exports[`Renders the logs 1`] = `
                 <div>
                   <a
                     class="text-blue-700 hover:underline"
-                    href="#day-2025-09-19"
+                    href="#day-2025-08-19"
                     style="font-size: 13px;"
                   >
-                    Thu, Sep 18
+                    Tue, Aug 19
                   </a>
                 </div>
               </div>
@@ -99,7 +99,7 @@ exports[`Renders the logs 1`] = `
       >
         <div
           class="mb-2.5"
-          id="day-2025-09-19"
+          id="day-2025-08-19"
         >
           <div
             class="mb-1 font-bold flex items-center"
@@ -107,7 +107,7 @@ exports[`Renders the logs 1`] = `
             <span
               class="mr-auto"
             >
-              Friday, September 19, 2025
+              Tuesday, August 19, 2025
             </span>
             <button
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold rounded ml-2 px-2 py-0.5 text-xs"
@@ -142,7 +142,7 @@ exports[`Renders the logs 1`] = `
         </div>
         <div
           class="mb-2.5"
-          id="day-2025-09-12"
+          id="day-2025-08-12"
         >
           <div
             class="mb-1 font-bold flex items-center"
@@ -150,7 +150,7 @@ exports[`Renders the logs 1`] = `
             <span
               class="mr-auto"
             >
-              Week of Monday, September 8, 2025 to Sunday, September 14, 2025
+              Week of Monday, August 11, 2025 to Sunday, August 17, 2025
             </span>
             <button
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold rounded ml-2 px-2 py-0.5 text-xs"

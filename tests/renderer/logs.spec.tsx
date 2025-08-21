@@ -13,7 +13,7 @@ const userData: UserData = {
   getRecentApps: vi.fn<UserData["getRecentApps"]>().mockResolvedValue(["foo"]),
   getRecentLogs: vi.fn<UserData["getRecentLogs"]>().mockResolvedValue([
     {
-      date: new Date(2025, 8, 19),
+      date: new Date(2025, 7, 19),
       loading: false,
       scope: SummaryScopeTypes.Day,
       path: "fakepath.log",
@@ -29,7 +29,7 @@ const userData: UserData = {
       screenshots: [],
     },
     {
-      date: new Date(2025, 8, 12),
+      date: new Date(2025, 7, 12),
       loading: false,
       scope: SummaryScopeTypes.Week,
       path: "fakepath.log",
