@@ -4,7 +4,8 @@ import fs from "node:fs/promises";
 import started from "electron-squirrel-startup";
 import { initializeKeylogger, updateKeyloggerPreferences } from "./keylogger";
 import { checkPermissions } from "./electron/permissions";
-import { Preferences, savePreferences, loadPreferences } from "./preferences";
+import { savePreferences, loadPreferences } from "./preferences";
+import { Preferences } from "./types/preferences.d";
 import {
   toggleScheduledScreenshots,
   checkAndGetApiKey,

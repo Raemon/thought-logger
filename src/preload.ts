@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { Preferences } from "./preferences";
+import { Preferences } from "./types/preferences.d";
 import { SerializedLog } from "./types/files";
 
 contextBridge.exposeInMainWorld("permissions", {

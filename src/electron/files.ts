@@ -13,6 +13,8 @@ import log from "../logging";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
+const userDataPath = app.getPath("userData");
+
 function groupByWeek<T>(record: Record<string, T>): Map<string, T[]> {
   const groups = new Map<string, T[]>();
 
@@ -61,7 +63,6 @@ async function maybeReadContents(path: string): Promise<string | null> {
 }
 
 export async function getRecentSummaries(): Promise<Summary[]> {
-  const userDataPath = app.getPath("userData");
   const keylogsPath = path.join(userDataPath, "files", "keylogs");
   const screenshotsPath = path.join(userDataPath, "files", "screenshots");
 
@@ -202,7 +203,6 @@ async function walkDir(dir: string, allEntries: string[]) {
 export async function recentFiles(
   ageInSeconds: number = TWO_WEEKS_IN_SECONDS,
 ): Promise<string[]> {
-  const userDataPath = app.getPath("userData");
   const filesDir = path.join(userDataPath, "files");
   try {
     const allEntries: string[] = [];

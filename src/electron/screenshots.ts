@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { currentScreenshotFile } from "./paths";
-import { Preferences } from "../preferences";
+import { Preferences } from "../types/preferences.d";
 import { desktopCapturer, app, systemPreferences } from "electron";
 
 import fetch from "node-fetch";

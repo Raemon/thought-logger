@@ -1,4 +1,6 @@
+import path from "path";
 import { app } from "electron";
+import log from "../logging";
 
 // Import keytar safely
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
