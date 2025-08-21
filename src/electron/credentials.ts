@@ -38,10 +38,36 @@ try {
 const SERVICE_NAME = "ThoughtLogger";
 const ACCOUNT_NAME = "OpenRouter";
 
-export async function getOpenRouterApiKey(): Promise<string> {
-  const apiKey = await keytar.getPassword(SERVICE_NAME, ACCOUNT_NAME);
-  if (!apiKey) {
-    throw new Error("OpenRouter API key not found");
+export async function getApiKey(): Promise<string | null> {
+  try {
+    return await keytar.getPassword(SERVICE_NAME, ACCOUNT_NAME);
+  } catch (error) {
+    log.error("Error accessing keychain:", error);
+    return null;
   }
-  return apiKey;
+}
+
+export async function saveApiKey(
+  apiKey: string,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    if (!apiKey || apiKey.trim() === "") {
+      return {
+        success: false,
+        message: "API key cannot be empty",
+      };
+    }
+
+    await keytar.setPassword(SERVICE_NAME, ACCOUNT_NAME, apiKey);
+    return {
+      success: true,
+      message: "API key saved successfully",
+    };
+  } catch (error) {
+    log.error("Failed to save API key:", error);
+    return {
+      success: false,
+      message: `Failed to save API key: ${error.message}`,
+    };
+  }
 }

@@ -17,7 +17,7 @@ import { SerializedLog, SerializedScopeTypes, Summary } from "../types/files.d";
 import log from "../logging";
 import { loadPreferences } from "../preferences";
 import { recentFiles } from "./files";
-import { getOpenRouterApiKey } from "./credentials";
+import { getApiKey } from "./credentials";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -42,7 +42,7 @@ interface LogFileInfo {
 export async function getAvailableModels(
   imageSupport: boolean = false,
 ): Promise<string[]> {
-  const apiKey = await getOpenRouterApiKey();
+  const apiKey = await getApiKey();
   const response = await fetch("https://openrouter.ai/api/v1/models", {
     method: "GET",
     headers: {
@@ -75,7 +75,7 @@ async function generateAISummary(
   model: string,
   maxRetries = 3,
 ): Promise<string> {
-  const apiKey = await getOpenRouterApiKey();
+  const apiKey = await getApiKey();
 
   let lastError: Error | null = null;
 

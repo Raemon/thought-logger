@@ -26,7 +26,7 @@ vi.mock("electron", () => {
 
 vi.mock(import("../../src/electron/credentials"), () => {
   return {
-    getOpenRouterApiKey: () => Promise.resolve("password"),
+    getApiKey: () => Promise.resolve("password"),
   };
 });
 

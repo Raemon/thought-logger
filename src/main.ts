@@ -6,11 +6,7 @@ import { initializeKeylogger, updateKeyloggerPreferences } from "./keylogger";
 import { checkPermissions } from "./electron/permissions";
 import { savePreferences, loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences.d";
-import {
-  toggleScheduledScreenshots,
-  checkAndGetApiKey,
-  saveOpenRouterApiKey,
-} from "./electron/screenshots";
+import { toggleScheduledScreenshots } from "./electron/screenshots";
 import { startLocalServer } from "./electron/server";
 import {
   startDailySummaryCheck,
@@ -21,6 +17,7 @@ import { SerializedLog, SerializedScopeTypes } from "./types/files.d";
 import { parse, setDay, setDefaultOptions, isEqual } from "date-fns";
 import log from "./logging";
 import { recentFiles } from "./electron/files";
+import { getApiKey, saveApiKey } from "./electron/credentials";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
@@ -117,11 +114,11 @@ ipcMain.on("OPEN_EXTERNAL_URL", (_event, url) => {
 });
 
 ipcMain.handle("CHECK_API_KEY", () => {
-  return checkAndGetApiKey();
+  return getApiKey();
 });
 
 ipcMain.handle("SAVE_API_KEY", (_event, apiKey: string) => {
-  return saveOpenRouterApiKey(apiKey);
+  return saveApiKey(apiKey);
 });
 
 ipcMain.handle("GET_AVAILABLE_MODELS", (_event, imageSupport) =>

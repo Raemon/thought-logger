@@ -10,6 +10,7 @@ import { z } from "zod";
 import { getCurrentApplication } from "../keylogger";
 
 import log from "../logging";
+import { getApiKey } from "./credentials";
 
 const ScreenshotText = z.object({
   project: z
@@ -20,61 +21,6 @@ const ScreenshotText = z.object({
 });
 
 type ScreenshotText = z.infer<typeof ScreenshotText>;
-
-// Import keytar safely
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let keytar: any;
-try {
-  keytar = require("keytar");
-} catch (error) {
-  // If we can't load keytar directly, try to load it from the resources directory
-  try {
-    const keytarPath = app.isPackaged
-      ? path.join(process.resourcesPath, "keytar.node")
-      : path.join(
-          app.getAppPath(),
-          "node_modules",
-          "keytar",
-          "build",
-          "Release",
-          "keytar.node",
-        );
-    log.info("Attempting to load keytar from:", keytarPath);
-    keytar = require(keytarPath);
-  } catch (secondError) {
-    log.error("Failed to load keytar:", secondError);
-    // Provide a fallback implementation that logs error but doesn't crash
-    keytar = {
-      getPassword: async (): Promise<string | null> => null,
-      setPassword: async (): Promise<void> => {
-        log.error("Unable to save password: keytar not available");
-      },
-    };
-  }
-}
-
-// Constants for keychain access
-const SERVICE_NAME = "ThoughtLogger";
-const ACCOUNT_NAME = "OpenRouter";
-
-// Function to get API key from keychain
-async function getApiKey(): Promise<string | null> {
-  try {
-    return await keytar.getPassword(SERVICE_NAME, ACCOUNT_NAME);
-  } catch (error) {
-    log.error("Error accessing keychain:", error);
-    return null;
-  }
-}
-
-// Function to save API key to keychain
-async function saveApiKey(apiKey: string): Promise<void> {
-  try {
-    await keytar.setPassword(SERVICE_NAME, ACCOUNT_NAME, apiKey);
-  } catch (error) {
-    log.error("Error saving to keychain:", error);
-  }
-}
 
 async function extractTextFromImage(
   imageBuffer: Buffer,
@@ -87,7 +33,7 @@ async function extractTextFromImage(
     const apiKey = await getApiKey();
     if (!apiKey) {
       log.error("API key not found in keychain");
-      throw "ERROR: OpenRouter API key is not set. Use saveOpenRouterApiKey() to set your API key.";
+      throw "ERROR: OpenRouter API key is not set. Use setApiKey() to set your API key.";
     }
 
     const response = await fetch(
@@ -210,50 +156,5 @@ export function toggleScheduledScreenshots(prefs: Preferences) {
       () => takeScreenshot(prefs.screenshotQuality),
       prefs.screenshotPeriod * 1000,
     );
-  }
-}
-
-// Add this new function to expose API key management to the main process
-export async function checkAndGetApiKey(): Promise<{
-  hasKey: boolean;
-  message: string;
-}> {
-  const apiKey = await getApiKey();
-  if (!apiKey) {
-    return {
-      hasKey: false,
-      message:
-        "No OpenRouter API key found. Please set your API key to enable text extraction.",
-    };
-  }
-  return {
-    hasKey: true,
-    message: "OpenRouter API key is configured.",
-  };
-}
-
-// Add this new function to expose API key saving to the main process
-export async function saveOpenRouterApiKey(
-  apiKey: string,
-): Promise<{ success: boolean; message: string }> {
-  try {
-    if (!apiKey || apiKey.trim() === "") {
-      return {
-        success: false,
-        message: "API key cannot be empty",
-      };
-    }
-
-    await saveApiKey(apiKey);
-    return {
-      success: true,
-      message: "API key saved successfully",
-    };
-  } catch (error) {
-    log.error("Failed to save API key:", error);
-    return {
-      success: false,
-      message: `Failed to save API key: ${error.message}`,
-    };
   }
 }
