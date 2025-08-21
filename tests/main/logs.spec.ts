@@ -246,4 +246,21 @@ describe("#getRecentSummaries", () => {
     );
     expect(dailySummary.contents).toBe("This is a daily summary.");
   });
+
+  it("doesn't fail on invalid files", async () => {
+    const filesystem = {
+      files: {
+        keylogs: {
+          "2025-08": {
+            ".DS_STORE": "",
+          },
+        },
+        screenshots: {
+          "2025-08-20": {},
+        },
+      },
+    };
+    vol.fromNestedJSON(filesystem, "/");
+    await expect(getRecentSummaries()).resolves.toStrictEqual([]);
+  });
 });

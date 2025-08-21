@@ -78,6 +78,7 @@ export async function getRecentSummaries(): Promise<Summary[]> {
     const result = fileName.match(/[^.]+/);
     const dateString = result[0];
     let date = parse(dateString, "yyyy-MM-dd", new Date());
+    if (isNaN(date.getTime())) continue;
 
     keylogs[dateString] = keylogs[dateString] || {
       appPath: path.join(dir, dateString + ".processed.by-app.log"),
@@ -95,6 +96,7 @@ export async function getRecentSummaries(): Promise<Summary[]> {
     const result = fileName.match(/[^.]+/);
     const dateString = result[0];
     let date = parse(dateString, "yyyy-MM-dd HH_mm_ss", new Date());
+    if (isNaN(date.getTime())) continue;
     const dayString = format(date, "yyyy-MM-dd");
 
     screenshots[dayString] = screenshots[dayString] || {};
