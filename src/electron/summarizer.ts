@@ -13,7 +13,7 @@ import {
   isSameWeek,
   isSameDay,
 } from "date-fns";
-import { SerializedLog, SerializedScopeTypes, Summary } from "../types/files.d";
+import { Summary } from "../types/files.d";
 import log from "../logging";
 import { loadPreferences } from "../preferences";
 import { recentFiles } from "./files";
@@ -387,7 +387,18 @@ app.whenReady().then(async () => {
 export async function summarize(summary: Summary): Promise<void> {
   console.log(`Generating summary for ${path.basename(summary.path)}`);
   try {
-    summary.contents = await generateAISummary("", "foo", "bar");
+    let logData: string = "";
+    for (let keylog of summary.keylogs) {
+      let text = await fs.readFile(keylog.rawPath, { encoding: "utf-8" });
+      let filename = path.basename(keylog.rawPath);
+      logData += `${filename}:\n${text}\n\n`;
+    }
+    const { dailySummaryPrompt, summaryModel } = await loadPreferences();
+    summary.contents = await generateAISummary(
+      logData,
+      dailySummaryPrompt,
+      summaryModel,
+    );
   } catch (error) {
     log.error(
       `Failed to generate summary for ${path.basename(summary.path)}:`,
