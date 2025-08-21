@@ -1,6 +1,12 @@
 import path from "path";
 import fs from "node:fs/promises";
-import { format, parse, setDefaultOptions, startOfWeek } from "date-fns";
+import {
+  differenceInHours,
+  format,
+  parse,
+  setDefaultOptions,
+  startOfWeek,
+} from "date-fns";
 import { app } from "electron";
 import {
   Keylog,
@@ -62,14 +68,9 @@ async function maybeReadContents(path: string): Promise<string | null> {
   return fs.readFile(path, { encoding: "utf-8" });
 }
 
-export async function getRecentSummaries(): Promise<Summary[]> {
+async function getKeylogs(): Promise<Record<string, Keylog>> {
   const keylogsPath = path.join(userDataPath, "files", "keylogs");
-  const screenshotsPath = path.join(userDataPath, "files", "screenshots");
-
-  const dailySummaries: Record<string, Summary> = {};
   const keylogs: Record<string, Keylog> = {};
-  const screenshots: Record<string, Record<string, Screenshot>> = {};
-
   const keylogFiles = await readFilesFromDirectory(keylogsPath);
 
   for (let file of keylogFiles) {
@@ -87,6 +88,14 @@ export async function getRecentSummaries(): Promise<Summary[]> {
       date,
     };
   }
+  return keylogs;
+}
+
+async function getScreenshots(): Promise<
+  Record<string, Record<string, Screenshot>>
+> {
+  const screenshotsPath = path.join(userDataPath, "files", "screenshots");
+  const screenshots: Record<string, Record<string, Screenshot>> = {};
 
   const screenshotFiles = await readFilesFromDirectory(screenshotsPath);
 
@@ -106,6 +115,17 @@ export async function getRecentSummaries(): Promise<Summary[]> {
       date,
     };
   }
+
+  return screenshots;
+}
+
+export async function getRecentSummaries(): Promise<Summary[]> {
+  const dailySummaries: Record<string, Summary> = {};
+  const keylogs: Record<string, Keylog> = await getKeylogs();
+  const screenshots: Record<
+    string,
+    Record<string, Screenshot>
+  > = await getScreenshots();
 
   const dateStrings = Array.from(
     new Set(Object.keys(keylogs).concat(Object.keys(screenshots))),
@@ -187,49 +207,22 @@ export async function getRecentSummaries(): Promise<Summary[]> {
   return weeklySummaries.concat(Object.values(dailySummaries));
 }
 
-const TWO_WEEKS_IN_SECONDS = 60 * 60 * 24 * 7;
+export async function getRecentApps(): Promise<string[]> {
+  let apps = new Set<string>();
+  const now = new Date();
 
-async function walkDir(dir: string, allEntries: string[]) {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      await walkDir(full, allEntries);
-    } else {
-      allEntries.push(full);
-    }
+  const keylogs = await getKeylogs()
+    .then((keylogs) => Object.values(keylogs))
+    .then((keylogs) =>
+      keylogs.filter((keylog) => differenceInHours(now, keylog.date) <= 24),
+    );
+
+  for (let keylog of keylogs) {
+    const content = await fs.readFile(keylog.appPath);
+    const appRegex = /=== (.*) ===/g;
+    const matches = content.toLocaleString().matchAll(appRegex);
+    matches.forEach((m) => apps.add(m[1]));
   }
-}
 
-export async function recentFiles(
-  ageInSeconds: number = TWO_WEEKS_IN_SECONDS,
-): Promise<string[]> {
-  const filesDir = path.join(userDataPath, "files");
-  try {
-    const allEntries: string[] = [];
-
-    await walkDir(filesDir, allEntries);
-
-    // Sort by modification time descending
-    const datedPaths: { path: string; mtime: number }[] = [];
-    for (const filePath of allEntries) {
-      // Skip .DS_Store files
-      if (path.basename(filePath) === ".DS_Store") continue;
-      // Skip screenshots
-      if (path.extname(filePath) === ".jpg") continue;
-
-      const stat = await fs.stat(filePath);
-      datedPaths.push({ path: filePath, mtime: stat.mtimeMs });
-    }
-    datedPaths.sort((a, b) => b.mtime - a.mtime);
-
-    // Return a limited list, e.g. 20 items
-    const nowMs = Date.now();
-    return datedPaths
-      .filter((x) => nowMs - x.mtime <= ageInSeconds * 1000)
-      .map((x) => x.path);
-  } catch (error) {
-    log.error("Failed to list recent files:", error);
-    return [];
-  }
+  return Array.from(apps);
 }

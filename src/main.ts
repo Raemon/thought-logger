@@ -16,7 +16,7 @@ import {
 import { Summary } from "./types/files.d";
 import { setDefaultOptions, isEqual } from "date-fns";
 import log from "./logging";
-import { getRecentSummaries, recentFiles } from "./electron/files";
+import { getRecentApps, getRecentSummaries } from "./electron/files";
 import { getApiKey, saveApiKey } from "./electron/credentials";
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -156,23 +156,5 @@ function updateSummaries(summaries: Summary[]): void {
 }
 
 ipcMain.handle("GET_RECENT_LOGS", getRecentSummaries);
-
-async function getRecentApps(): Promise<string[]> {
-  let apps = new Set<string>();
-
-  const dayOldFiles = await recentFiles(60 * 60 * 24);
-  const appFiles = dayOldFiles.filter((f) =>
-    f.includes("processed.by-app.log"),
-  );
-
-  for (let f of appFiles) {
-    const content = await fs.readFile(f);
-    const appRegex = /=== (.*) ===/g;
-    const matches = content.toLocaleString().matchAll(appRegex);
-    matches.forEach((m) => apps.add(m[1]));
-  }
-
-  return Array.from(apps);
-}
 
 ipcMain.handle("GET_RECENT_APPS", getRecentApps);
