@@ -1,3 +1,5 @@
+import path from "path";
+
 import { describe, expect, it, vi } from "vitest";
 
 import { OpenRouterResponse, summarize } from "../../src/electron/summarizer";
@@ -17,8 +19,14 @@ vi.mock("electron", () => {
       getPath: () => "/",
       getAppPath: () => "/",
       on: () => {},
-      whenReady: () => Promise.reject(),
+      whenReady: () => Promise.resolve(),
     },
+  };
+});
+
+vi.mock(import("../../src/electron/credentials"), () => {
+  return {
+    getOpenRouterApiKey: () => Promise.resolve("password"),
   };
 });
 
@@ -34,13 +42,16 @@ describe("#summarize", () => {
       ],
     };
 
-    mockFetch.mockResolvedValue(JSON.stringify(mockResponse));
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
 
     const summary: Summary = {
       date: new Date(),
       keylogs: [],
       loading: false,
-      path: "/",
+      path: "/2028-08-20.aisummary.log",
       scope: SummaryScopeTypes.Day,
       screenshots: [],
       contents: null,
