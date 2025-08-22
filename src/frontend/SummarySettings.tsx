@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 
-import { SummaryPreferences, DEFAULT_PREFERENCES } from "../preferences";
+import {
+  SummaryPreferences,
+  DEFAULT_PREFERENCES,
+} from "../types/preferences.d";
 import TypeaheadDropdown from "./TypeaheadDropdown";
 
 const SummarySettings = () => {

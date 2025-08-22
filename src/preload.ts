@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { Preferences } from "./preferences";
-import { SerializedLog } from "./types/files";
+import { Preferences } from "./types/preferences.d";
+import { Summary } from "./types/files.d";
 
 contextBridge.exposeInMainWorld("permissions", {
   requestPermissionsStatus: () =>
@@ -13,12 +13,14 @@ const userData: UserData = {
   openFile: (path: string) => ipcRenderer.send("OPEN_FILE", path),
   openExternalUrl: (url: string) => ipcRenderer.send("OPEN_EXTERNAL_URL", url),
   readFile: (path: string) => ipcRenderer.invoke("READ_FILE", path),
-  generateAISummary: (log: SerializedLog) =>
+  generateAISummary: (log: Summary) =>
     ipcRenderer.invoke("GENERATE_AI_SUMMARY", log),
   getRecentLogs: () => ipcRenderer.invoke("GET_RECENT_LOGS"),
   getRecentApps: () => ipcRenderer.invoke("GET_RECENT_APPS"),
-  onUpdateRecentLogs: (callback: (logs: SerializedLog[]) => void) =>
-    ipcRenderer.on("UPDATE_RECENT_LOGS", (_event, logs) => callback(logs)),
+  onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) =>
+    ipcRenderer.on("UPDATE_RECENT_LOGS", (_event, summaries) =>
+      callback(summaries),
+    ),
 };
 contextBridge.exposeInMainWorld("userData", userData);
 

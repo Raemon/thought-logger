@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { DEFAULT_PREFERENCES, ScreenshotPreferences } from "../preferences";
+import {
+  DEFAULT_PREFERENCES,
+  ScreenshotPreferences,
+} from "../types/preferences.d";
 import TypeaheadDropdown from "./TypeaheadDropdown";
 
 export function ScreenshotController() {

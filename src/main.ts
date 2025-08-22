@@ -4,82 +4,26 @@ import fs from "node:fs/promises";
 import started from "electron-squirrel-startup";
 import { initializeKeylogger, updateKeyloggerPreferences } from "./keylogger";
 import { checkPermissions } from "./electron/permissions";
-import { Preferences, DEFAULT_PREFERENCES } from "./preferences";
-import {
-  toggleScheduledScreenshots,
-  checkAndGetApiKey,
-  saveOpenRouterApiKey,
-} from "./electron/screenshots";
+import { savePreferences, loadPreferences } from "./preferences";
+import { Preferences } from "./types/preferences.d";
+import { toggleScheduledScreenshots } from "./electron/screenshots";
 import { startLocalServer } from "./electron/server";
 import {
   startDailySummaryCheck,
   getAvailableModels,
-  rebuildSummary,
+  summarize,
 } from "./electron/summarizer";
-import { SerializedLog, SerializedScopeTypes } from "./types/files.d";
-import { parse, setDay, setDefaultOptions, isEqual } from "date-fns";
+import { Summary } from "./types/files.d";
+import { setDefaultOptions, isEqual } from "date-fns";
 import log from "./logging";
+import { getRecentApps, getRecentSummaries } from "./electron/files";
+import { getApiKey, saveApiKey } from "./electron/credentials";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
 
 const filesPath = path.join(userDataPath, "files");
 const screenshotFolder = path.join(userDataPath, "files", "screenshots");
-const preferencesPath = path.join(userDataPath, "preferences.json");
-
-export async function loadPreferences(): Promise<Preferences> {
-  try {
-    const data = await fs.readFile(preferencesPath, "utf-8");
-    return { ...DEFAULT_PREFERENCES, ...JSON.parse(data) };
-  } catch {
-    return DEFAULT_PREFERENCES;
-  }
-}
-
-const TWO_WEEKS_IN_SECONDS = 60 * 60 * 24 * 7;
-
-export async function recentFiles(
-  ageInSeconds: number = TWO_WEEKS_IN_SECONDS,
-): Promise<string[]> {
-  const userDataPath = app.getPath("userData");
-  const filesDir = path.join(userDataPath, "files");
-  try {
-    const allEntries: string[] = [];
-
-    await walkDir(filesDir, allEntries);
-
-    // Sort by modification time descending
-    const datedPaths: { path: string; mtime: number }[] = [];
-    for (const filePath of allEntries) {
-      // Skip .DS_Store files
-      if (path.basename(filePath) === ".DS_Store") continue;
-      // Skip screenshots
-      if (path.extname(filePath) === ".jpg") continue;
-
-      const stat = await fs.stat(filePath);
-      datedPaths.push({ path: filePath, mtime: stat.mtimeMs });
-    }
-    datedPaths.sort((a, b) => b.mtime - a.mtime);
-
-    // Return a limited list, e.g. 20 items
-    const nowMs = Date.now();
-    return datedPaths
-      .filter((x) => nowMs - x.mtime <= ageInSeconds * 1000)
-      .map((x) => x.path);
-  } catch (error) {
-    log.error("Failed to list recent files:", error);
-    return [];
-  }
-}
-
-async function savePreferences(
-  prefs: Partial<Preferences>,
-): Promise<Preferences> {
-  const currentPrefs = await loadPreferences();
-  const newPrefs = { ...currentPrefs, ...prefs };
-  await fs.writeFile(preferencesPath, JSON.stringify(newPrefs, null, 2));
-  return newPrefs;
-}
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -159,18 +103,6 @@ ipcMain.handle(
   },
 );
 
-async function walkDir(dir: string, allEntries: string[]) {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      await walkDir(full, allEntries);
-    } else {
-      allEntries.push(full);
-    }
-  }
-}
-
 ipcMain.on("OPEN_FILE", (_event, filePath) => {
   shell.openPath(filePath);
 });
@@ -182,11 +114,11 @@ ipcMain.on("OPEN_EXTERNAL_URL", (_event, url) => {
 });
 
 ipcMain.handle("CHECK_API_KEY", () => {
-  return checkAndGetApiKey();
+  return getApiKey();
 });
 
 ipcMain.handle("SAVE_API_KEY", (_event, apiKey: string) => {
-  return saveOpenRouterApiKey(apiKey);
+  return saveApiKey(apiKey);
 });
 
 ipcMain.handle("GET_AVAILABLE_MODELS", (_event, imageSupport) =>
@@ -203,84 +135,28 @@ ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
   }
 });
 
-ipcMain.handle("GENERATE_AI_SUMMARY", async (_event, log: SerializedLog) => {
-  const oldLogs = await getRecentLogs();
+ipcMain.handle("GENERATE_AI_SUMMARY", async (_event, summary: Summary) => {
+  const oldLogs = await getRecentSummaries();
   for (let i in oldLogs) {
     const { date, scope } = oldLogs[i];
-    if (isEqual(date, log.date) && scope === log.scope) {
+    if (isEqual(date, summary.date) && scope === summary.scope) {
       oldLogs[i].loading = true;
     }
   }
-  updateRecentLogs(oldLogs);
-  await rebuildSummary(log);
-  const newLogs = await getRecentLogs();
-  updateRecentLogs(newLogs);
+  updateSummaries(oldLogs);
+  await summarize(summary);
+  const newLogs = await getRecentSummaries();
+  updateSummaries(newLogs);
 });
 
-function updateRecentLogs(logs: SerializedLog[]): void {
+function updateSummaries(summaries: Summary[]): void {
   BrowserWindow.getAllWindows().forEach((win) =>
-    win.webContents.send("UPDATE_RECENT_LOGS", logs),
+    win.webContents.send("UPDATE_RECENT_LOGS", summaries),
   );
 }
 
-async function getRecentLogs(): Promise<SerializedLog[]> {
-  const files = await recentFiles();
-  const logs: Record<string, SerializedLog> = {};
-
-  for (let file of files) {
-    let scope = SerializedScopeTypes.Day;
-    const fileName = path.basename(file);
-    const result = fileName.match(/[^.]+/);
-    const dateString = result[0];
-    let date = parse(dateString, "yyyy-MM-dd", new Date());
-
-    if (isNaN(date.getTime())) {
-      date = parse(dateString, "YYYY-'W'ww", new Date(), {
-        useAdditionalWeekYearTokens: true,
-      });
-      date = setDay(date, 0);
-      scope = SerializedScopeTypes.Week;
-    }
-
-    // Skip logs if we fail to parse their date.
-    if (isNaN(date.getTime())) {
-      log.error(`Failed to parse date for ${file}`);
-      continue;
-    }
-
-    logs[dateString] = logs[dateString] || { date, scope, loading: false };
-    if (fileName.match(/processed\.by-app/)) {
-      logs[dateString].appPath = file;
-    } else if (fileName.match(/processed\.chronological/)) {
-      logs[dateString].chronoPath = file;
-    } else if (fileName.match(/\.aisummary/)) {
-      logs[dateString].summaryContents = await fs.readFile(file, "utf-8");
-    } else {
-      logs[dateString].rawPath = file;
-    }
-  }
-
-  return Object.values(logs);
-}
-
-ipcMain.handle("GET_RECENT_LOGS", getRecentLogs);
-
-async function getRecentApps(): Promise<string[]> {
-  let apps = new Set<string>();
-
-  const dayOldFiles = await recentFiles(60 * 60 * 24);
-  const appFiles = dayOldFiles.filter((f) =>
-    f.includes("processed.by-app.log"),
-  );
-
-  for (let f of appFiles) {
-    const content = await fs.readFile(f);
-    const appRegex = /=== (.*) ===/g;
-    const matches = content.toLocaleString().matchAll(appRegex);
-    matches.forEach((m) => apps.add(m[1]));
-  }
-
-  return Array.from(apps);
-}
+ipcMain.handle("GET_RECENT_LOGS", async () => {
+  return getRecentSummaries();
+});
 
 ipcMain.handle("GET_RECENT_APPS", getRecentApps);

@@ -8,8 +8,8 @@ import {
   IGlobalKeyEvent,
 } from "node-global-key-listener";
 import { appendFile, currentKeyLogFile } from "./electron/paths";
-import { loadPreferences } from "./main"; // Import the loadPreferences function
-import { Preferences } from "./preferences";
+import { loadPreferences } from "./preferences";
+import { Preferences } from "./types/preferences.d";
 import log from "./logging";
 
 const BINARY_NAME = "MacKeyServer";

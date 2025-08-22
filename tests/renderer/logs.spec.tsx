@@ -3,7 +3,7 @@ import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { FileInfo } from "../../src/frontend/FileInfo";
-import { SerializedScopeTypes } from "../../src/types/files.d";
+import { SummaryScopeTypes } from "../../src/types/files.d";
 
 const userData: UserData = {
   openUserDataFolder: vi.fn<UserData["openUserDataFolder"]>(),
@@ -13,22 +13,29 @@ const userData: UserData = {
   getRecentApps: vi.fn<UserData["getRecentApps"]>().mockResolvedValue(["foo"]),
   getRecentLogs: vi.fn<UserData["getRecentLogs"]>().mockResolvedValue([
     {
-      date: new Date(2025, 8, 19),
+      date: new Date(2025, 7, 19),
       loading: false,
-      scope: SerializedScopeTypes.Day,
-      appPath: "fakepath.by-app.log",
-      chronoPath: "fakepath.chronological.log",
-      rawPath: "fakepath.log",
-      summaryContents: "This is a daily summary",
+      scope: SummaryScopeTypes.Day,
+      path: "fakepath.log",
+      contents: "This is a daily summary",
+      keylogs: [
+        {
+          appPath: "fakepath.by-app.log",
+          chronoPath: "fakepath.chronological.log",
+          rawPath: "fakepath.log",
+          date: new Date(),
+        },
+      ],
+      screenshots: [],
     },
     {
-      date: new Date(2025, 8, 12),
+      date: new Date(2025, 7, 12),
       loading: false,
-      scope: SerializedScopeTypes.Week,
-      appPath: "fakepath.by-app.log",
-      chronoPath: "fakepath.chronological.log",
-      rawPath: "fakepath.log",
-      summaryContents: "This is a weekly summary",
+      scope: SummaryScopeTypes.Week,
+      path: "fakepath.log",
+      contents: "This is a weekly summary",
+      keylogs: [],
+      screenshots: [],
     },
   ]),
   getUserDataFolder: vi

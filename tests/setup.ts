@@ -2,7 +2,7 @@ import { afterAll, beforeAll, vi } from "vitest";
 
 beforeAll(() => {
   vi.useFakeTimers();
-  const date = new Date(2025, 8, 19);
+  const date = new Date(2025, 7, 21);
   vi.setSystemTime(date);
 });
 
