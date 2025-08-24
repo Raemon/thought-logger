@@ -129,24 +129,32 @@ export function ScreenshotController() {
       </div>
 
       <h3>Screenshot Summary Prompts</h3>
-      <table className="border-collapse mb-2">
-        <tbody>
-          {Object.keys(prefs.screenshotPrompt).map((app) => (
-            <tr key={app}>
-              <td>{app}</td>
-              <td>{prefs.screenshotPrompt[app]}</td>
-              <td style={{ textAlign: "right" }}>
-                <button
-                  className="border-2 border-red-400 hover:bg-red-400 hover:text-white text-red-400 font-bold rounded ml-2 px-2 py-0.5 text-sm"
-                  onClick={() => removePrompt(app)}
-                >
-                  Remove
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      {Object.keys(prefs.screenshotPrompt).map((app) => (
+        <div className="flex w-full gap-5 p-5">
+          <div className="self-center">{app}</div>
+          <textarea
+            className="grow p-2 border-2 h-32"
+            value={prefs.screenshotPrompt[app]}
+            onChange={(event) => {
+              updatePreferences({
+                screenshotPrompt: {
+                  ...prefs.screenshotPrompt,
+                  [app]: event.currentTarget.value,
+                },
+              });
+            }}
+          />
+
+          <button
+            className="border-2 border-red-400 hover:bg-red-400 hover:text-white text-red-400 font-bold rounded ml-2 px-2 py-0.5 text-sm self-center"
+            onClick={() => removePrompt(app)}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+
       <div className="flex w-full gap-5">
         <div className="self-center">
           <TypeaheadDropdown
