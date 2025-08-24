@@ -54,7 +54,15 @@ export default function TypeaheadDropdown({
                             "p-2 w-full" +
                             (idx === selected ? " bg-sky-200" : "");
                         return (
-                            <li className={className} key={item}>
+                            <li
+                                className={className}
+                                key={item}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={(e) => {
+                                    onChange(item);
+                                    setFocused(false);
+                                }}
+                            >
                                 {item}
                             </li>
                         );
