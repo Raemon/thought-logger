@@ -16,7 +16,7 @@ export default function TypeaheadDropdown({
     useEffect(() => {
         setDisplayedItems(items.filter((item) => item.includes(value)));
         setSelected(0);
-    }, [value]);
+    }, [value, items]);
 
     return (
         <div className="inline-block relative w-fit">
@@ -53,7 +53,11 @@ export default function TypeaheadDropdown({
                         const className =
                             "p-2 w-full" +
                             (idx === selected ? " bg-sky-200" : "");
-                        return <li className={className}>{item}</li>;
+                        return (
+                            <li className={className} key={item}>
+                                {item}
+                            </li>
+                        );
                     })}
                 </ul>
             )}
