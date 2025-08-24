@@ -159,7 +159,7 @@ async function checkAndGenerateSummaries() {
       }
     }
 
-    if (needsSummary(summary)) {
+    if (await needsSummary(summary)) {
       summarize(summary);
     }
   }
