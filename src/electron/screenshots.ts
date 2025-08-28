@@ -111,7 +111,9 @@ export async function parseScreenshot(
       prompt,
     );
     const { project, document } = extractedText;
-    const textFilePath = imgPath.replace(".jpg", `.${project}.${document}.txt`);
+    const encodedProject = encodeURIComponent(project);
+    const encodedDocument = encodeURIComponent(document);
+    const textFilePath = imgPath.replace(".jpg", `.${encodedProject}.${encodedDocument}.txt`);
 
     await fs.writeFile(textFilePath, extractedText.summary);
   } catch (error) {
