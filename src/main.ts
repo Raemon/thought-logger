@@ -156,7 +156,9 @@ function updateSummaries(summaries: Summary[]): void {
 }
 
 ipcMain.handle("GET_RECENT_LOGS", async () => {
-  return getRecentSummaries();
+  return getRecentSummaries().then((summaries) =>
+    summaries.filter((summary) => summary.contents),
+  );
 });
 
 ipcMain.handle("GET_RECENT_APPS", getRecentApps);
