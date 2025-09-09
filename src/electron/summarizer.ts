@@ -50,24 +50,21 @@ export async function getAvailableModels(
 }
 
 async function generateAISummary(
-  logContent: string,
+  summaryName: string,
   prompt: string,
   model: string,
-  maxRetries = 3,
 ): Promise<string> {
-  const apiKey = await getApiKey();
-
-  let lastError: Error | null = null;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(
+  await fs.writeFile(
+    "request-attempts.log",
+    JSON.stringify(
+      [
+        summaryName,
         "https://openrouter.ai/api/v1/chat/completions",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer [REDACTED]`,
             "HTTP-Referer": "https://github.com/raymondarnold/thought-logger",
             "X-Title": "ThoughtLogger",
           },
@@ -81,31 +78,18 @@ async function generateAISummary(
               },
               {
                 role: "user",
-                content: `${prompt}\n\n${logContent}`,
+                content: `${prompt}\n\n[REDACTED]`,
               },
             ],
           }),
         },
-      );
-
-      if (!response.ok) {
-        throw new Error(`OpenRouter API error: ${response.statusText}`);
-      }
-
-      const data: OpenRouterResponse = await response.json();
-      return data.choices[0].message.content;
-    } catch (error) {
-      lastError = error as Error;
-      if (attempt < maxRetries) {
-        console.warn(`Attempt ${attempt} failed, retrying...`, error);
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
-      }
-    }
-  }
-
-  throw new Error(
-    `Failed to generate summary after ${maxRetries} attempts: ${lastError?.message}`,
+      ],
+      null,
+      4,
+    ),
+    { flag: "a+" },
   );
+  throw new Error("testing");
 }
 
 async function needsProcessing(keylog: Keylog): Promise<boolean> {
@@ -149,7 +133,35 @@ export async function needsSummary(summary: Summary): Promise<boolean> {
   }
 }
 
+async function getFilesInDirectory(
+  dir: string,
+  excludeSubdir?: string,
+): Promise<string[]> {
+  const files: string[] = [];
+
+  async function traverse(currentDir: string): Promise<void> {
+    const entries = await fs.readdir(currentDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+
+      if (entry.isDirectory()) {
+        if (excludeSubdir && entry.name === excludeSubdir) {
+          continue;
+        }
+        await traverse(fullPath);
+      } else {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  await traverse(dir);
+  return files;
+}
+
 async function checkAndGenerateSummaries() {
+  await fs.truncate("request-attempts.log", 0);
   const summaries = await getRecentSummaries();
 
   for (let summary of summaries) {
@@ -163,6 +175,19 @@ async function checkAndGenerateSummaries() {
       summarize(summary);
     }
   }
+
+  const userDataPath = app.getPath("userData");
+  const tree = await getFilesInDirectory(
+    userDataPath + "/files",
+    "screenshots",
+  );
+  await fs.writeFile(
+    "file-system-structure.log",
+    JSON.stringify(tree, null, 4),
+    {
+      flag: "w",
+    },
+  );
 }
 
 // Run once a day at midnight
@@ -224,7 +249,7 @@ export async function summarize(summary: Summary): Promise<void> {
     }
 
     const text = await generateAISummary(
-      logData,
+      summary.path,
       summary.scope === SummaryScopeTypes.Day
         ? dailySummaryPrompt
         : weeklySummaryPrompt,
