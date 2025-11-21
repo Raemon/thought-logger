@@ -9,7 +9,7 @@ import { loadPreferences } from "../preferences";
 import { z } from "zod";
 import { getCurrentApplication } from "../keylogger";
 
-import log from "../logging";
+import logger from "../logging";
 import { getApiKey } from "./credentials";
 
 const ScreenshotText = z.object({
@@ -27,6 +27,7 @@ async function extractTextFromImage(
   model: string,
   prompt: string,
 ): Promise<ScreenshotText> {
+  logger.debug("Extracting image text");
   const base64Image = imageBuffer.toString("base64");
   const imageUrl = `data:image/jpeg;base64,${base64Image}`;
   try {
@@ -99,6 +100,7 @@ export async function parseScreenshot(
   imgPath: string,
   currentApplication: string,
 ): Promise<void> {
+  logger.debug(`Parsing screenshot at ${imgPath}`);
   // Extract and save text
   const { screenshotModel, screenshotPrompt } = await loadPreferences();
   const prompt =
@@ -114,7 +116,10 @@ export async function parseScreenshot(
     const encodedProject = encodeURIComponent(project);
     const encodedDocument = encodeURIComponent(document);
     const encodedApp = encodeURIComponent(currentApplication);
-    const textFilePath = imgPath.replace(".jpg", `${encodedApp}.${encodedProject}.${encodedDocument}.txt`);
+    const textFilePath = imgPath.replace(
+      ".jpg",
+      `${encodedApp}.${encodedProject}.${encodedDocument}.txt`,
+    );
 
     await fs.writeFile(textFilePath, extractedText.summary);
   } catch (error) {
@@ -123,6 +128,7 @@ export async function parseScreenshot(
 }
 
 async function takeScreenshot(quality: number) {
+  logger.debug("Taking screenshot");
   try {
     const sources = await desktopCapturer.getSources({
       types: ["screen"],

@@ -47,9 +47,7 @@ export function ScreenshotController() {
   };
 
   const addPrompt = () => {
-    console.log("new Prompt", newPrompt);
     if (newPrompt.app && newPrompt.prompt) {
-      console.log("adding ", newPrompt);
       updatePreferences({
         screenshotPrompt: {
           ...prefs.screenshotPrompt,

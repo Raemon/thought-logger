@@ -16,7 +16,7 @@ import {
   SummaryScopeTypes,
 } from "../types/files.d";
 import { Dirent } from "node:fs";
-import log from "../logging";
+import logger from "../logging";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -46,7 +46,7 @@ async function readFilesFromDirectory(path: string): Promise<Dirent[]> {
   try {
     await fs.access(path);
   } catch (error) {
-    log.error(`Couldn't access ${path}: ${error}`);
+    logger.error(`Couldn't access ${path}: ${error}`);
     return [];
   }
 
@@ -62,7 +62,7 @@ export async function maybeReadContents(path: string): Promise<string | null> {
   try {
     await fs.access(path);
   } catch (error) {
-    log.info(`No file at ${path}.`);
+    logger.info(`No file at ${path}.`);
     return null;
   }
 

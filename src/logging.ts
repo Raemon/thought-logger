@@ -13,21 +13,23 @@ const format = winston.format.combine(
   winston.format.errors({ stack: true }),
   winston.format.timestamp(),
   winston.format.printf(
-    ({ timestamp, level, message, stack }) =>
-      `${timestamp} [${level.toUpperCase()}]: ${stack || message}\n`,
+    ({ timestamp, level, message }) =>
+      `${timestamp} [${level.toUpperCase()}]: ${message}`,
   ),
 );
 
-const log = winston.createLogger({
+const logger = winston.createLogger({
+  levels: winston.config.syslog.levels,
   format,
   transports: [
-    new winston.transports.Console(),
+    new winston.transports.Console({ level: "info" }),
     new winston.transports.File({
       filename: logPath,
+      level: "debug",
       maxsize: 100 * KiB,
       maxFiles: 3,
     }),
   ],
 });
 
-export default log;
+export default logger;

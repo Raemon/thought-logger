@@ -1,6 +1,6 @@
 import path from "path";
 import { app } from "electron";
-import log from "../logging";
+import logger from "../logging";
 
 // Import keytar safely
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,15 +20,15 @@ try {
           "Release",
           "keytar.node",
         );
-    console.log("Attempting to load keytar from:", keytarPath);
+    logger.debug(`Attempting to load keytar from: ${keytarPath}`);
     keytar = require(keytarPath);
   } catch (secondError) {
-    log.error("Failed to load keytar:", secondError);
+    logger.error("Failed to load keytar:", secondError);
     // Provide a fallback implementation that logs error but doesn't crash
     keytar = {
       getPassword: async (): Promise<string | null> => null,
       setPassword: async (): Promise<void> => {
-        log.error("Unable to save password: keytar not available");
+        logger.error("Unable to save password: keytar not available");
       },
     };
   }

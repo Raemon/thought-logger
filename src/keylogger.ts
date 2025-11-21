@@ -10,7 +10,7 @@ import {
 import { appendFile, currentKeyLogFile } from "./electron/paths";
 import { loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences.d";
-import log from "./logging";
+import logger from "./logging";
 
 const BINARY_NAME = "MacKeyServer";
 
@@ -329,7 +329,7 @@ export function rebuildChronologicalLog(filePath: string) {
       appendFile(outputPath, processedContent, true);
     }
   } catch (error) {
-    log.error("Failed to rebuild chronological log:", error);
+    logger.error("Failed to rebuild chronological log:", error);
   }
 }
 
@@ -393,7 +393,7 @@ export function rebuildLogByApp(filePath: string) {
       appendFile(outputPath, processedContent, true);
     }
   } catch (error) {
-    log.error("Failed to rebuild processed log:", error);
+    logger.error("Failed to rebuild processed log:", error);
   }
 }
 

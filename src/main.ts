@@ -15,7 +15,7 @@ import {
 } from "./electron/summarizer";
 import { Summary } from "./types/files.d";
 import { setDefaultOptions, isEqual } from "date-fns";
-import log from "./logging";
+import logger from "./logging";
 import { getRecentApps, getRecentSummaries } from "./electron/files";
 import { getApiKey, saveApiKey } from "./electron/credentials";
 setDefaultOptions({ weekStartsOn: 1 });
@@ -109,7 +109,7 @@ ipcMain.on("OPEN_FILE", (_event, filePath) => {
 
 ipcMain.on("OPEN_EXTERNAL_URL", (_event, url) => {
   shell.openExternal(url).catch((err) => {
-    log.error("Failed to open external URL:", err);
+    logger.error("Failed to open external URL:", err);
   });
 });
 
@@ -130,7 +130,7 @@ ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
     const content = await fs.readFile(filePath, "utf-8");
     return content;
   } catch (error) {
-    log.error("Failed to read file:", error);
+    logger.error("Failed to read file:", error);
     throw error;
   }
 });
