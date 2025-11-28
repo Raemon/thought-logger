@@ -1,13 +1,9 @@
 import winston from "winston";
-import { homedir } from "node:os";
+import { DebugPreferences } from "./types/preferences";
 
 const KiB = 1024;
 
-const home = homedir();
-const logPath =
-  process.platform === "darwin"
-    ? `${home}/Library/Logs/thought-logger/combined.log`
-    : `${home}/.local/state/log/thought-logger.log`;
+let debugLogsPath = "/tmp/thought-logger.log";
 
 const format = winston.format.combine(
   winston.format.errors({ stack: true }),
@@ -24,12 +20,31 @@ const logger = winston.createLogger({
   transports: [
     new winston.transports.Console({ level: "info" }),
     new winston.transports.File({
-      filename: logPath,
+      filename: debugLogsPath,
       level: "debug",
       maxsize: 100 * KiB,
       maxFiles: 3,
     }),
   ],
 });
+
+export const updateDebugPreferences = (prefs: DebugPreferences): void => {
+  logger.transports
+    .filter((t) => t instanceof winston.transports.File)
+    .forEach((t) => (t.silent = !prefs.loggingEnabled));
+};
+
+export const logToFile = (path: string): void => {
+  const fileTransport = new winston.transports.File({
+    dirname: path,
+    filename: "debug.log",
+    level: "debug",
+    maxsize: 100 * KiB,
+    maxFiles: 3,
+    tailable: true,
+  });
+
+  logger.add(fileTransport);
+};
 
 export default logger;

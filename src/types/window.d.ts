@@ -9,6 +9,8 @@ declare global {
   interface UserData {
     openUserDataFolder: () => void;
     getUserDataFolder: () => Promise<string>;
+    openDebugLogsFolder: () => void;
+    getDebugLogsFolder: () => Promise<string>;
     getRecentLogs: () => Promise<Summary[]>;
     getRecentApps: () => Promise<string[]>;
     openFile: (filePath: string) => void;

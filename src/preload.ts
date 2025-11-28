@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld("permissions", {
 const userData: UserData = {
   openUserDataFolder: () => ipcRenderer.send("OPEN_USER_DATA_FOLDER"),
   getUserDataFolder: () => ipcRenderer.invoke("GET_USER_DATA_FOLDER"),
+  openDebugLogsFolder: () => ipcRenderer.send("OPEN_DEBUG_LOGS_FOLDER"),
+  getDebugLogsFolder: () => ipcRenderer.invoke("GET_DEBUG_LOGS_FOLDER"),
   openFile: (path: string) => ipcRenderer.send("OPEN_FILE", path),
   openExternalUrl: (url: string) => ipcRenderer.send("OPEN_EXTERNAL_URL", url),
   readFile: (path: string) => ipcRenderer.invoke("READ_FILE", path),

@@ -5,6 +5,7 @@ import { ScreenshotController } from "./ScreenshotController";
 import BlockedAppsEditor from "./BlockedAppsEditor";
 import ApiKeySettings from "./ApiKeySettings";
 import SummarySettings from "./SummarySettings";
+import DebugSettings from "./DebugSettings";
 
 const TabButton = ({
   selected,
@@ -68,6 +69,7 @@ export function App() {
           <ApiKeySettings />
           <Permissions />
           <BlockedAppsEditor />
+          <DebugSettings />
         </>
       )}
     </div>

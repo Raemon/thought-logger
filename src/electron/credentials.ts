@@ -42,7 +42,7 @@ export async function getApiKey(): Promise<string | null> {
   try {
     return await keytar.getPassword(SERVICE_NAME, ACCOUNT_NAME);
   } catch (error) {
-    log.error("Error accessing keychain:", error);
+    logger.error("Error accessing keychain:", error);
     return null;
   }
 }
@@ -64,7 +64,7 @@ export async function saveApiKey(
       message: "API key saved successfully",
     };
   } catch (error) {
-    log.error("Failed to save API key:", error);
+    logger.error("Failed to save API key:", error);
     return {
       success: false,
       message: `Failed to save API key: ${error.message}`,

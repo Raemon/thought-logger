@@ -17,7 +17,14 @@ export interface SummaryPreferences {
   summaryModel: string;
 }
 
-export interface Preferences extends ScreenshotPreferences, SummaryPreferences {
+export interface DebugPreferences {
+  loggingEnabled: boolean;
+}
+
+export interface Preferences
+  extends ScreenshotPreferences,
+    SummaryPreferences,
+    DebugPreferences {
   blockedApps: string[];
 }
 
@@ -45,4 +52,5 @@ export const DEFAULT_PREFERENCES: Preferences = {
   weeklySummaryPrompt:
     "Please analyze this computer activity log and summarize the major projects and tasks worked on:",
   summaryModel: "anthropic/claude-3.5-sonnet", // TODO select this from the available models
+  loggingEnabled: true,
 };
