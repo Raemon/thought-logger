@@ -3,8 +3,6 @@ import { DebugPreferences } from "./types/preferences";
 
 const KiB = 1024;
 
-let debugLogsPath = "/tmp/thought-logger.log";
-
 const format = winston.format.combine(
   winston.format.errors({ stack: true }),
   winston.format.timestamp(),
@@ -17,15 +15,7 @@ const format = winston.format.combine(
 const logger = winston.createLogger({
   levels: winston.config.syslog.levels,
   format,
-  transports: [
-    new winston.transports.Console({ level: "info" }),
-    new winston.transports.File({
-      filename: debugLogsPath,
-      level: "debug",
-      maxsize: 100 * KiB,
-      maxFiles: 3,
-    }),
-  ],
+  transports: [new winston.transports.Console({ level: "info" })],
 });
 
 export const updateDebugPreferences = (prefs: DebugPreferences): void => {
