@@ -49,17 +49,16 @@ const testModel = "test/test-model";
 const testWeeklyPrompt = "Test weekly summary prompt";
 const testDailyPrompt = "Test daily summary prompt";
 
-vi.mock(import("../../src/preferences"), async (importOriginal) => {
-  const actual = await importOriginal();
+vi.mock(import("../../src/preferences"), (importOriginal) => {
+  const actual = importOriginal();
   return {
     ...actual,
-    loadPreferences: () =>
-      Promise.resolve({
-        dailySummaryPrompt: testDailyPrompt,
-        summaryModel: testModel,
-        weeklySummaryPrompt: testWeeklyPrompt,
-        screenshotSummaryWindow: 5,
-      } as Preferences),
+    loadPreferences: () => ({
+      dailySummaryPrompt: testDailyPrompt,
+      summaryModel: testModel,
+      weeklySummaryPrompt: testWeeklyPrompt,
+      screenshotSummaryWindow: 5,
+    }),
   };
 });
 

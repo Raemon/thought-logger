@@ -102,7 +102,7 @@ export async function parseScreenshot(
 ): Promise<void> {
   logger.debug(`Parsing screenshot at ${imgPath}`);
   // Extract and save text
-  const { screenshotModel, screenshotPrompt } = await loadPreferences();
+  const { screenshotModel, screenshotPrompt } = loadPreferences();
   const prompt =
     screenshotPrompt[currentApplication] || screenshotPrompt.default;
 
@@ -142,7 +142,7 @@ async function takeScreenshot(quality: number) {
 
     await parseScreenshot(img, filePath, currentApplication);
 
-    const { screenshotTemporary } = await loadPreferences();
+    const { screenshotTemporary } = loadPreferences();
 
     if (screenshotTemporary) {
       // Delete screenshot when we're done extracting.

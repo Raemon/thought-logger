@@ -399,7 +399,7 @@ export function rebuildLogByApp(filePath: string) {
 
 export async function initializeKeylogger() {
   // Load initial preferences
-  preferences = await loadPreferences();
+  preferences = loadPreferences();
 
   // Set up periodic re-processing of logs
   setInterval(() => {

@@ -203,7 +203,7 @@ export async function summarize(summary: Summary): Promise<void> {
       weeklySummaryPrompt,
       summaryModel,
       screenshotSummaryWindow,
-    } = await loadPreferences();
+    } = loadPreferences();
 
     logData += "Keylogger data:\n";
 

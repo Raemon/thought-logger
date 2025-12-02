@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+import fs from "node:fs";
 import path from "path";
 
 import { app } from "electron";
@@ -10,15 +10,18 @@ const preferencesPath = path.join(userDataPath, "preferences.json");
 export async function savePreferences(
   prefs: Partial<Preferences>,
 ): Promise<Preferences> {
-  const currentPrefs = await loadPreferences();
+  const currentPrefs = loadPreferences();
   const newPrefs = { ...currentPrefs, ...prefs };
-  await fs.writeFile(preferencesPath, JSON.stringify(newPrefs, null, 2));
+  await fs.promises.writeFile(
+    preferencesPath,
+    JSON.stringify(newPrefs, null, 2),
+  );
   return newPrefs;
 }
 
-export async function loadPreferences(): Promise<Preferences> {
+export function loadPreferences(): Preferences {
   try {
-    const data = await fs.readFile(preferencesPath, "utf-8");
+    const data = fs.readFileSync(preferencesPath, "utf-8");
     return { ...DEFAULT_PREFERENCES, ...JSON.parse(data) };
   } catch {
     return DEFAULT_PREFERENCES;
