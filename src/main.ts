@@ -60,6 +60,7 @@ app.on("ready", function () {
   loadPreferences().then(updateDebugPreferences);
   const prefs = loadPreferences();
   toggleScheduledScreenshots(prefs);
+  updateDebugPreferences(prefs);
   startLocalServer();
   startDailySummaryCheck();
 });
