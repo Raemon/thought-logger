@@ -4,7 +4,7 @@ import { app } from "electron";
 import { rebuildLogByApp, rebuildChronologicalLog } from "../keylogger";
 import { setDefaultOptions, isSameWeek, isSameDay } from "date-fns";
 import { Keylog, Summary, SummaryScopeTypes } from "../types/files.d";
-import log from "../logging";
+import logger from "../logging";
 import { loadPreferences } from "../preferences";
 import { getRecentSummaries, maybeReadContents } from "./files";
 import { getApiKey } from "./credentials";
@@ -55,6 +55,7 @@ async function generateAISummary(
   model: string,
   maxRetries = 3,
 ): Promise<string> {
+  logger.debug("Generating AI summary");
   const apiKey = await getApiKey();
 
   let lastError: Error | null = null;
@@ -121,14 +122,14 @@ async function needsProcessing(keylog: Keylog): Promise<boolean> {
 }
 
 async function processKeylog(file: Keylog): Promise<void> {
-  console.log(`Processing ${path.basename(file.rawPath)}`);
+  logger.debug(`Processing keylog file: ${path.basename(file.rawPath)}`);
 
   try {
     // Generate processed files
     rebuildChronologicalLog(file.rawPath);
     rebuildLogByApp(file.rawPath);
   } catch (error) {
-    log.error(`Failed to process ${path.basename(file.rawPath)}:`, error);
+    logger.error(`Failed to process ${path.basename(file.rawPath)}:`, error);
     throw error; // Re-throw to handle in the calling function
   }
 }
@@ -153,6 +154,7 @@ async function checkAndGenerateSummaries() {
   const summaries = await getRecentSummaries();
 
   for (let summary of summaries) {
+    logger.debug(`Checking summary of ${summary.path}`);
     for (let keylog of summary.keylogs) {
       if (needsProcessing(keylog)) {
         processKeylog(keylog);
@@ -186,14 +188,14 @@ export function startDailySummaryCheck() {
 app.whenReady().then(async () => {
   try {
     await checkAndGenerateSummaries();
-    console.log("Summary generation completed successfully");
+    logger.info("Summary generation completed successfully");
   } catch (error) {
-    log.error("Failed to generate summaries:", error);
+    logger.error("Failed to generate summaries:", error);
   }
 });
 
 export async function summarize(summary: Summary): Promise<void> {
-  console.log(`Generating summary for ${path.basename(summary.path)}`);
+  logger.debug(`Generating summary for ${summary.path}`);
   try {
     let logData: string = "";
     const {
@@ -201,7 +203,7 @@ export async function summarize(summary: Summary): Promise<void> {
       weeklySummaryPrompt,
       summaryModel,
       screenshotSummaryWindow,
-    } = await loadPreferences();
+    } = loadPreferences();
 
     logData += "Keylogger data:\n";
 
@@ -233,7 +235,7 @@ export async function summarize(summary: Summary): Promise<void> {
     await fs.writeFile(summary.path, text);
     summary.contents = text;
   } catch (error) {
-    log.error(
+    logger.error(
       `Failed to generate summary for ${path.basename(summary.path)}:`,
       error,
     );

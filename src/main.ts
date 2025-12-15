@@ -15,12 +15,13 @@ import {
 } from "./electron/summarizer";
 import { Summary } from "./types/files.d";
 import { setDefaultOptions, isEqual } from "date-fns";
-import log from "./logging";
+import logger, { logToFile, updateDebugPreferences } from "./logging";
 import { getRecentApps, getRecentSummaries } from "./electron/files";
 import { getApiKey, saveApiKey } from "./electron/credentials";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
+const debugLogsPath = app.getPath("logs");
 
 const filesPath = path.join(userDataPath, "files");
 const screenshotFolder = path.join(userDataPath, "files", "screenshots");
@@ -54,8 +55,12 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on("ready", function () {
+  logToFile(debugLogsPath);
   createWindow();
-  loadPreferences().then(toggleScheduledScreenshots);
+  loadPreferences().then(updateDebugPreferences);
+  const prefs = loadPreferences();
+  toggleScheduledScreenshots(prefs);
+  updateDebugPreferences(prefs);
   startLocalServer();
   startDailySummaryCheck();
 });
@@ -92,6 +97,16 @@ ipcMain.on("OPEN_USER_DATA_FOLDER", async () => {
   shell.openPath(filesPath);
 });
 
+ipcMain.handle("GET_DEBUG_LOGS_FOLDER", () => {
+  return debugLogsPath;
+});
+
+ipcMain.on("OPEN_DEBUG_LOGS_FOLDER", () => {
+  shell.openPath(debugLogsPath);
+});
+
+ipcMain.handle;
+
 ipcMain.handle("GET_PREFERENCES", () => loadPreferences());
 
 ipcMain.handle(
@@ -100,6 +115,7 @@ ipcMain.handle(
     const newPrefs = await savePreferences(prefs);
     toggleScheduledScreenshots(newPrefs);
     updateKeyloggerPreferences(newPrefs);
+    updateDebugPreferences(newPrefs);
   },
 );
 
@@ -109,7 +125,7 @@ ipcMain.on("OPEN_FILE", (_event, filePath) => {
 
 ipcMain.on("OPEN_EXTERNAL_URL", (_event, url) => {
   shell.openExternal(url).catch((err) => {
-    log.error("Failed to open external URL:", err);
+    logger.error("Failed to open external URL:", err);
   });
 });
 
@@ -130,7 +146,7 @@ ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
     const content = await fs.readFile(filePath, "utf-8");
     return content;
   } catch (error) {
-    log.error("Failed to read file:", error);
+    logger.error("Failed to read file:", error);
     throw error;
   }
 });

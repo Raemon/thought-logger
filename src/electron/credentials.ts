@@ -1,6 +1,6 @@
 import path from "path";
 import { app } from "electron";
-import log from "../logging";
+import logger from "../logging";
 
 // Import keytar safely
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,15 +20,15 @@ try {
           "Release",
           "keytar.node",
         );
-    console.log("Attempting to load keytar from:", keytarPath);
+    logger.debug(`Attempting to load keytar from: ${keytarPath}`);
     keytar = require(keytarPath);
   } catch (secondError) {
-    log.error("Failed to load keytar:", secondError);
+    logger.error("Failed to load keytar:", secondError);
     // Provide a fallback implementation that logs error but doesn't crash
     keytar = {
       getPassword: async (): Promise<string | null> => null,
       setPassword: async (): Promise<void> => {
-        log.error("Unable to save password: keytar not available");
+        logger.error("Unable to save password: keytar not available");
       },
     };
   }
@@ -42,7 +42,7 @@ export async function getApiKey(): Promise<string | null> {
   try {
     return await keytar.getPassword(SERVICE_NAME, ACCOUNT_NAME);
   } catch (error) {
-    log.error("Error accessing keychain:", error);
+    logger.error("Error accessing keychain:", error);
     return null;
   }
 }
@@ -64,7 +64,7 @@ export async function saveApiKey(
       message: "API key saved successfully",
     };
   } catch (error) {
-    log.error("Failed to save API key:", error);
+    logger.error("Failed to save API key:", error);
     return {
       success: false,
       message: `Failed to save API key: ${error.message}`,

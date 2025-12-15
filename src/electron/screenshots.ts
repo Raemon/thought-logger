@@ -9,7 +9,7 @@ import { loadPreferences } from "../preferences";
 import { z } from "zod";
 import { getCurrentApplication } from "../keylogger";
 
-import log from "../logging";
+import logger from "../logging";
 import { getApiKey } from "./credentials";
 
 const ScreenshotText = z.object({
@@ -27,12 +27,13 @@ async function extractTextFromImage(
   model: string,
   prompt: string,
 ): Promise<ScreenshotText> {
+  logger.debug("Extracting image text");
   const base64Image = imageBuffer.toString("base64");
   const imageUrl = `data:image/jpeg;base64,${base64Image}`;
   try {
     const apiKey = await getApiKey();
     if (!apiKey) {
-      log.error("API key not found in keychain");
+      logger.error("API key not found in keychain");
       throw "ERROR: OpenRouter API key is not set. Use setApiKey() to set your API key.";
     }
 
@@ -89,7 +90,7 @@ async function extractTextFromImage(
     const result = JSON.parse(data.choices[0].message.content);
     return ScreenshotText.parse(result);
   } catch (error) {
-    log.error("Failed to extract text from image:", error);
+    logger.error("Failed to extract text from image:", error);
     throw `ERROR: Failed to extract text: ${error.message}`;
   }
 }
@@ -99,8 +100,9 @@ export async function parseScreenshot(
   imgPath: string,
   currentApplication: string,
 ): Promise<void> {
+  logger.debug(`Parsing screenshot at ${imgPath}`);
   // Extract and save text
-  const { screenshotModel, screenshotPrompt } = await loadPreferences();
+  const { screenshotModel, screenshotPrompt } = loadPreferences();
   const prompt =
     screenshotPrompt[currentApplication] || screenshotPrompt.default;
 
@@ -114,15 +116,19 @@ export async function parseScreenshot(
     const encodedProject = encodeURIComponent(project);
     const encodedDocument = encodeURIComponent(document);
     const encodedApp = encodeURIComponent(currentApplication);
-    const textFilePath = imgPath.replace(".jpg", `${encodedApp}.${encodedProject}.${encodedDocument}.txt`);
+    const textFilePath = imgPath.replace(
+      ".jpg",
+      `${encodedApp}.${encodedProject}.${encodedDocument}.txt`,
+    );
 
     await fs.writeFile(textFilePath, extractedText.summary);
   } catch (error) {
-    log.error(`Failed to extract text from ${imgPath}:`, error);
+    logger.error(`Failed to extract text from ${imgPath}:`, error);
   }
 }
 
 async function takeScreenshot(quality: number) {
+  logger.debug("Taking screenshot");
   try {
     const sources = await desktopCapturer.getSources({
       types: ["screen"],
@@ -136,14 +142,14 @@ async function takeScreenshot(quality: number) {
 
     await parseScreenshot(img, filePath, currentApplication);
 
-    const { screenshotTemporary } = await loadPreferences();
+    const { screenshotTemporary } = loadPreferences();
 
     if (screenshotTemporary) {
       // Delete screenshot when we're done extracting.
       await fs.unlink(filePath);
     }
   } catch (e) {
-    log.error(`Failed to process screenshot: ${e}`);
+    logger.error(`Failed to process screenshot: ${e}`);
   }
 }
 

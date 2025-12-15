@@ -7,6 +7,7 @@ import { SummaryScopeTypes } from "../../src/types/files.d";
 
 const userData: UserData = {
   openUserDataFolder: vi.fn<UserData["openUserDataFolder"]>(),
+  openDebugLogsFolder: vi.fn<UserData["openDebugLogsFolder"]>(),
   generateAISummary: vi
     .fn<UserData["generateAISummary"]>()
     .mockResolvedValue("Stub summary"),
@@ -41,6 +42,9 @@ const userData: UserData = {
   getUserDataFolder: vi
     .fn<UserData["getUserDataFolder"]>()
     .mockResolvedValue("/User/test/files"),
+  getDebugLogsFolder: vi
+    .fn<UserData["getDebugLogsFolder"]>()
+    .mockResolvedValue("/User/test/logs"),
   onUpdateRecentLogs: vi.fn<UserData["onUpdateRecentLogs"]>(),
   openExternalUrl: vi.fn<UserData["openExternalUrl"]>(),
   openFile: vi.fn<UserData["openFile"]>(),
