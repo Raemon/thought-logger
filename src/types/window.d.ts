@@ -3,7 +3,7 @@ import {
   PermissionStatus,
 } from "../electron/permissions";
 import { Preferences } from "../preferences";
-import { Summary } from "./files";
+import { Summary } from "./files.d";
 
 declare global {
   interface UserData {
@@ -30,6 +30,12 @@ declare global {
       requestPermissionsStatus: () => Promise<
         Record<PermissionScope, PermissionStatus>
       >;
+    };
+    errors: {
+      getLatestError: () => Promise<string | null>;
+      getRecentErrors: () => Promise<string[]>;
+      onLatestError: (callback: (message: string) => void) => void;
+      onRecentErrors: (callback: (messages: string[]) => void) => void;
     };
     openRouter: {
       checkApiKey: () => Promise<{ hasKey: boolean; message: string }>;

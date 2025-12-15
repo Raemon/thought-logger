@@ -37,6 +37,7 @@ export async function getAvailableModels(
   return body.data
     .filter(
       (model: {
+        id: string;
         architecture: {
           input_modalities: string[];
         };
@@ -44,7 +45,8 @@ export async function getAvailableModels(
       }) =>
         !imageSupport ||
         (model.architecture.input_modalities.includes("image") &&
-          model.supported_parameters.includes("structured_outputs")),
+          model.supported_parameters.includes("structured_outputs") &&
+          !model.id.startsWith("google/gemini")),
     )
     .map((model: { id: string }) => model.id);
 }

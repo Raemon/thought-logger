@@ -37,45 +37,82 @@ async function extractTextFromImage(
       throw "ERROR: OpenRouter API key is not set. Use setApiKey() to set your API key.";
     }
 
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
+    const buildRequest = (useSchema: boolean) => ({
+      model: model,
+      require_parameters: true,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: useSchema
+                ? prompt
+                : `${prompt}\n\nReturn a JSON object with keys project, document, and summary.`,
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageUrl,
+              },
+            },
+          ],
+        },
+      ],
+      ...(useSchema
+        ? {
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "screenshot_summary",
+                strict: true,
+                schema: z.toJSONSchema(ScreenshotText),
+              },
+            },
+          }
+        : {}),
+    });
+
+    const sendRequest = (useSchema: boolean) =>
+      fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: model,
-          require_parameters: true,
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: prompt,
-                },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: imageUrl,
-                  },
-                },
-              ],
-            },
-          ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "screenshot_summary",
-              strict: true,
-              schema: z.toJSONSchema(ScreenshotText),
-            },
-          },
-        }),
-      },
-    );
+        body: JSON.stringify(buildRequest(useSchema)),
+      });
+
+    let response = await sendRequest(true);
+
+    if (!response.ok) {
+      let errorData: any = null;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = await response.text();
+      }
+
+      const errorMessage =
+        (typeof errorData === "object" && errorData !== null
+          ? errorData?.error?.message
+          : null) || `${errorData}`;
+
+      const structuredOutputUnsupported =
+        typeof errorMessage === "string" &&
+        errorMessage.toLowerCase().includes("json mode is not enabled");
+
+      if (structuredOutputUnsupported) {
+        logger.warn(
+          "Structured outputs not supported for this model; retrying without JSON schema",
+        );
+        response = await sendRequest(false);
+      } else {
+        throw new Error(
+          `API request failed: ${response.status} ${JSON.stringify(errorData)}`,
+        );
+      }
+    }
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -118,7 +155,7 @@ export async function parseScreenshot(
     const encodedApp = encodeURIComponent(currentApplication);
     const textFilePath = imgPath.replace(
       ".jpg",
-      `${encodedApp}.${encodedProject}.${encodedDocument}.txt`,
+      `.${encodedApp}.${encodedProject}.${encodedDocument}.txt`,
     );
 
     await fs.writeFile(textFilePath, extractedText.summary);

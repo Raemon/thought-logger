@@ -25,6 +25,20 @@ export function ScreenshotController() {
     window.userData.getRecentApps().then((apps) => setRecentApplications(apps));
   }, []);
 
+  useEffect(() => {
+    if (
+      availableModels.length > 0 &&
+      availableModels[0] !== "loading..." &&
+      !availableModels.includes(prefs.screenshotModel)
+    ) {
+      const model = availableModels[0];
+      setPrefs({ ...prefs, screenshotModel: model });
+      window.preferences.setPreferences({
+        screenshotModel: model,
+      });
+    }
+  }, [availableModels, prefs]);
+
   const updatePreferences = async (
     newPrefs: Partial<ScreenshotPreferences>,
   ) => {
