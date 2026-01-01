@@ -10,10 +10,16 @@ contextBridge.exposeInMainWorld("permissions", {
 contextBridge.exposeInMainWorld("errors", {
   getLatestError: () => ipcRenderer.invoke("GET_LATEST_ERROR"),
   getRecentErrors: () => ipcRenderer.invoke("GET_RECENT_ERRORS"),
-  onLatestError: (callback: (message: string) => void) =>
-    ipcRenderer.on("LATEST_ERROR", (_event, message) => callback(message)),
-  onRecentErrors: (callback: (messages: string[]) => void) =>
-    ipcRenderer.on("RECENT_ERRORS", (_event, messages) => callback(messages)),
+  onLatestError: (callback: (message: string) => void) => {
+    const handler = (_event: any, message: string) => callback(message);
+    ipcRenderer.on("LATEST_ERROR", handler);
+    return () => ipcRenderer.removeListener("LATEST_ERROR", handler);
+  },
+  onRecentErrors: (callback: (messages: string[]) => void) => {
+    const handler = (_event: any, messages: string[]) => callback(messages);
+    ipcRenderer.on("RECENT_ERRORS", handler);
+    return () => ipcRenderer.removeListener("RECENT_ERRORS", handler);
+  },
 });
 
 const userData: UserData = {

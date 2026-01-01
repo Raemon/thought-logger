@@ -10,13 +10,25 @@ let latestError: string | null = null;
 const latestErrorListeners: ((message: string) => void)[] = [];
 
 export const getLatestError = (): string | null => latestError;
-export const onLatestError = (listener: (message: string) => void): void => {
+export const onLatestError = (listener: (message: string) => void): (() => void) => {
   latestErrorListeners.push(listener);
+  return () => {
+    const index = latestErrorListeners.indexOf(listener);
+    if (index > -1) {
+      latestErrorListeners.splice(index, 1);
+    }
+  };
 };
 
 export const getRecentErrors = (): string[] => recentErrors;
-export const onRecentErrors = (listener: (messages: string[]) => void): void => {
+export const onRecentErrors = (listener: (messages: string[]) => void): (() => void) => {
   recentErrorsListeners.push(listener);
+  return () => {
+    const index = recentErrorsListeners.indexOf(listener);
+    if (index > -1) {
+      recentErrorsListeners.splice(index, 1);
+    }
+  };
 };
 
 const format = winston.format.combine(

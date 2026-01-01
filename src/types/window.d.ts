@@ -34,8 +34,8 @@ declare global {
     errors: {
       getLatestError: () => Promise<string | null>;
       getRecentErrors: () => Promise<string[]>;
-      onLatestError: (callback: (message: string) => void) => void;
-      onRecentErrors: (callback: (messages: string[]) => void) => void;
+      onLatestError: (callback: (message: string) => void) => () => void;
+      onRecentErrors: (callback: (messages: string[]) => void) => () => void;
     };
     openRouter: {
       checkApiKey: () => Promise<{ hasKey: boolean; message: string }>;

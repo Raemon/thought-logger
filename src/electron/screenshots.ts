@@ -107,18 +107,22 @@ async function extractTextFromImage(
           "Structured outputs not supported for this model; retrying without JSON schema",
         );
         response = await sendRequest(false);
+        if (!response.ok) {
+          let retryErrorData: any = null;
+          try {
+            retryErrorData = await response.json();
+          } catch {
+            retryErrorData = await response.text();
+          }
+          throw new Error(
+            `API request failed: ${response.status} ${JSON.stringify(retryErrorData)}`,
+          );
+        }
       } else {
         throw new Error(
           `API request failed: ${response.status} ${JSON.stringify(errorData)}`,
         );
       }
-    }
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        `API request failed: ${response.status} ${JSON.stringify(errorData)}`,
-      );
     }
 
     const data = (await response.json()) as {

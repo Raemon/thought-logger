@@ -67,7 +67,8 @@ export function App() {
 
   useEffect(() => {
     window.errors.getRecentErrors().then((errors) => setRecentErrors(errors));
-    window.errors.onRecentErrors((errors) => setRecentErrors(errors));
+    const cleanup = window.errors.onRecentErrors((errors) => setRecentErrors(errors));
+    return cleanup;
   }, []);
 
   return (

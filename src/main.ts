@@ -64,10 +64,9 @@ const createWindow = () => {
 app.on("ready", function () {
   logToFile(debugLogsPath);
   createWindow();
-  updateDebugPreferences(loadPreferences());
   const prefs = loadPreferences();
-  toggleScheduledScreenshots(prefs);
   updateDebugPreferences(prefs);
+  toggleScheduledScreenshots(prefs);
   startLocalServer();
   startDailySummaryCheck();
 });

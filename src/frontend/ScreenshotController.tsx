@@ -30,22 +30,18 @@ export function ScreenshotController() {
     if (modelInitialized) return;
     if (
       availableModels.length > 0 &&
-      availableModels[0] !== "loading..." &&
-      !availableModels.includes(prefs.screenshotModel)
-    ) {
-      const model = availableModels[0];
-      setPrefs({ ...prefs, screenshotModel: model });
-      window.preferences.setPreferences({
-        screenshotModel: model,
-      });
-    }
-    if (
-      availableModels.length > 0 &&
       availableModels[0] !== "loading..."
     ) {
+      if (!availableModels.includes(prefs.screenshotModel)) {
+        const model = availableModels[0];
+        setPrefs((prevPrefs) => ({ ...prevPrefs, screenshotModel: model }));
+        window.preferences.setPreferences({
+          screenshotModel: model,
+        });
+      }
       setModelInitialized(true);
     }
-  }, [availableModels, modelInitialized, prefs]);
+  }, [availableModels, modelInitialized]);
 
   const updatePreferences = async (
     newPrefs: Partial<ScreenshotPreferences>,
