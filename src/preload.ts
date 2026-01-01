@@ -7,6 +7,21 @@ contextBridge.exposeInMainWorld("permissions", {
     ipcRenderer.invoke("REQUEST_PERMISSIONS_STATUS"),
 });
 
+contextBridge.exposeInMainWorld("errors", {
+  getLatestError: () => ipcRenderer.invoke("GET_LATEST_ERROR"),
+  getRecentErrors: () => ipcRenderer.invoke("GET_RECENT_ERRORS"),
+  onLatestError: (callback: (message: string) => void) => {
+    const handler = (_event: any, message: string) => callback(message);
+    ipcRenderer.on("LATEST_ERROR", handler);
+    return () => ipcRenderer.removeListener("LATEST_ERROR", handler);
+  },
+  onRecentErrors: (callback: (messages: string[]) => void) => {
+    const handler = (_event: any, messages: string[]) => callback(messages);
+    ipcRenderer.on("RECENT_ERRORS", handler);
+    return () => ipcRenderer.removeListener("RECENT_ERRORS", handler);
+  },
+});
+
 const userData: UserData = {
   openUserDataFolder: () => ipcRenderer.send("OPEN_USER_DATA_FOLDER"),
   getUserDataFolder: () => ipcRenderer.invoke("GET_USER_DATA_FOLDER"),

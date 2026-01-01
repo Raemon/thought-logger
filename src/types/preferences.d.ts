@@ -33,7 +33,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   screenshotPeriod: 60 * 4,
   screenshotQuality: 35,
   screenshotTemporary: false,
-  screenshotModel: "google/gemini-2.5-flash",
+  screenshotModel: "openai/gpt-4o-mini",
   screenshotPrompt: {
     default:
       "Summarize the contents of this screenshot. Include the application is in use, project names, filename or document title. If a chat app is in use, give the channel name. Include each section of the screen with text in it, with an exact copy of all text. Include a summary of images on the screen. Organize the summary into titled sections.",

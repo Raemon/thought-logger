@@ -48,7 +48,7 @@ export default function TypeaheadDropdown({
                 onBlur={() => setFocused(false)}
             />
             {focused && (
-                <ul className="absolute left-0 bg-slate-50 border-2 rounded w-full">
+                <ul className="absolute left-0 top-full bg-slate-50 border-2 rounded w-full">
                     {displayedItems.map((item, idx) => {
                         const className =
                             "p-2 w-full" +

@@ -1,7 +1,35 @@
 import winston from "winston";
-import { DebugPreferences } from "./types/preferences";
+import Transport from "winston-transport";
+import { DebugPreferences } from "./types/preferences.d";
 
 const KiB = 1024;
+
+let recentErrors: string[] = [];
+const recentErrorsListeners: ((messages: string[]) => void)[] = [];
+let latestError: string | null = null;
+const latestErrorListeners: ((message: string) => void)[] = [];
+
+export const getLatestError = (): string | null => latestError;
+export const onLatestError = (listener: (message: string) => void): (() => void) => {
+  latestErrorListeners.push(listener);
+  return () => {
+    const index = latestErrorListeners.indexOf(listener);
+    if (index > -1) {
+      latestErrorListeners.splice(index, 1);
+    }
+  };
+};
+
+export const getRecentErrors = (): string[] => recentErrors;
+export const onRecentErrors = (listener: (messages: string[]) => void): (() => void) => {
+  recentErrorsListeners.push(listener);
+  return () => {
+    const index = recentErrorsListeners.indexOf(listener);
+    if (index > -1) {
+      recentErrorsListeners.splice(index, 1);
+    }
+  };
+};
 
 const format = winston.format.combine(
   winston.format.errors({ stack: true }),
@@ -12,11 +40,32 @@ const format = winston.format.combine(
   ),
 );
 
+class LatestErrorTransport extends Transport {
+  log(info: any, callback: () => void) {
+    setImmediate(() => this.emit("logged", info));
+    if (info.level === "error") {
+      const formattedMessage =
+        info[Symbol.for("message")] || `${info.message}`;
+      latestError = formattedMessage;
+      recentErrors = [formattedMessage, ...recentErrors].slice(0, 3);
+      for (const listener of latestErrorListeners) {
+        listener(formattedMessage);
+      }
+      for (const listener of recentErrorsListeners) {
+        listener(recentErrors);
+      }
+    }
+    callback();
+  }
+}
+
 const logger = winston.createLogger({
   levels: winston.config.syslog.levels,
   format,
   transports: [new winston.transports.Console({ level: "info" })],
 });
+
+logger.add(new LatestErrorTransport({ level: "debug" }));
 
 export const updateDebugPreferences = (prefs: DebugPreferences): void => {
   logger.transports

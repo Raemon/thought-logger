@@ -15,7 +15,14 @@ import {
 } from "./electron/summarizer";
 import { Summary } from "./types/files.d";
 import { setDefaultOptions, isEqual } from "date-fns";
-import logger, { logToFile, updateDebugPreferences } from "./logging";
+import logger, {
+  getLatestError,
+  getRecentErrors,
+  logToFile,
+  onLatestError,
+  onRecentErrors,
+  updateDebugPreferences,
+} from "./logging";
 import { getRecentApps, getRecentSummaries } from "./electron/files";
 import { getApiKey, saveApiKey } from "./electron/credentials";
 setDefaultOptions({ weekStartsOn: 1 });
@@ -57,10 +64,9 @@ const createWindow = () => {
 app.on("ready", function () {
   logToFile(debugLogsPath);
   createWindow();
-  loadPreferences().then(updateDebugPreferences);
   const prefs = loadPreferences();
-  toggleScheduledScreenshots(prefs);
   updateDebugPreferences(prefs);
+  toggleScheduledScreenshots(prefs);
   startLocalServer();
   startDailySummaryCheck();
 });
@@ -86,6 +92,19 @@ initializeKeylogger();
 
 ipcMain.handle("REQUEST_PERMISSIONS_STATUS", () => {
   return checkPermissions();
+});
+
+ipcMain.handle("GET_LATEST_ERROR", () => getLatestError());
+ipcMain.handle("GET_RECENT_ERRORS", () => getRecentErrors());
+onLatestError((message) => {
+  BrowserWindow.getAllWindows().forEach((win) =>
+    win.webContents.send("LATEST_ERROR", message),
+  );
+});
+onRecentErrors((messages) => {
+  BrowserWindow.getAllWindows().forEach((win) =>
+    win.webContents.send("RECENT_ERRORS", messages),
+  );
 });
 
 ipcMain.handle("GET_USER_DATA_FOLDER", () => {
@@ -153,7 +172,7 @@ ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
 
 ipcMain.handle("GENERATE_AI_SUMMARY", async (_event, summary: Summary) => {
   const oldLogs = await getRecentSummaries();
-  for (let i in oldLogs) {
+  for (const i in oldLogs) {
     const { date, scope } = oldLogs[i];
     if (isEqual(date, summary.date) && scope === summary.scope) {
       oldLogs[i].loading = true;
