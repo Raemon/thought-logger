@@ -338,7 +338,7 @@ export function startLocalServer(port = 8765): http.Server {
     }
   });
 
-  server.listen(port, () => {
+  server.listen(port, "127.0.0.1", () => {
     logger.info(`Server is running on http://localhost:${port}`);
   });
 
