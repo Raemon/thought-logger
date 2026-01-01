@@ -1,139 +1,197 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { currentScreenshotFile } from "./paths";
-import { Preferences } from "../preferences";
-import { desktopCapturer, app } from "electron";
+import { Preferences } from "../types/preferences.d";
+import { desktopCapturer, app, systemPreferences } from "electron";
 
 import fetch from "node-fetch";
+import { loadPreferences } from "../preferences";
+import { z } from "zod";
+import { getCurrentApplication } from "../keylogger";
 
-// Import keytar safely
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let keytar: any;
-try {
-  keytar = require("keytar");
-} catch (error) {
-  // If we can't load keytar directly, try to load it from the resources directory
-  try {
-    const keytarPath = app.isPackaged
-      ? path.join(process.resourcesPath, "keytar.node")
-      : path.join(
-          app.getAppPath(),
-          "node_modules",
-          "keytar",
-          "build",
-          "Release",
-          "keytar.node",
-        );
-    console.log("Attempting to load keytar from:", keytarPath);
-    keytar = require(keytarPath);
-  } catch (secondError) {
-    console.error("Failed to load keytar:", secondError);
-    // Provide a fallback implementation that logs error but doesn't crash
-    keytar = {
-      getPassword: async (): Promise<string | null> => null,
-      setPassword: async (): Promise<void> =>
-        console.error("Unable to save password: keytar not available"),
-    };
-  }
-}
+import logger from "../logging";
+import { getApiKey } from "./credentials";
 
-// Constants for keychain access
-const SERVICE_NAME = "ThoughtLogger";
-const ACCOUNT_NAME = "OpenRouter";
+const ScreenshotText = z.object({
+  project: z
+    .string()
+    .describe("name of the project the user is currently working on"),
+  document: z.string().describe("name of the document the user has open"),
+  summary: z.string().describe("summary of the screenshot"),
+});
 
-// Function to get API key from keychain
-async function getApiKey(): Promise<string | null> {
-  try {
-    return await keytar.getPassword(SERVICE_NAME, ACCOUNT_NAME);
-  } catch (error) {
-    console.error("Error accessing keychain:", error);
-    return null;
-  }
-}
+type ScreenshotText = z.infer<typeof ScreenshotText>;
 
-// Function to save API key to keychain
-async function saveApiKey(apiKey: string): Promise<void> {
-  try {
-    await keytar.setPassword(SERVICE_NAME, ACCOUNT_NAME, apiKey);
-  } catch (error) {
-    console.error("Error saving to keychain:", error);
-  }
-}
-
-async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
+async function extractTextFromImage(
+  imageBuffer: Buffer,
+  model: string,
+  prompt: string,
+): Promise<ScreenshotText> {
+  logger.debug("Extracting image text");
+  const base64Image = imageBuffer.toString("base64");
+  const imageUrl = `data:image/jpeg;base64,${base64Image}`;
   try {
     const apiKey = await getApiKey();
     if (!apiKey) {
-      console.error("API key not found in keychain");
-      return "ERROR: OpenRouter API key is not set. Use saveOpenRouterApiKey() to set your API key.";
+      logger.error("API key not found in keychain");
+      throw "ERROR: OpenRouter API key is not set. Use setApiKey() to set your API key.";
     }
 
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
+    const buildRequest = (useSchema: boolean) => ({
+      model: model,
+      require_parameters: true,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: useSchema
+                ? prompt
+                : `${prompt}\n\nReturn a JSON object with keys project, document, and summary.`,
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageUrl,
+              },
+            },
+          ],
+        },
+      ],
+      ...(useSchema
+        ? {
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "screenshot_summary",
+                strict: true,
+                schema: z.toJSONSchema(ScreenshotText),
+              },
+            },
+          }
+        : {}),
+    });
+
+    const sendRequest = (useSchema: boolean) =>
+      fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "google/gemini-pro-vision",
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Please extract all visible text from this image.",
-                },
-                { type: "image", image: imageBuffer.toString("base64") },
-              ],
-            },
-          ],
-        }),
-      },
-    );
+        body: JSON.stringify(buildRequest(useSchema)),
+      });
+
+    let response = await sendRequest(true);
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        `API request failed: ${response.status} ${JSON.stringify(errorData)}`,
-      );
+      let errorData: any = null;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = await response.text();
+      }
+
+      const errorMessage =
+        (typeof errorData === "object" && errorData !== null
+          ? errorData?.error?.message
+          : null) || `${errorData}`;
+
+      const structuredOutputUnsupported =
+        typeof errorMessage === "string" &&
+        errorMessage.toLowerCase().includes("json mode is not enabled");
+
+      if (structuredOutputUnsupported) {
+        logger.warn(
+          "Structured outputs not supported for this model; retrying without JSON schema",
+        );
+        response = await sendRequest(false);
+        if (!response.ok) {
+          let retryErrorData: any = null;
+          try {
+            retryErrorData = await response.json();
+          } catch {
+            retryErrorData = await response.text();
+          }
+          throw new Error(
+            `API request failed: ${response.status} ${JSON.stringify(retryErrorData)}`,
+          );
+        }
+      } else {
+        throw new Error(
+          `API request failed: ${response.status} ${JSON.stringify(errorData)}`,
+        );
+      }
     }
 
     const data = (await response.json()) as {
       choices: { message: { content: string } }[];
     };
-    return data.choices[0].message.content;
+    const result = JSON.parse(data.choices[0].message.content);
+    return ScreenshotText.parse(result);
   } catch (error) {
-    console.error("Failed to extract text from image:", error);
-    return `ERROR: Failed to extract text: ${error.message}`;
+    logger.error("Failed to extract text from image:", error);
+    throw `ERROR: Failed to extract text: ${error.message}`;
   }
 }
 
-export async function saveScreenshot(img: Buffer): Promise<void> {
-  const filePath = currentScreenshotFile();
-  const textFilePath = filePath.replace(".jpg", ".txt");
+export async function parseScreenshot(
+  img: Buffer,
+  imgPath: string,
+  currentApplication: string,
+): Promise<void> {
+  logger.debug(`Parsing screenshot at ${imgPath}`);
+  // Extract and save text
+  const { screenshotModel, screenshotPrompt } = loadPreferences();
+  const prompt =
+    screenshotPrompt[currentApplication] || screenshotPrompt.default;
 
   try {
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, img);
+    const extractedText = await extractTextFromImage(
+      img,
+      screenshotModel,
+      prompt,
+    );
+    const { project, document } = extractedText;
+    const encodedProject = encodeURIComponent(project);
+    const encodedDocument = encodeURIComponent(document);
+    const encodedApp = encodeURIComponent(currentApplication);
+    const textFilePath = imgPath.replace(
+      ".jpg",
+      `.${encodedApp}.${encodedProject}.${encodedDocument}.txt`,
+    );
 
-    // Extract and save text
-    const extractedText = await extractTextFromImage(img);
-    await fs.writeFile(textFilePath, extractedText);
+    await fs.writeFile(textFilePath, extractedText.summary);
   } catch (error) {
-    console.error("Failed to take screenshot or extract text:", error);
+    logger.error(`Failed to extract text from ${imgPath}:`, error);
   }
 }
 
 async function takeScreenshot(quality: number) {
-  const sources = await desktopCapturer.getSources({
-    types: ["screen"],
-    thumbnailSize: { width: 1920, height: 1080 },
-  });
-  const img = sources[0].thumbnail.toJPEG(quality);
-  await saveScreenshot(img);
+  logger.debug("Taking screenshot");
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ["screen"],
+      thumbnailSize: { width: 1920, height: 1080 },
+    });
+    const img = sources[0].thumbnail.toJPEG(quality);
+    const currentApplication = getCurrentApplication();
+    const filePath = currentScreenshotFile();
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, img);
+
+    await parseScreenshot(img, filePath, currentApplication);
+
+    const { screenshotTemporary } = loadPreferences();
+
+    if (screenshotTemporary) {
+      // Delete screenshot when we're done extracting.
+      await fs.unlink(filePath);
+    }
+  } catch (e) {
+    logger.error(`Failed to process screenshot: ${e}`);
+  }
 }
 
 let screenshotIntervalID: ReturnType<typeof setInterval> | null = null;
@@ -148,50 +206,5 @@ export function toggleScheduledScreenshots(prefs: Preferences) {
       () => takeScreenshot(prefs.screenshotQuality),
       prefs.screenshotPeriod * 1000,
     );
-  }
-}
-
-// Add this new function to expose API key management to the main process
-export async function checkAndGetApiKey(): Promise<{
-  hasKey: boolean;
-  message: string;
-}> {
-  const apiKey = await getApiKey();
-  if (!apiKey) {
-    return {
-      hasKey: false,
-      message:
-        "No OpenRouter API key found. Please set your API key to enable text extraction.",
-    };
-  }
-  return {
-    hasKey: true,
-    message: "OpenRouter API key is configured.",
-  };
-}
-
-// Add this new function to expose API key saving to the main process
-export async function saveOpenRouterApiKey(
-  apiKey: string,
-): Promise<{ success: boolean; message: string }> {
-  try {
-    if (!apiKey || apiKey.trim() === "") {
-      return {
-        success: false,
-        message: "API key cannot be empty",
-      };
-    }
-
-    await saveApiKey(apiKey);
-    return {
-      success: true,
-      message: "API key saved successfully",
-    };
-  } catch (error) {
-    console.error("Failed to save API key:", error);
-    return {
-      success: false,
-      message: `Failed to save API key: ${error.message}`,
-    };
   }
 }

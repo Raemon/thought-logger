@@ -3,18 +3,21 @@ import {
   PermissionStatus,
 } from "../electron/permissions";
 import { Preferences } from "../preferences";
-import { SerializedLog } from "./files";
+import { Summary } from "./files.d";
 
 declare global {
   interface UserData {
     openUserDataFolder: () => void;
     getUserDataFolder: () => Promise<string>;
-    getRecentLogs: () => Promise<SerializedLog[]>;
+    openDebugLogsFolder: () => void;
+    getDebugLogsFolder: () => Promise<string>;
+    getRecentLogs: () => Promise<Summary[]>;
+    getRecentApps: () => Promise<string[]>;
     openFile: (filePath: string) => void;
     openExternalUrl: (url: string) => void;
     readFile: (filePath: string) => Promise<string>;
-    generateAISummary: (log: SerializedLog) => Promise<string>;
-    onUpdateRecentLogs: (callback: (logs: SerializedLog[]) => void) => void;
+    generateAISummary: (log: Summary) => Promise<string>;
+    onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => void;
   }
 
   interface Window {
@@ -28,12 +31,18 @@ declare global {
         Record<PermissionScope, PermissionStatus>
       >;
     };
+    errors: {
+      getLatestError: () => Promise<string | null>;
+      getRecentErrors: () => Promise<string[]>;
+      onLatestError: (callback: (message: string) => void) => () => void;
+      onRecentErrors: (callback: (messages: string[]) => void) => () => void;
+    };
     openRouter: {
       checkApiKey: () => Promise<{ hasKey: boolean; message: string }>;
       saveApiKey: (
         apiKey: string,
       ) => Promise<{ success: boolean; message: string }>;
-      getAvailableModels: () => Promise<string[]>;
+      getAvailableModels: (imageSupport: boolean = false) => Promise<string[]>;
     };
   }
 }

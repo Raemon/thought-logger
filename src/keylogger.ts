@@ -8,8 +8,9 @@ import {
   IGlobalKeyEvent,
 } from "node-global-key-listener";
 import { appendFile, currentKeyLogFile } from "./electron/paths";
-import { loadPreferences } from "./main"; // Import the loadPreferences function
-import { Preferences } from "./preferences";
+import { loadPreferences } from "./preferences";
+import { Preferences } from "./types/preferences.d";
+import logger from "./logging";
 
 const BINARY_NAME = "MacKeyServer";
 
@@ -73,36 +74,38 @@ let preferences: Preferences;
 
 /** Checks if the current application is a protected messaging app */
 function isProtectedApp(appName: string): boolean {
-  return preferences.blockedApps.some(app => appName.includes(app));
+  return preferences.blockedApps.some((app) => appName.includes(app));
 }
 
 /** Formats the current timestamp in the required format */
-function getFormattedTimestamp(): { dateStr: string, timeStr: string } {
+function getFormattedTimestamp(): { dateStr: string; timeStr: string } {
   const now = new Date();
   return {
-    dateStr: now.toLocaleDateString('en-CA'),
-    timeStr: now.toLocaleTimeString('en-CA', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }).replace(/:/g, '.')
+    dateStr: now.toLocaleDateString("en-CA"),
+    timeStr: now
+      .toLocaleTimeString("en-CA", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+      .replace(/:/g, "."),
   };
 }
 
 /** Handles application switch events */
 function handleAppSwitch(appName: string): ParsedKey {
   const { dateStr, timeStr } = getFormattedTimestamp();
-  
+
   currentApplication = appName;
   if (!applicationBuffers.has(appName)) {
     applicationBuffers.set(appName, "");
   }
-  
+
   return {
     raw: `\n${dateStr} ${timeStr}: ${appName}\n`,
     processed: "",
-    isAppSwitch: true
+    isAppSwitch: true,
   };
 }
 
@@ -116,13 +119,19 @@ function getModifierString(down: IGlobalKeyDownMap): string {
 }
 
 /** Process a regular keypress event */
-function processKeyPress(event: IGlobalKeyEvent, down: IGlobalKeyDownMap): ParsedKey {
+function processKeyPress(
+  event: IGlobalKeyEvent,
+  down: IGlobalKeyDownMap,
+): ParsedKey {
   const isShift = down["LEFT SHIFT"] || down["RIGHT SHIFT"];
   const key = getModifierString(down);
-  
+
   // Handle modifier-only keypresses, but don't skip for Shift
-  if (event.name.includes("CTRL") || 
-      event.name.includes("META") || event.name.includes("ALT")) {
+  if (
+    event.name.includes("CTRL") ||
+    event.name.includes("META") ||
+    event.name.includes("ALT")
+  ) {
     skipNext = true;
     return { raw: key, processed: "", isAppSwitch: false };
   }
@@ -137,22 +146,41 @@ function processKeyPress(event: IGlobalKeyEvent, down: IGlobalKeyDownMap): Parse
     return { raw: key, processed: "", isAppSwitch: false };
   }
 
-  const isSpecialKey = ["LEFT ARROW", "RIGHT ARROW", "UP ARROW", "DOWN ARROW",
-    "TAB", "ESCAPE", "SECTION", "LEFT CTRL", "RIGHT CTRL", "LEFT META", 
-    "RIGHT META", "LEFT ALT", "RIGHT ALT", "LEFT SHIFT", "RIGHT SHIFT"].includes(event.name);
+  const isSpecialKey = [
+    "LEFT ARROW",
+    "RIGHT ARROW",
+    "UP ARROW",
+    "DOWN ARROW",
+    "TAB",
+    "ESCAPE",
+    "SECTION",
+    "LEFT CTRL",
+    "RIGHT CTRL",
+    "LEFT META",
+    "RIGHT META",
+    "LEFT ALT",
+    "RIGHT ALT",
+    "LEFT SHIFT",
+    "RIGHT SHIFT",
+  ].includes(event.name);
 
   return processKeyCharacter(event, isShift, key, isSpecialKey);
 }
 
 /** Process a single character keypress */
-function processKeyCharacter(event: IGlobalKeyEvent, isShift: boolean, key: string, isSpecialKey: boolean): ParsedKey {
+function processKeyCharacter(
+  event: IGlobalKeyEvent,
+  isShift: boolean,
+  key: string,
+  isSpecialKey: boolean,
+): ParsedKey {
   let shouldLog = false;
   let shouldProcessLog = false;
-  
+
   if (KEY_MAP.has(event.name)) {
     const mappedChars = KEY_MAP.get(event.name);
     if (!mappedChars) return { raw: "", processed: "", isAppSwitch: false };
-    
+
     key += event.name === "RETURN" ? "⏎" : mappedChars[isShift ? 1 : 0];
     shouldLog = true;
     shouldProcessLog = !isSpecialKey && event.name !== "BACKSPACE";
@@ -168,7 +196,12 @@ function processKeyCharacter(event: IGlobalKeyEvent, isShift: boolean, key: stri
 }
 
 /** Update application buffer and return processed key */
-function handleBufferUpdate(event: IGlobalKeyEvent, isShift: boolean, key: string, shouldProcessLog: boolean): ParsedKey {
+function handleBufferUpdate(
+  event: IGlobalKeyEvent,
+  isShift: boolean,
+  key: string,
+  shouldProcessLog: boolean,
+): ParsedKey {
   let processedKey = "";
   const currentBuffer = applicationBuffers.get(currentApplication) || "";
 
@@ -189,7 +222,10 @@ function handleBufferUpdate(event: IGlobalKeyEvent, isShift: boolean, key: strin
   return { raw: key, processed: processedKey, isAppSwitch: false };
 }
 
-function parseKeyEvent(event: IGlobalKeyEvent, down: IGlobalKeyDownMap): ParsedKey {
+function parseKeyEvent(
+  event: IGlobalKeyEvent,
+  down: IGlobalKeyDownMap,
+): ParsedKey {
   // Handle application switch
   if (event._raw.includes("Application activated")) {
     const match = event._raw.match(/\{\{(.*)\}\}/);
@@ -224,23 +260,37 @@ function processRawText(text: string, specialChars: Set<string>): string {
   return buffer;
 }
 
-const specialChars = new Set(["⌃","⌘","⌥","←","→","↑","↓","⎋","↹","§","±"]);
+const specialChars = new Set([
+  "⌃",
+  "⌘",
+  "⌥",
+  "←",
+  "→",
+  "↑",
+  "↓",
+  "⎋",
+  "↹",
+  "§",
+  "±",
+]);
 
 /** Rebuild log chronologically, filtering out empty app sections */
 export function rebuildChronologicalLog(filePath: string) {
   try {
-    const rawText = fs.readFileSync(filePath, 'utf-8');
-    const lines = rawText.split('\n');
+    const rawText = fs.readFileSync(filePath, "utf-8");
+    const lines = rawText.split("\n");
     let processedContent = "";
-    
+
     let currentAppLine = "";
     let sectionLines: string[] = [];
-    
+
     // Process line by line
     forEach(lines, (line) => {
       // Match lines that start with date/time, like "2023-10-05 13.22.55: AppName"
-      const dateAppSwitch = line.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}\.\d{2}\.\d{2}):\s+(.*)$/);
-      
+      const dateAppSwitch = line.match(
+        /^(\d{4}-\d{2}-\d{2})\s+(\d{2}\.\d{2}\.\d{2}):\s+(.*)$/,
+      );
+
       if (dateAppSwitch) {
         // Process the previous section
         if (currentAppLine) {
@@ -251,7 +301,7 @@ export function rebuildChronologicalLog(filePath: string) {
             processedContent += currentAppLine + "\n" + processedText + "\n\n";
           }
         }
-        
+
         // Set up for new section
         currentAppLine = line;
         sectionLines = [];
@@ -259,7 +309,7 @@ export function rebuildChronologicalLog(filePath: string) {
         sectionLines.push(line);
       }
     });
-    
+
     // Process the last section
     if (currentAppLine) {
       const sectionText = sectionLines.join("\n");
@@ -268,46 +318,56 @@ export function rebuildChronologicalLog(filePath: string) {
         processedContent += currentAppLine + "\n" + processedText + "\n";
       }
     }
-    
+
     if (processedContent) {
       const dir = path.dirname(filePath);
-      const basename = path.basename(filePath, 'log');
-      const outputPath = path.join(dir, `${basename}processed.chronological.log`);
+      const basename = path.basename(filePath, "log");
+      const outputPath = path.join(
+        dir,
+        `${basename}processed.chronological.log`,
+      );
       appendFile(outputPath, processedContent, true);
     }
   } catch (error) {
-    console.error('Failed to rebuild chronological log:', error);
+    logger.error("Failed to rebuild chronological log:", error);
   }
 }
 
 // Refactor rebuildLogByApp to use the shared processRawText function
 export function rebuildLogByApp(filePath: string) {
   try {
-    const rawText = fs.readFileSync(filePath, 'utf-8');
-    const lines = rawText.split('\n');
+    const rawText = fs.readFileSync(filePath, "utf-8");
+    const lines = rawText.split("\n");
     const appBuffers = new Map<string, string>();
     let activeApp = "Unknown";
     const lastAppTime = new Map<string, Date>();
 
     forEach(lines, (line) => {
       // Match lines that start with date/time, like "2023-10-05 13.22.55: AppName"
-      const dateAppSwitch = line.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}\.\d{2}\.\d{2}):\s+(.*)$/);
+      const dateAppSwitch = line.match(
+        /^(\d{4}-\d{2}-\d{2})\s+(\d{2}\.\d{2}\.\d{2}):\s+(.*)$/,
+      );
       if (dateAppSwitch) {
         activeApp = dateAppSwitch[3];
-        const currentTime = new Date(`${dateAppSwitch[1]} ${dateAppSwitch[2].replace(/\./g, ':')}`);
-        
+        const currentTime = new Date(
+          `${dateAppSwitch[1]} ${dateAppSwitch[2].replace(/\./g, ":")}`,
+        );
+
         // Add extra newline and timestamp if more than 15 minutes since last use
         const lastTime = lastAppTime.get(activeApp);
-        if (lastTime && (currentTime.getTime() - lastTime.getTime() > 15 * 60 * 1000)) {
-          const timeStr = currentTime.toLocaleTimeString('en-CA', {
+        if (
+          lastTime &&
+          currentTime.getTime() - lastTime.getTime() > 15 * 60 * 1000
+        ) {
+          const timeStr = currentTime.toLocaleTimeString("en-CA", {
             hour12: false,
-            hour: '2-digit',
-            minute: '2-digit'
+            hour: "2-digit",
+            minute: "2-digit",
           });
           const existingBuffer = appBuffers.get(activeApp) || "";
           appBuffers.set(activeApp, existingBuffer + `\n[${timeStr}]\n`);
         }
-        
+
         lastAppTime.set(activeApp, currentTime);
         if (!appBuffers.has(activeApp)) {
           appBuffers.set(activeApp, "");
@@ -328,19 +388,19 @@ export function rebuildLogByApp(filePath: string) {
     });
     if (processedContent) {
       const dir = path.dirname(filePath);
-      const basename = path.basename(filePath, 'log');
+      const basename = path.basename(filePath, "log");
       const outputPath = path.join(dir, `${basename}processed.by-app.log`);
       appendFile(outputPath, processedContent, true);
     }
   } catch (error) {
-    console.error('Failed to rebuild processed log:', error);
+    logger.error("Failed to rebuild processed log:", error);
   }
 }
 
 export async function initializeKeylogger() {
   // Load initial preferences
-  preferences = await loadPreferences();
-  
+  preferences = loadPreferences();
+
   // Set up periodic re-processing of logs
   setInterval(() => {
     rebuildLogByApp(currentKeyLogFile());
@@ -349,7 +409,7 @@ export async function initializeKeylogger() {
 
   keylogger.addListener((event, down) => {
     const { raw } = parseKeyEvent(event, down);
-    
+
     // Write to raw log
     if (raw) {
       appendFile(currentKeyLogFile(), raw);
@@ -359,4 +419,8 @@ export async function initializeKeylogger() {
 
 export function updateKeyloggerPreferences(newPrefs: Preferences) {
   preferences = newPrefs;
+}
+
+export function getCurrentApplication(): string {
+  return currentApplication;
 }

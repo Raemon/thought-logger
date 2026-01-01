@@ -1,34 +1,29 @@
-export interface ScreenshotPreferences {
-  screenshotActive: boolean;
-  screenshotPeriod: number;
-  screenshotQuality: number;
+import fs from "node:fs";
+import path from "path";
+
+import { app } from "electron";
+import { DEFAULT_PREFERENCES, Preferences } from "./types/preferences.d";
+
+const userDataPath = app.getPath("userData");
+const preferencesPath = path.join(userDataPath, "preferences.json");
+
+export async function savePreferences(
+  prefs: Partial<Preferences>,
+): Promise<Preferences> {
+  const currentPrefs = loadPreferences();
+  const newPrefs = { ...currentPrefs, ...prefs };
+  await fs.promises.writeFile(
+    preferencesPath,
+    JSON.stringify(newPrefs, null, 2),
+  );
+  return newPrefs;
 }
 
-export interface SummaryPreferences {
-  dailySummaryPrompt: string;
-  weeklySummaryPrompt: string;
-  summaryModel: string;
+export function loadPreferences(): Preferences {
+  try {
+    const data = fs.readFileSync(preferencesPath, "utf-8");
+    return { ...DEFAULT_PREFERENCES, ...JSON.parse(data) };
+  } catch {
+    return DEFAULT_PREFERENCES;
+  }
 }
-
-export interface Preferences extends ScreenshotPreferences, SummaryPreferences {
-  blockedApps: string[];
-}
-
-export const DEFAULT_PREFERENCES: Preferences = {
-  screenshotActive: true,
-  screenshotPeriod: 60 * 4,
-  screenshotQuality: 35,
-  blockedApps: [
-    "Signal",
-    "Signal Desktop",
-    "Messenger",
-    "Messages",
-    "WhatsApp",
-    "Slack",
-  ],
-  dailySummaryPrompt:
-    "Please analyze this computer activity log and summarize the major projects and tasks worked on:",
-  weeklySummaryPrompt:
-    "Please analyze this computer activity log and summarize the major projects and tasks worked on:",
-  summaryModel: "anthropic/claude-3.5-sonnet", // TODO select this from the available models
-};

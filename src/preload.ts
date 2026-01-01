@@ -1,23 +1,43 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { Preferences } from "./preferences";
-import { SerializedLog } from "./types/files";
+import { Preferences } from "./types/preferences.d";
+import { Summary } from "./types/files.d";
 
 contextBridge.exposeInMainWorld("permissions", {
   requestPermissionsStatus: () =>
     ipcRenderer.invoke("REQUEST_PERMISSIONS_STATUS"),
 });
 
+contextBridge.exposeInMainWorld("errors", {
+  getLatestError: () => ipcRenderer.invoke("GET_LATEST_ERROR"),
+  getRecentErrors: () => ipcRenderer.invoke("GET_RECENT_ERRORS"),
+  onLatestError: (callback: (message: string) => void) => {
+    const handler = (_event: any, message: string) => callback(message);
+    ipcRenderer.on("LATEST_ERROR", handler);
+    return () => ipcRenderer.removeListener("LATEST_ERROR", handler);
+  },
+  onRecentErrors: (callback: (messages: string[]) => void) => {
+    const handler = (_event: any, messages: string[]) => callback(messages);
+    ipcRenderer.on("RECENT_ERRORS", handler);
+    return () => ipcRenderer.removeListener("RECENT_ERRORS", handler);
+  },
+});
+
 const userData: UserData = {
   openUserDataFolder: () => ipcRenderer.send("OPEN_USER_DATA_FOLDER"),
   getUserDataFolder: () => ipcRenderer.invoke("GET_USER_DATA_FOLDER"),
+  openDebugLogsFolder: () => ipcRenderer.send("OPEN_DEBUG_LOGS_FOLDER"),
+  getDebugLogsFolder: () => ipcRenderer.invoke("GET_DEBUG_LOGS_FOLDER"),
   openFile: (path: string) => ipcRenderer.send("OPEN_FILE", path),
   openExternalUrl: (url: string) => ipcRenderer.send("OPEN_EXTERNAL_URL", url),
   readFile: (path: string) => ipcRenderer.invoke("READ_FILE", path),
-  generateAISummary: (log: SerializedLog) =>
+  generateAISummary: (log: Summary) =>
     ipcRenderer.invoke("GENERATE_AI_SUMMARY", log),
   getRecentLogs: () => ipcRenderer.invoke("GET_RECENT_LOGS"),
-  onUpdateRecentLogs: (callback: (logs: SerializedLog[]) => void) =>
-    ipcRenderer.on("UPDATE_RECENT_LOGS", (_event, logs) => callback(logs)),
+  getRecentApps: () => ipcRenderer.invoke("GET_RECENT_APPS"),
+  onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) =>
+    ipcRenderer.on("UPDATE_RECENT_LOGS", (_event, summaries) =>
+      callback(summaries),
+    ),
 };
 contextBridge.exposeInMainWorld("userData", userData);
 
@@ -30,5 +50,6 @@ contextBridge.exposeInMainWorld("preferences", {
 contextBridge.exposeInMainWorld("openRouter", {
   checkApiKey: () => ipcRenderer.invoke("CHECK_API_KEY"),
   saveApiKey: (apiKey: string) => ipcRenderer.invoke("SAVE_API_KEY", apiKey),
-  getAvailableModels: () => ipcRenderer.invoke("GET_AVAILABLE_MODELS"),
+  getAvailableModels: (imageSupport: boolean = false) =>
+    ipcRenderer.invoke("GET_AVAILABLE_MODELS", imageSupport),
 });

@@ -1,25 +1,10 @@
 import React, { ReactElement } from "react";
 import { format, startOfWeek, endOfWeek, setDefaultOptions } from "date-fns";
-import { SerializedLog, SerializedScopeTypes } from "../types/files.d";
+import { Summary, SummaryScopeTypes } from "../types/files.d";
 
 setDefaultOptions({
   weekStartsOn: 1,
 });
-
-const getFormattedFile = (content: string): string => {
-  if (!content) return "Loading...";
-  if (!content.match(/1\. /)) {
-    return content;
-  }
-  const newContent = "1. " + content.split("1.")[1];
-  const paragraphs = newContent.split(/\n\s*\n/);
-  // Check if the last paragraph starts with a number
-  const last = paragraphs[paragraphs.length - 1];
-  if (last && !/^\d/.test(last.trim())) {
-    paragraphs.pop();
-  }
-  return paragraphs.join("\n\n");
-};
 
 function formatDateHeader(date: Date, weekly: boolean = false) {
   const weekStart = startOfWeek(date);
@@ -46,71 +31,81 @@ function formatDateHeader(date: Date, weekly: boolean = false) {
   return weekly ? `Week of ${weekStartStr} to ${weekEndStr}` : dayDateStr;
 }
 
-export default function Summary({ log }: { log: SerializedLog }): ReactElement {
+export default function SummaryComponent({
+  log,
+}: {
+  log: Summary;
+}): ReactElement {
   const date = log.date;
   const dateStr = format(date, "yyyy-MM-dd");
+  const weekStr = format(date, "YYYY'W'ww", {
+    useAdditionalWeekYearTokens: true,
+  });
+  const firstKeylog = log.keylogs[0];
+  const week = log.scope === SummaryScopeTypes.Week;
   return (
-    <div key={dateStr} className="mb-2.5" id={`day-${dateStr}`}>
+    <div
+      key={dateStr}
+      className="mb-2.5"
+      id={week ? `week-${weekStr}` : `day-${dateStr}`}
+    >
       <div className="mb-1 font-bold flex items-center">
         <span className="mr-auto">
-          {formatDateHeader(date, log.scope === SerializedScopeTypes.Week)}
+          {formatDateHeader(date, log.scope === SummaryScopeTypes.Week)}
         </span>
-        <button
-          className={
-            (log.loading
-              ? "bg-gray-300 opacity-50 cursor-not-allowed "
-              : "bg-blue-500 hover:bg-blue-700 ") +
-            "text-white font-bold rounded ml-2 px-2 py-0.5 text-xs"
-          }
-          onClick={() => window.userData.generateAISummary(log)}
-          disabled={log.loading}
-        >
-          regenerate summary
-        </button>
-        {log.rawPath && (
+        {log.path && (
           <button
-            className="ml-2 px-2 py-2 text-xs text-blue-800 font-normal"
-            onClick={() =>
-              window.userData.openExternalUrl(`file://${log.rawPath}`)
+            className={
+              (log.loading
+                ? "bg-gray-300 opacity-50 cursor-not-allowed "
+                : "bg-blue-500 hover:bg-blue-700 ") +
+              "text-white font-bold rounded ml-2 px-2 py-0.5 text-xs"
             }
+            onClick={() => window.userData.generateAISummary(log)}
+            disabled={log.loading}
           >
-            Raw
+            regenerate summary
           </button>
         )}
-        {log.appPath && (
-          <button
-            className="ml-2 px-2 py-0.5 text-xs text-green-800 font-normal"
-            onClick={() =>
-              window.userData.openExternalUrl(`file://${log.appPath}`)
-            }
-          >
-            By App
-          </button>
-        )}
-        {log.chronoPath && (
-          <button
-            className="ml-2 px-2 py-0.5 text-xs text-green-800 font-normal"
-            onClick={() =>
-              window.userData.openExternalUrl(`file://${log.chronoPath}`)
-            }
-          >
-            Chronological
-          </button>
+        {log.scope === SummaryScopeTypes.Day && firstKeylog && (
+          <>
+            <button
+              className="ml-2 px-2 py-2 text-xs text-blue-800 font-normal"
+              onClick={() =>
+                window.userData.openExternalUrl(`file://${firstKeylog.rawPath}`)
+              }
+            >
+              Raw
+            </button>
+            <button
+              className="ml-2 px-2 py-0.5 text-xs text-green-800 font-normal"
+              onClick={() =>
+                window.userData.openExternalUrl(`file://${firstKeylog.appPath}`)
+              }
+            >
+              By App
+            </button>
+            <button
+              className="ml-2 px-2 py-0.5 text-xs text-green-800 font-normal"
+              onClick={() =>
+                window.userData.openExternalUrl(
+                  `file://${firstKeylog.chronoPath}`,
+                )
+              }
+            >
+              Chronological
+            </button>
+          </>
         )}
       </div>
       <div className="flex flex-col gap-1">
         <div
           className={
             "whitespace-pre-wrap p-3 rounded text-sm " +
-            (log.scope === SerializedScopeTypes.Day
-              ? "bg-gray-100"
-              : "bg-sky-50")
+            (log.scope === SummaryScopeTypes.Day ? "bg-gray-100" : "bg-sky-50")
           }
         >
-          {log.loading && "Generating a summary..."}
-          {log.summaryContents &&
-            !log.loading &&
-            getFormattedFile(log.summaryContents)}
+          {log.loading ? "Generating a summary..." : log.contents}
         </div>
       </div>
     </div>
