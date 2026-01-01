@@ -16,7 +16,6 @@ export function ScreenshotController() {
     "loading...", // FIXME
   ]);
   const [recentApplications, setRecentApplications] = useState<string[]>([]);
-  const [modelInitialized, setModelInitialized] = useState<boolean>(false);
 
   useEffect(() => {
     window.preferences.getPreferences().then((prefs) => setPrefs(prefs));
@@ -25,23 +24,6 @@ export function ScreenshotController() {
       .then((models) => setAvailableModels(models));
     window.userData.getRecentApps().then((apps) => setRecentApplications(apps));
   }, []);
-
-  useEffect(() => {
-    if (modelInitialized) return;
-    if (
-      availableModels.length > 0 &&
-      availableModels[0] !== "loading..."
-    ) {
-      if (!availableModels.includes(prefs.screenshotModel)) {
-        const model = availableModels[0];
-        setPrefs((prevPrefs) => ({ ...prevPrefs, screenshotModel: model }));
-        window.preferences.setPreferences({
-          screenshotModel: model,
-        });
-      }
-      setModelInitialized(true);
-    }
-  }, [availableModels, modelInitialized]);
 
   const updatePreferences = async (
     newPrefs: Partial<ScreenshotPreferences>,
