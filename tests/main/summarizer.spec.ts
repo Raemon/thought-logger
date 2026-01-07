@@ -7,7 +7,6 @@ import {
   summarize,
 } from "../../src/electron/summarizer";
 import { Summary, SummaryScopeTypes } from "../../src/types/files.d";
-import { Preferences } from "src/types/preferences";
 
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
@@ -28,9 +27,11 @@ vi.mock("electron", () => {
   };
 });
 
-vi.mock(import("../../src/electron/credentials"), () => {
+vi.mock("../../src/electron/credentials", async () => {
+  const origModule = await vi.importActual("../../src/electron/credentials");
   return {
-    getApiKey: () => Promise.resolve("password"),
+    ...origModule,
+    getSecret: (_account: string) => Promise.resolve("password"),
   };
 });
 

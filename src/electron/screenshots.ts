@@ -10,7 +10,7 @@ import { z } from "zod";
 import { getCurrentApplication } from "../keylogger";
 
 import logger from "../logging";
-import { getApiKey } from "./credentials";
+import { getSecret, OPEN_ROUTER } from "./credentials";
 
 const ScreenshotText = z.object({
   project: z
@@ -31,7 +31,7 @@ async function extractTextFromImage(
   const base64Image = imageBuffer.toString("base64");
   const imageUrl = `data:image/jpeg;base64,${base64Image}`;
   try {
-    const apiKey = await getApiKey();
+    const apiKey = await getSecret(OPEN_ROUTER);
     if (!apiKey) {
       logger.error("API key not found in keychain");
       throw "ERROR: OpenRouter API key is not set. Use setApiKey() to set your API key.";

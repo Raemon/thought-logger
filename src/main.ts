@@ -25,7 +25,7 @@ import logger, {
   updateDebugPreferences,
 } from "./logging";
 import { getRecentApps, getRecentSummaries } from "./electron/files";
-import { getApiKey, saveApiKey } from "./electron/credentials";
+import { getSecret, OPEN_ROUTER, OPENPGP, saveSecret } from "./electron/credentials";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
@@ -149,12 +149,12 @@ ipcMain.on("OPEN_EXTERNAL_URL", (_event, url) => {
   });
 });
 
-ipcMain.handle("CHECK_API_KEY", () => {
-  return getApiKey();
+ipcMain.handle("CHECK_SECRET", (_event, account: string) => {
+  return getSecret(account);
 });
 
-ipcMain.handle("SAVE_API_KEY", (_event, apiKey: string) => {
-  return saveApiKey(apiKey);
+ipcMain.handle("SAVE_SECRET", (_event, account: string, secret: string) => {
+  return saveSecret(account, secret);
 });
 
 ipcMain.handle("GET_AVAILABLE_MODELS", (_event, imageSupport) =>

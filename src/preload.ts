@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { Preferences } from "./types/preferences.d";
 import { Summary } from "./types/files.d";
+import { OPEN_ROUTER } from "./electron/credentials";
 
 contextBridge.exposeInMainWorld("permissions", {
   requestPermissionsStatus: () =>
@@ -48,8 +49,8 @@ contextBridge.exposeInMainWorld("preferences", {
 });
 
 contextBridge.exposeInMainWorld("openRouter", {
-  checkApiKey: () => ipcRenderer.invoke("CHECK_API_KEY"),
-  saveApiKey: (apiKey: string) => ipcRenderer.invoke("SAVE_API_KEY", apiKey),
+  checkApiKey: () => ipcRenderer.invoke("CHECK_SECRET", OPEN_ROUTER),
+  saveApiKey: (apiKey: string) => ipcRenderer.invoke("SAVE_SECRET", OPEN_ROUTER, apiKey),
   getAvailableModels: (imageSupport: boolean = false) =>
     ipcRenderer.invoke("GET_AVAILABLE_MODELS", imageSupport),
 });

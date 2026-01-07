@@ -36,38 +36,39 @@ try {
 
 // Constants for keychain access
 const SERVICE_NAME = "ThoughtLogger";
-const ACCOUNT_NAME = "OpenRouter";
+export const OPEN_ROUTER: string = "OpenRouter";
 
-export async function getApiKey(): Promise<string | null> {
+export async function getSecret(account: string): Promise<string | null> {
   try {
-    return await keytar.getPassword(SERVICE_NAME, ACCOUNT_NAME);
+    return await keytar.getPassword(SERVICE_NAME, account);
   } catch (error) {
     logger.error("Error accessing keychain:", error);
     return null;
   }
 }
 
-export async function saveApiKey(
-  apiKey: string,
+export async function saveSecret(
+  account: string,
+  secret: string,
 ): Promise<{ success: boolean; message: string }> {
   try {
-    if (!apiKey || apiKey.trim() === "") {
+    if (!secret || secret.trim() === "") {
       return {
         success: false,
-        message: "API key cannot be empty",
+        message: `${account} secret cannot be empty`,
       };
     }
 
-    await keytar.setPassword(SERVICE_NAME, ACCOUNT_NAME, apiKey);
+    await keytar.setPassword(SERVICE_NAME, account, secret);
     return {
       success: true,
-      message: "API key saved successfully",
+      message: `${account} secret saved successfully`,
     };
   } catch (error) {
-    logger.error("Failed to save API key:", error);
+    logger.error(`Failed to save ${account} secret:`, error);
     return {
       success: false,
-      message: `Failed to save API key: ${error.message}`,
+      message: `Failed to save ${account} secret: ${error.message}`,
     };
   }
 }

@@ -7,7 +7,7 @@ import { Keylog, Summary, SummaryScopeTypes } from "../types/files.d";
 import logger from "../logging";
 import { loadPreferences } from "../preferences";
 import { getRecentSummaries, maybeReadContents } from "./files";
-import { getApiKey } from "./credentials";
+import { getSecret, OPEN_ROUTER } from "./credentials";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -22,7 +22,7 @@ export interface OpenRouterResponse {
 export async function getAvailableModels(
   imageSupport: boolean = false,
 ): Promise<string[]> {
-  const apiKey = await getApiKey();
+  const apiKey = await getSecret(OPEN_ROUTER);
   const response = await fetch("https://openrouter.ai/api/v1/models", {
     method: "GET",
     headers: {
@@ -58,7 +58,7 @@ async function generateAISummary(
   maxRetries = 3,
 ): Promise<string> {
   logger.debug("Generating AI summary");
-  const apiKey = await getApiKey();
+  const apiKey = await getSecret(OPEN_ROUTER);
 
   let lastError: Error | null = null;
 
