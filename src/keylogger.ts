@@ -16,7 +16,7 @@ const BINARY_NAME = "MacKeyServer";
 
 const binaryPath = app.isPackaged
   ? path.join(process.resourcesPath, BINARY_NAME)
-  : path.join(app.getAppPath(), "src", "native", BINARY_NAME);
+  : path.join(app.getAppPath(), "bin", BINARY_NAME);
 
 const keylogger = new GlobalKeyboardListener({
   mac: { serverPath: binaryPath },

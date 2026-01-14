@@ -12,7 +12,7 @@ const config: ForgeConfig = {
     asar: true,
     osxSign: {},
     extraResource: [
-      "./src/native/MacKeyServer",
+      "./bin/MacKeyServer",
       "./node_modules/keytar/build/Release/keytar.node"
     ],
   },
