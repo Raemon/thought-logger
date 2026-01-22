@@ -10,7 +10,9 @@ let latestError: string | null = null;
 const latestErrorListeners: ((message: string) => void)[] = [];
 
 export const getLatestError = (): string | null => latestError;
-export const onLatestError = (listener: (message: string) => void): (() => void) => {
+export const onLatestError = (
+  listener: (message: string) => void,
+): (() => void) => {
   latestErrorListeners.push(listener);
   return () => {
     const index = latestErrorListeners.indexOf(listener);
@@ -21,7 +23,9 @@ export const onLatestError = (listener: (message: string) => void): (() => void)
 };
 
 export const getRecentErrors = (): string[] => recentErrors;
-export const onRecentErrors = (listener: (messages: string[]) => void): (() => void) => {
+export const onRecentErrors = (
+  listener: (messages: string[]) => void,
+): (() => void) => {
   recentErrorsListeners.push(listener);
   return () => {
     const index = recentErrorsListeners.indexOf(listener);
@@ -44,8 +48,7 @@ class LatestErrorTransport extends Transport {
   log(info: any, callback: () => void) {
     setImmediate(() => this.emit("logged", info));
     if (info.level === "error") {
-      const formattedMessage =
-        info[Symbol.for("message")] || `${info.message}`;
+      const formattedMessage = info[Symbol.for("message")] || `${info.message}`;
       latestError = formattedMessage;
       recentErrors = [formattedMessage, ...recentErrors].slice(0, 3);
       for (const listener of latestErrorListeners) {
@@ -63,6 +66,8 @@ const logger = winston.createLogger({
   levels: winston.config.syslog.levels,
   format,
   transports: [new winston.transports.Console({ level: "info" })],
+  handleExceptions: true,
+  handleRejections: true,
 });
 
 logger.add(new LatestErrorTransport({ level: "debug" }));
