@@ -236,10 +236,18 @@ export async function getRecentApps(): Promise<string[]> {
     );
 
   for (let keylog of keylogs) {
-    const content = await fs.readFile(keylog.appPath);
-    const appRegex = /=== (.*) ===/g;
-    const matches = content.toLocaleString().matchAll(appRegex);
-    matches.forEach((m) => apps.add(m[1]));
+    try {
+      const content = await fs.readFile(keylog.appPath);
+      const appRegex = /=== (.*) ===/g;
+      const matches = content.toLocaleString().matchAll(appRegex);
+      matches.forEach((m) => apps.add(m[1]));
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        logger.info(`Keylog for ${keylog.date} didn't exist`);
+      } else {
+        throw error;
+      }
+    }
   }
 
   return Array.from(apps);

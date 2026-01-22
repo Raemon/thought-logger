@@ -210,9 +210,17 @@ export async function summarize(summary: Summary): Promise<void> {
     logData += "Keylogger data:\n";
 
     for (let keylog of summary.keylogs) {
-      let text = await fs.readFile(keylog.rawPath, { encoding: "utf-8" });
-      let filename = path.basename(keylog.rawPath);
-      logData += `${filename}:\n${text}\n\n`;
+      try {
+        let text = await fs.readFile(keylog.rawPath, { encoding: "utf-8" });
+        let filename = path.basename(keylog.rawPath);
+        logData += `${filename}:\n${text}\n\n`;
+      } catch (error) {
+        if (error.code === "ENOENT") {
+          logger.info(`Keylog for ${keylog.date} didn't exist`);
+        } else {
+          throw error;
+        }
+      }
     }
 
     logData += "Screenshot Summaries:\n";
