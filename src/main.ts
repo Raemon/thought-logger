@@ -1,3 +1,4 @@
+import "source-map-support/register";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "path";
 import fs from "node:fs/promises";
