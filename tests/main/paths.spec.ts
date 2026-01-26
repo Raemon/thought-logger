@@ -1,10 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
-import {
-  initializeMasterKey,
-  readEncryptedFile,
-  writeEncryptedFile,
-} from "src/electron/paths";
+import { initializeMasterKey, readFile, writeFile } from "src/electron/paths";
 
 vi.mock("electron", () => {
   return {
@@ -42,8 +38,18 @@ describe("encryption", () => {
   it("generates files readable by the program", async () => {
     const origText = "Hello, world!";
 
-    await writeEncryptedFile("/foo.log", origText);
-    const newText = await readEncryptedFile("/foo.log");
+    await writeFile("/foo.log", origText);
+    const newText = await readFile("/foo.log");
     expect(newText).toBe(origText);
+  });
+
+  it("appends files correctly", async () => {
+    const textA = "Hello, ";
+    const textB = "world!";
+
+    await writeFile("/foo.log", textA);
+    await writeFile("/foo.log", textB, true);
+    const result = await readFile("/foo.log");
+    expect(result).toBe(textA + textB);
   });
 });

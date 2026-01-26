@@ -9,7 +9,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types";
 import { z } from "zod";
 import logger from "../logging";
-import { readEncryptedFile } from "./paths";
+import { readFile } from "./paths";
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 
@@ -92,7 +92,7 @@ async function getWeekContents({
   const contents = await Promise.all(
     filePaths.map(async (filePath) => {
       try {
-        return readEncryptedFile(filePath);
+        return readFile(filePath);
       } catch (error) {
         return `Unable to read file: ${filePath}\n`;
       }
@@ -110,7 +110,7 @@ async function handleLogFileRequest(
   description: string,
 ) {
   try {
-    const data = await readEncryptedFile(filePath);
+    const data = await readFile(filePath);
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end(data);
   } catch (error) {
@@ -195,7 +195,7 @@ async function handleMCPPostRequest(
             parsedDate,
             "processed.chronological.",
           );
-          text = await readEncryptedFile(filePath);
+          text = await readFile(filePath);
         } catch (error) {
           text = `Unable to fetch keylog data for ${date}: ${error}`;
         }

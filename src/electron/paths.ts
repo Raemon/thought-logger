@@ -167,7 +167,7 @@ async function getMasterKey(password: string): Promise<Uint8Array> {
   return decryptWithKey(key, masterKey);
 }
 
-export async function readEncryptedFile(filePath: string): Promise<string> {
+export async function readFile(filePath: string): Promise<string> {
   try {
     const rawData = await fs.readFile(filePath);
     return Buffer.from(rawData).toString("utf8");
@@ -189,7 +189,7 @@ export async function readEncryptedFile(filePath: string): Promise<string> {
   return Buffer.from(plaintext).toString("utf8");
 }
 
-export async function writeEncryptedFile(
+export async function writeFile(
   filePath: string,
   contents: string,
   append: boolean = false,
@@ -202,7 +202,7 @@ export async function writeEncryptedFile(
 
   if (append) {
     try {
-      fileData = await readEncryptedFile(filePath);
+      fileData = await readFile(filePath);
     } catch (error) {
       if (error.code !== "ENOENT") {
         throw error;
@@ -222,35 +222,6 @@ export async function writeEncryptedFile(
     fileName = filePath;
   }
   return fs.writeFile(fileName, fileData);
-}
-
-/**
- * Append `content` to the end of `filePath`, creating any parent
- * directories if necessary.
- */
-export async function appendFile(
-  filePath: string,
-  content: string,
-  overwrite = false,
-): Promise<void> {
-  try {
-    await fs.access(filePath);
-  } catch (err: unknown) {
-    if (err instanceof Error && "code" in err && err.code === "ENOENT") {
-      const fileDir = path.dirname(filePath);
-      await fs.mkdir(fileDir, { recursive: true });
-    } else {
-      throw err;
-    }
-  }
-
-  let plaintext = content;
-  if (!overwrite) {
-    const existingData = await readEncryptedFile(filePath);
-    plaintext = existingData + content;
-  }
-
-  await writeEncryptedFile(filePath, plaintext);
 }
 
 /**

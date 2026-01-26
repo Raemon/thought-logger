@@ -31,7 +31,7 @@ import {
   LOG_FILE_ENCRYPTION,
   saveSecret,
 } from "./electron/credentials";
-import { readEncryptedFile } from "./electron/paths";
+import { readFile } from "./electron/paths";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
@@ -169,7 +169,7 @@ ipcMain.handle("GET_AVAILABLE_MODELS", (_event, imageSupport) =>
 
 ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
   try {
-    const content = await readEncryptedFile(filePath);
+    const content = await readFile(filePath);
     return content;
   } catch (error) {
     logger.error("Failed to read file:", error);

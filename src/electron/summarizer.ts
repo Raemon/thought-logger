@@ -8,7 +8,7 @@ import logger from "../logging";
 import { loadPreferences } from "../preferences";
 import { getRecentSummaries, maybeReadContents } from "./files";
 import { getSecret, OPEN_ROUTER } from "./credentials";
-import { readEncryptedFile } from "./paths";
+import { readFile } from "./paths";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -212,7 +212,7 @@ export async function summarize(summary: Summary): Promise<void> {
 
     for (let keylog of summary.keylogs) {
       try {
-        let text = await readEncryptedFile(keylog.rawPath);
+        let text = await readFile(keylog.rawPath);
         let filename = path.basename(keylog.rawPath);
         logData += `${filename}:\n${text}\n\n`;
       } catch (error) {
