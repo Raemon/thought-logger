@@ -13,6 +13,7 @@ export default defineConfig({
       // Remove keytar from externals - we'll handle it separately
       external: [],
     },
+    sourcemap: true,
   },
   test: {
     include: ["tests/main/**/*.spec.ts"],
