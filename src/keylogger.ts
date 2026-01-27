@@ -276,8 +276,21 @@ const specialChars = new Set([
 
 /** Rebuild log chronologically, filtering out empty app sections */
 export function rebuildChronologicalLog(filePath: string) {
+  let rawText: string;
+
   try {
-    const rawText = fs.readFileSync(filePath, "utf-8");
+    rawText = fs.readFileSync(filePath, "utf-8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      logger.info(`Skipping chronological log rebuild for ${filePath}`);
+    } else {
+      throw error;
+    }
+
+    return;
+  }
+
+  try {
     const lines = rawText.split("\n");
     let processedContent = "";
 
@@ -335,8 +348,21 @@ export function rebuildChronologicalLog(filePath: string) {
 
 // Refactor rebuildLogByApp to use the shared processRawText function
 export function rebuildLogByApp(filePath: string) {
+  let rawText: string;
+
   try {
-    const rawText = fs.readFileSync(filePath, "utf-8");
+    rawText = fs.readFileSync(filePath, "utf-8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      logger.info(`Skipping log by app rebuild for ${filePath}`);
+    } else {
+      throw error;
+    }
+
+    return;
+  }
+
+  try {
     const lines = rawText.split("\n");
     const appBuffers = new Map<string, string>();
     let activeApp = "Unknown";
