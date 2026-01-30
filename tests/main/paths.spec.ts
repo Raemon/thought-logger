@@ -26,9 +26,13 @@ vi.mock("electron", () => {
 
 vi.mock("../../src/electron/credentials", async () => {
   const origModule = await vi.importActual("../../src/electron/credentials");
+  let secret = "password";
   return {
     ...origModule,
-    getSecret: (_account: string) => Promise.resolve("password"),
+    getSecret: async (_account: string) => Promise.resolve(secret),
+    setSecret: async (_account: string, newSecret: string) => {
+      secret = newSecret;
+    },
   };
 });
 
