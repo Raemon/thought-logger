@@ -35,6 +35,7 @@
     "@types/react-dom": "^19.0.3",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
+    "@vitejs/plugin-react": "^5.1.2",
     "@vitest/browser": "^3.2.4",
     "autoprefixer": "^10.4.21",
     "electron": "33.3.1",
