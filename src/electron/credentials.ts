@@ -36,8 +36,8 @@ try {
 
 // Constants for keychain access
 const SERVICE_NAME = "ThoughtLogger";
-export const OPEN_ROUTER: string = "OpenRouter";
-export const LOG_FILE_ENCRYPTION: string = "Log file encryption";
+export const OPEN_ROUTER = "OpenRouter";
+export const LOG_FILE_ENCRYPTION = "Log file encryption";
 
 export async function getSecret(account: string): Promise<string | null> {
   try {

@@ -132,7 +132,7 @@ export async function initializeMasterKey(password: string): Promise<void> {
   await sodium.ready;
 
   try {
-    let data = await fs.readFile(masterKeyPath);
+    const data = await fs.readFile(masterKeyPath);
     salt = data.subarray(0, sodium.crypto_pwhash_SALTBYTES);
     key = deriveKey(password, salt);
     const encMasterKey = data.subarray(sodium.crypto_pwhash_SALTBYTES);
@@ -192,7 +192,7 @@ export async function readFile(filePath: string): Promise<string> {
 export async function writeFile(
   filePath: string,
   contents: string,
-  append: boolean = false,
+  append = false,
 ): Promise<void> {
   await sodium.ready;
   const password = await getSecret(LOG_FILE_ENCRYPTION);

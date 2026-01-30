@@ -21,7 +21,7 @@ export interface OpenRouterResponse {
 }
 
 export async function getAvailableModels(
-  imageSupport: boolean = false,
+  imageSupport = false,
 ): Promise<string[]> {
   const apiKey = await getSecret(OPEN_ROUTER);
   const response = await fetch("https://openrouter.ai/api/v1/models", {
@@ -156,9 +156,9 @@ export async function needsSummary(summary: Summary): Promise<boolean> {
 async function checkAndGenerateSummaries() {
   const summaries = await getRecentSummaries();
 
-  for (let summary of summaries) {
+  for (const summary of summaries) {
     logger.debug(`Checking summary of ${summary.path}`);
-    for (let keylog of summary.keylogs) {
+    for (const keylog of summary.keylogs) {
       if (needsProcessing(keylog)) {
         processKeylog(keylog);
       }
@@ -200,7 +200,7 @@ app.whenReady().then(async () => {
 export async function summarize(summary: Summary): Promise<void> {
   logger.debug(`Generating summary for ${summary.path}`);
   try {
-    let logData: string = "";
+    let logData = "";
     const {
       dailySummaryPrompt,
       weeklySummaryPrompt,
@@ -210,10 +210,10 @@ export async function summarize(summary: Summary): Promise<void> {
 
     logData += "Keylogger data:\n";
 
-    for (let keylog of summary.keylogs) {
+    for (const keylog of summary.keylogs) {
       try {
-        let text = await readFile(keylog.rawPath);
-        let filename = path.basename(keylog.rawPath);
+        const text = await readFile(keylog.rawPath);
+        const filename = path.basename(keylog.rawPath);
         logData += `${filename}:\n${text}\n\n`;
       } catch (error) {
         if (error.code === "ENOENT") {
@@ -226,13 +226,13 @@ export async function summarize(summary: Summary): Promise<void> {
 
     logData += "Screenshot Summaries:\n";
 
-    for (let screenshot of summary.screenshots) {
-      let text = await maybeReadContents(screenshot.summaryPath);
+    for (const screenshot of summary.screenshots) {
+      const text = await maybeReadContents(screenshot.summaryPath);
       if (text === null) {
         continue;
       }
-      let excerpt = text.split(" ").slice(0, screenshotSummaryWindow).join(" ");
-      let filename = path.basename(screenshot.summaryPath, ".txt");
+      const excerpt = text.split(" ").slice(0, screenshotSummaryWindow).join(" ");
+      const filename = path.basename(screenshot.summaryPath, ".txt");
       logData += `Taken on ${filename}:\n${excerpt}\n\n`;
     }
 
