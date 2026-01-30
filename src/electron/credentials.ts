@@ -48,7 +48,7 @@ export async function getSecret(account: string): Promise<string | null> {
   }
 }
 
-export async function saveSecret(
+export async function setSecret(
   account: string,
   secret: string,
 ): Promise<{ success: boolean; message: string }> {

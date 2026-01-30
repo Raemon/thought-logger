@@ -29,7 +29,7 @@ import {
   getSecret,
   OPEN_ROUTER,
   LOG_FILE_ENCRYPTION,
-  saveSecret,
+  setSecret,
 } from "./electron/credentials";
 import {
   readFile,
@@ -167,7 +167,7 @@ ipcMain.handle("SAVE_SECRET", (_event, account: string, secret: string) => {
   if (account === LOG_FILE_ENCRYPTION) {
     initializeMasterKey(secret);
   }
-  return saveSecret(account, secret);
+  return setSecret(account, secret);
 });
 
 ipcMain.handle(
