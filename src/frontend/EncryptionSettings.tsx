@@ -1,31 +1,62 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 const EncryptionSettings = () => {
   const [saving, setSaving] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
 
-  const savePassword = useCallback(async () => {
+  const [passwordStatus, setPasswordStatus] = useState<{
+    hasPassword: boolean;
+    message: string;
+  } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    isError: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    checkPassword();
+  }, []);
+
+  const checkPassword = async () => {
+    const status = await window.encryption.checkPassword();
+    setPasswordStatus(status);
+  };
+
+  const savePassword = async () => {
     setSaving(true);
-    await window.encryption.changePassword(password);
-    setSaving(false);
-  }, [password, setSaving]);
+
+    try {
+      const result = await window.encryption.changePassword(password);
+
+      if (result.success) {
+        setMessage({ text: result.message, isError: false });
+        setPassword("");
+        setConfirmation("");
+        checkPassword();
+      } else {
+        setMessage({ text: result.message, isError: true });
+      }
+    } catch (error) {
+      setMessage({
+        text: "An error occurred while saving the API key",
+        isError: true,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="p-5">
       <h3 className="text-xl mb-2.5">Encryption Password</h3>
 
-      <div className="flex items-center mb-2.5">
-        <input
-          type="checkbox"
-          id="encrypt"
-          className="mr-2 h-5 w-5"
-          // checked={debugPrefs.encryptFiles}
-          // onChange={(e) => handleEncryptFilesChange(e.target.checked)}
-        />
-        <label htmlFor="encrypt" className="text-lg">
-          Encrypt log files and screenshots
-        </label>
+      <div>
+        {passwordStatus && (
+          <div style={{ color: passwordStatus.hasPassword ? "#0a0" : "#a00" }}>
+            {passwordStatus.message}
+          </div>
+        )}
       </div>
 
       <div>
@@ -55,9 +86,14 @@ const EncryptionSettings = () => {
             : password !== confirmation
               ? "Passwords don't match"
               : "Save Password"}
-          Save Password
         </button>
       </div>
+
+      {message && (
+        <div style={{ color: message.isError ? "#a00" : "#0a0" }}>
+          {message.text}
+        </div>
+      )}
     </div>
   );
 };

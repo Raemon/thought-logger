@@ -32,6 +32,7 @@ vi.mock("../../src/electron/credentials", async () => {
     getSecret: async (_account: string) => Promise.resolve(secret),
     setSecret: async (_account: string, newSecret: string) => {
       secret = newSecret;
+      return { success: true, message: "Password set successfully" };
     },
   };
 });
@@ -76,7 +77,7 @@ describe("password management", () => {
   });
 
   it("changes password successfully", async () => {
-    const result = await changePassword("password", "newpassword123");
+    const result = await changePassword("newpassword123");
     expect(result.success).toBe(true);
 
     // Verify old password no longer works
@@ -86,17 +87,5 @@ describe("password management", () => {
     // Verify new password works
     const newPasswordValid = await verifyPassword("newpassword123");
     expect(newPasswordValid).toBe(true);
-  });
-
-  it("rejects password change with wrong current password", async () => {
-    const result = await changePassword("wrongpassword", "newpassword123");
-    expect(result.success).toBe(false);
-    expect(result.message).toContain("incorrect");
-  });
-
-  it("rejects empty new password", async () => {
-    const result = await changePassword("password", "");
-    expect(result.success).toBe(false);
-    expect(result.message).toContain("empty");
   });
 });

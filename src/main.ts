@@ -170,12 +170,9 @@ ipcMain.handle("SAVE_SECRET", (_event, account: string, secret: string) => {
   return setSecret(account, secret);
 });
 
-ipcMain.handle(
-  "CHANGE_PASSWORD",
-  async (_event, oldPassword: string, newPassword: string) => {
-    return changePassword(oldPassword, newPassword);
-  },
-);
+ipcMain.handle("CHANGE_PASSWORD", async (_event, newPassword: string) => {
+  return changePassword(newPassword);
+});
 
 ipcMain.handle("GET_AVAILABLE_MODELS", (_event, imageSupport) =>
   getAvailableModels(imageSupport),
