@@ -160,7 +160,7 @@ async function handleMCPPostRequest(
     // New initialization request
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
-      onsessioninitialized: (sessionId) => {
+      onsessioninitialized: (sessionId: string) => {
         // Store the transport by session ID
         transports[sessionId] = transport;
       },
@@ -184,7 +184,7 @@ async function handleMCPPostRequest(
       {
         date: z.string().date(),
       },
-      async ({ date }) => {
+      async ({ date }: { date: string }) => {
         let text: string;
 
         const parsedDate = new Date(date);

@@ -94,8 +94,12 @@ async function extractTextFromImage(
       }
 
       const errorMessage =
-        (typeof errorData === "object" && errorData !== null
-          ? errorData?.error?.message
+        (typeof errorData === "object" &&
+        errorData !== null &&
+        "error" in errorData &&
+        typeof errorData.error === "object" &&
+        "message" in errorData.error
+          ? errorData.error.message
           : null) || `${errorData}`;
 
       const structuredOutputUnsupported =
