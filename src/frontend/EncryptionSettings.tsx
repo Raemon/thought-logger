@@ -39,7 +39,7 @@ const EncryptionSettings = () => {
       }
     } catch (error) {
       setMessage({
-        text: "An error occurred while saving the API key",
+        text: "An error occurred while saving the password",
         isError: true,
       });
     } finally {

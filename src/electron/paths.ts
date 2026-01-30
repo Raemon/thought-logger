@@ -278,6 +278,9 @@ export async function readFile(filePath: string): Promise<string> {
   await sodium.ready;
 
   const password = await getSecret(LOG_FILE_ENCRYPTION);
+  if (!password) {
+    throw new Error("No encryption password configured");
+  }
   const masterKey = await getMasterKey(password);
 
   const plaintext = decryptWithKey(masterKey, fileData);
