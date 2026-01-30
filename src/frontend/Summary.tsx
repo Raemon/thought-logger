@@ -6,7 +6,7 @@ setDefaultOptions({
   weekStartsOn: 1,
 });
 
-function formatDateHeader(date: Date, weekly: boolean = false) {
+function formatDateHeader(date: Date, weekly = false) {
   const weekStart = startOfWeek(date);
   const weekEnd = endOfWeek(date);
   const weekStartStr = weekStart.toLocaleDateString("en-US", {

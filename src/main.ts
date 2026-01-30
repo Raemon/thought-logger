@@ -31,7 +31,11 @@ import {
   LOG_FILE_ENCRYPTION,
   saveSecret,
 } from "./electron/credentials";
-import { readFile } from "./electron/paths";
+import {
+  readFile,
+  changePassword,
+  initializeMasterKey,
+} from "./electron/paths";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
@@ -160,8 +164,18 @@ ipcMain.handle("CHECK_SECRET", (_event, account: string) => {
 });
 
 ipcMain.handle("SAVE_SECRET", (_event, account: string, secret: string) => {
+  if (account === LOG_FILE_ENCRYPTION) {
+    initializeMasterKey(secret);
+  }
   return saveSecret(account, secret);
 });
+
+ipcMain.handle(
+  "CHANGE_PASSWORD",
+  async (_event, oldPassword: string, newPassword: string) => {
+    return changePassword(oldPassword, newPassword);
+  },
+);
 
 ipcMain.handle("GET_AVAILABLE_MODELS", (_event, imageSupport) =>
   getAvailableModels(imageSupport),
