@@ -8,6 +8,7 @@ const ENCRYPTED_FILE_EXT = ".crypt";
 const ENCRYPTION_CPULIMIT = 3;
 const ENCRYPTION_MEMLIMIT = 268435456;
 const userDataPath = app.getPath("userData");
+const masterKeyPath = path.join(userDataPath, "files", "masterkey");
 
 /**
  * Get path to current key log file.
@@ -78,11 +79,97 @@ function deriveKey(password: string, salt: Uint8Array): Uint8Array {
   return key;
 }
 
-export async function readEncryptedFile(filePath: string): Promise<string> {
-  let rawData: Buffer<ArrayBufferLike>;
+function encryptWithKey(
+  key: Uint8Array<ArrayBufferLike>,
+  plaintext: string | Uint8Array<ArrayBufferLike>,
+): Uint8Array {
+  let plainData: Uint8Array<ArrayBufferLike>;
+
+  if (typeof plaintext === "string") {
+    plainData = new TextEncoder().encode(plaintext);
+  } else {
+    plainData = plaintext;
+  }
+
+  const nonce = sodium.randombytes_buf(
+    sodium.crypto_secretbox_NONCEBYTES,
+    "uint8array",
+  ) as Uint8Array;
+
+  const cipherData = sodium.crypto_secretbox_easy(
+    plainData,
+    nonce,
+    key,
+    "uint8array",
+  ) as Uint8Array;
+  const fileData = new Uint8Array(nonce.length + cipherData.length);
+
+  fileData.set(nonce);
+  fileData.set(cipherData, nonce.length);
+  return fileData;
+}
+
+function decryptWithKey(
+  key: Uint8Array<ArrayBufferLike>,
+  data: Uint8Array<ArrayBufferLike>,
+): Uint8Array {
+  const nonce = data.slice(0, sodium.crypto_secretbox_NONCEBYTES);
+  const cipherText = data.slice(sodium.crypto_secretbox_NONCEBYTES);
+
+  return sodium.crypto_secretbox_open_easy(
+    cipherText,
+    nonce,
+    key,
+    "uint8array",
+  ) as Uint8Array;
+}
+
+export async function initializeMasterKey(password: string): Promise<void> {
+  let masterKey: Uint8Array<ArrayBufferLike>;
+  let salt: Uint8Array<ArrayBufferLike>;
+  let key: Uint8Array<ArrayBufferLike>;
+
+  await sodium.ready;
 
   try {
-    rawData = await fs.readFile(filePath);
+    let data = await fs.readFile(masterKeyPath);
+    salt = data.subarray(0, sodium.crypto_pwhash_SALTBYTES);
+    key = deriveKey(password, salt);
+    const encMasterKey = data.subarray(sodium.crypto_pwhash_SALTBYTES);
+    masterKey = decryptWithKey(key, encMasterKey);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      salt = sodium.randombytes_buf(
+        sodium.crypto_pwhash_SALTBYTES,
+        "uint8array",
+      ) as Uint8Array;
+      key = deriveKey(password, salt);
+      masterKey = sodium.crypto_secretbox_keygen("uint8array") as Uint8Array;
+    } else {
+      throw error;
+    }
+  }
+
+  const encryptedMasterKey = encryptWithKey(key, masterKey);
+  const fileData = new Uint8Array(salt.length + encryptedMasterKey.length);
+  fileData.set(salt);
+  fileData.set(encryptedMasterKey, salt.length);
+  await fs.mkdir(path.dirname(masterKeyPath), { recursive: true });
+  await fs.writeFile(masterKeyPath, fileData);
+}
+
+async function getMasterKey(password: string): Promise<Uint8Array> {
+  const fileData = await fs.readFile(masterKeyPath);
+  const salt = fileData.subarray(0, sodium.crypto_pwhash_SALTBYTES);
+  const masterKey = fileData.subarray(sodium.crypto_pwhash_SALTBYTES);
+  const key = deriveKey(password, salt);
+
+  return decryptWithKey(key, masterKey);
+}
+
+export async function readEncryptedFile(filePath: string): Promise<string> {
+  try {
+    const rawData = await fs.readFile(filePath);
     return Buffer.from(rawData).toString("utf8");
   } catch (error) {
     if (error.code !== "ENOENT") {
@@ -90,78 +177,51 @@ export async function readEncryptedFile(filePath: string): Promise<string> {
     }
   }
 
-  rawData = await fs.readFile(`${filePath}.crypt`);
+  const fileData = await fs.readFile(`${filePath}.crypt`);
 
   await sodium.ready;
 
   const password = await getSecret(LOG_FILE_ENCRYPTION);
+  const masterKey = await getMasterKey(password);
 
-  if (password === null) {
-    throw new Error(
-      `Attempted to read encrypted file ${filePath} with no password set`,
-    );
-  }
-
-  const fileData = new Uint8Array(rawData);
-  const salt = fileData.slice(0, sodium.crypto_pwhash_SALTBYTES);
-
-  const key = deriveKey(password, salt);
-
-  if (key.byteLength !== sodium.crypto_secretbox_KEYBYTES) {
-    throw new Error("Invalid key length; must be 32 bytes");
-  }
-
-  const nonce = fileData.slice(
-    sodium.crypto_pwhash_SALTBYTES,
-    sodium.crypto_pwhash_SALTBYTES + sodium.crypto_secretbox_NONCEBYTES,
-  );
-
-  const ciphertext = fileData.slice(
-    sodium.crypto_pwhash_SALTBYTES + sodium.crypto_secretbox_NONCEBYTES,
-  );
-
-  const plaintext = sodium.crypto_secretbox_open_easy(ciphertext, nonce, key);
-
-  if (!plaintext) {
-    throw new Error("Decryption failed (forged or corrupted data)");
-  }
+  const plaintext = decryptWithKey(masterKey, fileData);
 
   return Buffer.from(plaintext).toString("utf8");
 }
 
 export async function writeEncryptedFile(
   filePath: string,
-  content: string,
+  contents: string,
+  append: boolean = false,
 ): Promise<void> {
   await sodium.ready;
   const password = await getSecret(LOG_FILE_ENCRYPTION);
+  const masterKey = await getMasterKey(password);
+  let fileData: string | Uint8Array<ArrayBufferLike> = "";
+  let fileName: string;
+
+  if (append) {
+    try {
+      fileData = await readEncryptedFile(filePath);
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
 
   if (password === null) {
-    return fs.writeFile(filePath, content);
+    fileData += contents;
+  } else {
+    fileData = encryptWithKey(masterKey, fileData + contents);
   }
-  const salt = sodium.randombytes_buf(
-    sodium.crypto_pwhash_SALTBYTES,
-    "uint8array",
-  ) as Uint8Array;
 
-  const nonce = sodium.randombytes_buf(
-    sodium.crypto_secretbox_NONCEBYTES,
-    "uint8array",
-  ) as Uint8Array;
-
-  const key = deriveKey(password, salt);
-
-  const data = sodium.crypto_secretbox_easy(
-    content,
-    nonce,
-    key,
-    "uint8array",
-  ) as Uint8Array;
-  const fileData = new Uint8Array(salt.length + nonce.length + data.length);
-  fileData.set(salt);
-  fileData.set(nonce, salt.length);
-  fileData.set(data, nonce.length + salt.length);
-  return fs.writeFile(`${filePath}${ENCRYPTED_FILE_EXT}`, fileData);
+  if (fileData instanceof Uint8Array) {
+    fileName = `${filePath}${ENCRYPTED_FILE_EXT}`;
+  } else {
+    fileName = filePath;
+  }
+  return fs.writeFile(fileName, fileData);
 }
 
 /**
