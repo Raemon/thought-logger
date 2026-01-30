@@ -25,7 +25,13 @@ import logger, {
   updateDebugPreferences,
 } from "./logging";
 import { getRecentApps, getRecentSummaries } from "./electron/files";
-import { getSecret, OPEN_ROUTER, OPENPGP, saveSecret } from "./electron/credentials";
+import {
+  getSecret,
+  OPEN_ROUTER,
+  LOG_FILE_ENCRYPTION,
+  saveSecret,
+} from "./electron/credentials";
+import { readEncryptedFile } from "./electron/paths";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
@@ -163,7 +169,7 @@ ipcMain.handle("GET_AVAILABLE_MODELS", (_event, imageSupport) =>
 
 ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
   try {
-    const content = await fs.readFile(filePath, "utf-8");
+    const content = await readEncryptedFile(filePath);
     return content;
   } catch (error) {
     logger.error("Failed to read file:", error);

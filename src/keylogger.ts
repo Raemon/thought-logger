@@ -7,7 +7,11 @@ import {
   IGlobalKeyDownMap,
   IGlobalKeyEvent,
 } from "node-global-key-listener";
-import { appendFile, currentKeyLogFile } from "./electron/paths";
+import {
+  appendFile,
+  currentKeyLogFile,
+  readEncryptedFile,
+} from "./electron/paths";
 import { loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences.d";
 import logger from "./logging";
@@ -275,11 +279,11 @@ const specialChars = new Set([
 ]);
 
 /** Rebuild log chronologically, filtering out empty app sections */
-export function rebuildChronologicalLog(filePath: string) {
+export async function rebuildChronologicalLog(filePath: string) {
   let rawText: string;
 
   try {
-    rawText = fs.readFileSync(filePath, "utf-8");
+    rawText = await fs.readEncryptedFile(filePath, "utf-8");
   } catch (error) {
     if (error.code === "ENOENT") {
       logger.info(`Skipping chronological log rebuild for ${filePath}`);
@@ -347,11 +351,11 @@ export function rebuildChronologicalLog(filePath: string) {
 }
 
 // Refactor rebuildLogByApp to use the shared processRawText function
-export function rebuildLogByApp(filePath: string) {
+export async function rebuildLogByApp(filePath: string) {
   let rawText: string;
 
   try {
-    rawText = fs.readFileSync(filePath, "utf-8");
+    rawText = await fs.readEncryptedFile(filePath, "utf-8");
   } catch (error) {
     if (error.code === "ENOENT") {
       logger.info(`Skipping log by app rebuild for ${filePath}`);
@@ -363,6 +367,7 @@ export function rebuildLogByApp(filePath: string) {
   }
 
   try {
+    const rawText = await readEncryptedFile(filePath);
     const lines = rawText.split("\n");
     const appBuffers = new Map<string, string>();
     let activeApp = "Unknown";
@@ -428,9 +433,9 @@ export async function initializeKeylogger() {
   preferences = loadPreferences();
 
   // Set up periodic re-processing of logs
-  setInterval(() => {
-    rebuildLogByApp(currentKeyLogFile());
-    rebuildChronologicalLog(currentKeyLogFile());
+  setInterval(async () => {
+    await rebuildLogByApp(currentKeyLogFile());
+    await rebuildChronologicalLog(currentKeyLogFile());
   }, 5 * 1000);
 
   keylogger.addListener((event, down) => {

@@ -8,6 +8,7 @@ import logger from "../logging";
 import { loadPreferences } from "../preferences";
 import { getRecentSummaries, maybeReadContents } from "./files";
 import { getSecret, OPEN_ROUTER } from "./credentials";
+import { readEncryptedFile } from "./paths";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -211,15 +212,15 @@ export async function summarize(summary: Summary): Promise<void> {
 
     for (let keylog of summary.keylogs) {
       try {
-        let text = await fs.readFile(keylog.rawPath, { encoding: "utf-8" });
+        let text = await readEncryptedFile(keylog.rawPath);
         let filename = path.basename(keylog.rawPath);
         logData += `${filename}:\n${text}\n\n`;
       } catch (error) {
         if (error.code === "ENOENT") {
-          logger.info(`Keylog for ${keylog.date} didn't exist`);
-        } else {
-          throw error;
-        }
+	  logger.info(`Keylog for ${keylog.date} didn't exist`);
+	} else {
+	  throw error;
+	}
       }
     }
 
