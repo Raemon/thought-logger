@@ -263,4 +263,59 @@ describe("#getRecentSummaries", () => {
     vol.fromNestedJSON(filesystem, "/");
     await expect(getRecentSummaries()).resolves.toStrictEqual([]);
   });
+
+  it("works on encrypted keylogs", async () => {
+    const filesystem = {
+      files: {
+        keylogs: {
+          "2025-08": {
+            "2025-08-20.aisummary.log.crypt": "",
+          },
+        },
+      },
+    };
+
+    const encryptedWeeklySummary: Summary = {
+      date: new Date(2025, 7, 18),
+      path: "/files/2025-W34.aisummary.log",
+      contents: null,
+      keylogs: [
+        {
+          appPath: "/files/keylogs/2025-08/2025-08-20.processed.by-app.log",
+          chronoPath:
+            "/files/keylogs/2025-08/2025-08-20.processed.chronological.log",
+          rawPath: "/files/keylogs/2025-08/2025-08-20.log",
+          date: new Date(2025, 7, 20),
+        },
+      ],
+      loading: false,
+      scope: SummaryScopeTypes.Week,
+      screenshots: [],
+    };
+
+    const encryptedDailySummary: Summary = {
+      date: new Date(2025, 7, 20),
+      path: "/files/keylogs/2025-08/2025-08-20.aisummary.log",
+      contents: null,
+      keylogs: [
+        {
+          appPath: "/files/keylogs/2025-08/2025-08-20.processed.by-app.log",
+          chronoPath:
+            "/files/keylogs/2025-08/2025-08-20.processed.chronological.log",
+          rawPath: "/files/keylogs/2025-08/2025-08-20.log",
+          date: new Date(2025, 7, 20),
+        },
+      ],
+      loading: false,
+      scope: SummaryScopeTypes.Day,
+      screenshots: [],
+    };
+
+    vol.fromNestedJSON(filesystem, "/");
+    const summaries = await getRecentSummaries();
+    expect(summaries).toStrictEqual([
+      encryptedWeeklySummary,
+      encryptedDailySummary,
+    ]);
+  });
 });
