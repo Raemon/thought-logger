@@ -58,7 +58,7 @@ export default function TypeaheadDropdown({
                                 className={className}
                                 key={item}
                                 onMouseDown={(e) => e.preventDefault()}
-                                onClick={(e) => {
+                                onClick={() => {
                                     onChange(item);
                                     setFocused(false);
                                 }}

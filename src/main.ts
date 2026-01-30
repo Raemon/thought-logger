@@ -27,7 +27,6 @@ import logger, {
 import { getRecentApps, getRecentSummaries } from "./electron/files";
 import {
   getSecret,
-  OPEN_ROUTER,
   LOG_FILE_ENCRYPTION,
   setSecret,
 } from "./electron/credentials";

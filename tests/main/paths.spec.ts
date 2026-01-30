@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
 import {
   initializeMasterKey,
@@ -11,14 +11,14 @@ import {
 vi.mock("electron", () => {
   return {
     ipcMain: {
-      handle: () => {},
-      on: () => {},
+      handle: (): undefined => undefined,
+      on: (): undefined => undefined,
     },
     app: {
       isPackaged: false,
       getPath: () => "/",
       getAppPath: () => "/",
-      on: () => {},
+      on: (): undefined => undefined,
       whenReady: () => Promise.reject(),
     },
   };

@@ -32,7 +32,7 @@ const TabButton = ({
 
 export function App() {
   const [activeTab, setActiveTab] = useState<"logs" | "settings">("settings");
-  const [hasLogs, setHasLogs] = useState(false);
+  const [_, setHasLogs] = useState(false);
   const [recentErrors, setRecentErrors] = useState<string[]>([]);
 
   const formatErrorLine = (line: string) => {
@@ -68,7 +68,9 @@ export function App() {
 
   useEffect(() => {
     window.errors.getRecentErrors().then((errors) => setRecentErrors(errors));
-    const cleanup = window.errors.onRecentErrors((errors) => setRecentErrors(errors));
+    const cleanup = window.errors.onRecentErrors((errors) =>
+      setRecentErrors(errors),
+    );
     return cleanup;
   }, []);
 

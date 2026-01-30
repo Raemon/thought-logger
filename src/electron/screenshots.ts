@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { currentScreenshotFile } from "./paths";
 import { Preferences } from "../types/preferences.d";
-import { desktopCapturer, app, systemPreferences } from "electron";
+import { desktopCapturer } from "electron";
 
 import fetch from "node-fetch";
 import { loadPreferences } from "../preferences";
@@ -86,7 +86,7 @@ async function extractTextFromImage(
     let response = await sendRequest(true);
 
     if (!response.ok) {
-      let errorData: any = null;
+      let errorData: unknown = null;
       try {
         errorData = await response.json();
       } catch {
@@ -108,7 +108,7 @@ async function extractTextFromImage(
         );
         response = await sendRequest(false);
         if (!response.ok) {
-          let retryErrorData: any = null;
+          let retryErrorData: unknown = null;
           try {
             retryErrorData = await response.json();
           } catch {

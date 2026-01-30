@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const EncryptionSettings = () => {
   const [saving, setSaving] = useState(false);

@@ -217,10 +217,10 @@ export async function summarize(summary: Summary): Promise<void> {
         logData += `${filename}:\n${text}\n\n`;
       } catch (error) {
         if (error.code === "ENOENT") {
-	  logger.info(`Keylog for ${keylog.date} didn't exist`);
-	} else {
-	  throw error;
-	}
+          logger.info(`Keylog for ${keylog.date} didn't exist`);
+        } else {
+          throw error;
+        }
       }
     }
 
@@ -231,7 +231,10 @@ export async function summarize(summary: Summary): Promise<void> {
       if (text === null) {
         continue;
       }
-      const excerpt = text.split(" ").slice(0, screenshotSummaryWindow).join(" ");
+      const excerpt = text
+        .split(" ")
+        .slice(0, screenshotSummaryWindow)
+        .join(" ");
       const filename = path.basename(screenshot.summaryPath, ".txt");
       logData += `Taken on ${filename}:\n${excerpt}\n\n`;
     }

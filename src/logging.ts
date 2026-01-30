@@ -1,6 +1,7 @@
-import winston from "winston";
+import * as winston from "winston";
 import Transport from "winston-transport";
 import { DebugPreferences } from "./types/preferences.d";
+import { LogEntry } from "winston";
 
 const KiB = 1024;
 
@@ -45,10 +46,10 @@ const format = winston.format.combine(
 );
 
 class LatestErrorTransport extends Transport {
-  log(info: any, callback: () => void) {
+  log(info: LogEntry, callback: () => void) {
     setImmediate(() => this.emit("logged", info));
     if (info.level === "error") {
-      const formattedMessage = info[Symbol.for("message")] || `${info.message}`;
+      const formattedMessage = info.message;
       latestError = formattedMessage;
       recentErrors = [formattedMessage, ...recentErrors].slice(0, 3);
       for (const listener of latestErrorListeners) {

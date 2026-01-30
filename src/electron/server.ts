@@ -1,5 +1,4 @@
 import http from "http";
-import fs from "node:fs/promises";
 import path from "path";
 import { app } from "electron";
 

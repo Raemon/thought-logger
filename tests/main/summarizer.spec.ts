@@ -14,14 +14,14 @@ vi.stubGlobal("fetch", mockFetch);
 vi.mock("electron", () => {
   return {
     ipcMain: {
-      handle: () => {},
-      on: () => {},
+      handle: (): undefined => undefined,
+      on: (): undefined => undefined,
     },
     app: {
       isPackaged: false,
       getPath: () => "/",
       getAppPath: () => "/",
-      on: () => {},
+      on: (): undefined => undefined,
       whenReady: () => Promise.resolve(),
     },
   };

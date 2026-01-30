@@ -1,7 +1,7 @@
 import { app } from "electron";
 import fs from "node:fs/promises";
 import path from "node:path";
-import sodium from "libsodium-wrappers-sumo";
+import sodium, { ready as sodiumReady } from "libsodium-wrappers-sumo";
 import { getSecret, LOG_FILE_ENCRYPTION, setSecret } from "./credentials";
 import logger from "../logging";
 
@@ -133,7 +133,7 @@ export async function initializeMasterKey(password: string): Promise<void> {
   let salt: Uint8Array<ArrayBufferLike>;
   let key: Uint8Array<ArrayBufferLike>;
 
-  await sodium.ready;
+  await sodiumReady;
 
   try {
     const data = await fs.readFile(masterKeyPath);
@@ -205,7 +205,7 @@ export async function changePassword(
       return result;
     }
 
-    await sodium.ready;
+    await sodiumReady;
 
     // Read current master key file
     let oldMasterKey: Uint8Array<ArrayBufferLike> | null;
@@ -275,7 +275,7 @@ export async function readFile(filePath: string): Promise<string> {
 
   const fileData = await fs.readFile(`${filePath}.crypt`);
 
-  await sodium.ready;
+  await sodiumReady;
 
   const password = await getSecret(LOG_FILE_ENCRYPTION);
   if (!password) {
@@ -293,7 +293,7 @@ export async function writeFile(
   contents: string,
   append = false,
 ): Promise<void> {
-  await sodium.ready;
+  await sodiumReady;
   const password = await getSecret(LOG_FILE_ENCRYPTION);
   let fileData: string | Uint8Array<ArrayBufferLike> = "";
   let fileName: string;

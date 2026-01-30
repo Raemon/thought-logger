@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import { Preferences } from "./types/preferences.d";
 import { Summary } from "./types/files.d";
 import { OPEN_ROUTER } from "./electron/credentials";
@@ -12,12 +12,14 @@ contextBridge.exposeInMainWorld("errors", {
   getLatestError: () => ipcRenderer.invoke("GET_LATEST_ERROR"),
   getRecentErrors: () => ipcRenderer.invoke("GET_RECENT_ERRORS"),
   onLatestError: (callback: (message: string) => void) => {
-    const handler = (_event: any, message: string) => callback(message);
+    const handler = (_event: IpcRendererEvent, message: string) =>
+      callback(message);
     ipcRenderer.on("LATEST_ERROR", handler);
     return () => ipcRenderer.removeListener("LATEST_ERROR", handler);
   },
   onRecentErrors: (callback: (messages: string[]) => void) => {
-    const handler = (_event: any, messages: string[]) => callback(messages);
+    const handler = (_event: IpcRendererEvent, messages: string[]) =>
+      callback(messages);
     ipcRenderer.on("RECENT_ERRORS", handler);
     return () => ipcRenderer.removeListener("RECENT_ERRORS", handler);
   },
@@ -50,8 +52,9 @@ contextBridge.exposeInMainWorld("preferences", {
 
 contextBridge.exposeInMainWorld("openRouter", {
   checkApiKey: () => ipcRenderer.invoke("CHECK_SECRET", OPEN_ROUTER),
-  saveApiKey: (apiKey: string) => ipcRenderer.invoke("SAVE_SECRET", OPEN_ROUTER, apiKey),
-  getAvailableModels: (imageSupport: boolean = false) =>
+  saveApiKey: (apiKey: string) =>
+    ipcRenderer.invoke("SAVE_SECRET", OPEN_ROUTER, apiKey),
+  getAvailableModels: (imageSupport = false) =>
     ipcRenderer.invoke("GET_AVAILABLE_MODELS", imageSupport),
 });
 
