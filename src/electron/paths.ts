@@ -159,14 +159,25 @@ export async function initializeMasterKey(password: string): Promise<void> {
   await fs.writeFile(masterKeyPath, fileData);
 }
 
-async function getMasterKey(password: string): Promise<Uint8Array> {
-  const fileData = await fs.readFile(masterKeyPath);
-  const salt = fileData.subarray(0, sodium.crypto_pwhash_SALTBYTES);
-  const masterKey = fileData.subarray(sodium.crypto_pwhash_SALTBYTES);
-  const key = deriveKey(password, salt);
+const getMasterKey = (() => {
+  let cachedMasterKey: Uint8Array | null = null;
+  let cachedPassword: string | null = null;
 
-  return decryptWithKey(key, masterKey);
-}
+  return async (password: string): Promise<Uint8Array> => {
+    if (password === cachedPassword) {
+      return cachedMasterKey;
+    }
+
+    const fileData = await fs.readFile(masterKeyPath);
+    const salt = fileData.subarray(0, sodium.crypto_pwhash_SALTBYTES);
+    const masterKey = fileData.subarray(sodium.crypto_pwhash_SALTBYTES);
+    const key = deriveKey(password, salt);
+
+    cachedMasterKey = decryptWithKey(key, masterKey);
+    cachedPassword = password;
+    return cachedMasterKey;
+  };
+})();
 
 export async function verifyPassword(password: string): Promise<boolean> {
   try {
