@@ -54,3 +54,12 @@ contextBridge.exposeInMainWorld("openRouter", {
   getAvailableModels: (imageSupport: boolean = false) =>
     ipcRenderer.invoke("GET_AVAILABLE_MODELS", imageSupport),
 });
+
+contextBridge.exposeInMainWorld("encryption", {
+  checkPassword: () =>
+    ipcRenderer.invoke("CHECK_SECRET", "Log file encryption"),
+  savePassword: (password: string) =>
+    ipcRenderer.invoke("SAVE_SECRET", "Log file encryption", password),
+  changePassword: (newPassword: string) =>
+    ipcRenderer.invoke("CHANGE_PASSWORD", newPassword),
+});

@@ -44,6 +44,15 @@ declare global {
       ) => Promise<{ success: boolean; message: string }>;
       getAvailableModels: (imageSupport: boolean = false) => Promise<string[]>;
     };
+    encryption: {
+      checkPassword: () => Promise<{ hasPassword: boolean; message: string }>;
+      savePassword: (
+        password: string,
+      ) => Promise<{ success: boolean; message: string }>;
+      changePassword: (
+        newPassword: string,
+      ) => Promise<{ success: boolean; message: string }>;
+    };
   }
 }
 
