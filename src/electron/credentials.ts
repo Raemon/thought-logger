@@ -39,9 +39,12 @@ const SERVICE_NAME = "ThoughtLogger";
 export const OPEN_ROUTER = "OpenRouter";
 export const LOG_FILE_ENCRYPTION = "Log file encryption";
 
+const cache: { [key: string]: string | null } = {};
+
 export async function getSecret(account: string): Promise<string | null> {
   try {
-    return await keytar.getPassword(SERVICE_NAME, account);
+    cache[account] ||= await keytar.getPassword(SERVICE_NAME, account);
+    return cache[account];
   } catch (error) {
     logger.error("Error accessing keychain:", error);
     return null;
@@ -61,6 +64,7 @@ export async function setSecret(
     }
 
     await keytar.setPassword(SERVICE_NAME, account, secret);
+    cache[account] = null;
     return {
       success: true,
       message: `${account} secret saved successfully`,
