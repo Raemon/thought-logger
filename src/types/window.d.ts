@@ -38,14 +38,14 @@ declare global {
       onRecentErrors: (callback: (messages: string[]) => void) => () => void;
     };
     openRouter: {
-      checkApiKey: () => Promise<{ hasKey: boolean; message: string }>;
+      checkApiKey: () => Promise<boolean>;
       saveApiKey: (
         apiKey: string,
       ) => Promise<{ success: boolean; message: string }>;
       getAvailableModels: (imageSupport: boolean = false) => Promise<string[]>;
     };
     encryption: {
-      checkPassword: () => Promise<{ hasPassword: boolean; message: string }>;
+      checkPassword: () => Promise<boolean>;
       savePassword: (
         password: string,
       ) => Promise<{ success: boolean; message: string }>;

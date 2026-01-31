@@ -2,10 +2,7 @@ import React, { useEffect, useState } from "react";
 
 const ApiKeySettings = () => {
   const [apiKey, setApiKey] = useState<string>("");
-  const [keyStatus, setKeyStatus] = useState<{
-    hasKey: boolean;
-    message: string;
-  } | null>(null);
+  const [hasSecret, setHasSecret] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [message, setMessage] = useState<{
     text: string;
@@ -18,7 +15,7 @@ const ApiKeySettings = () => {
 
   const checkApiKey = async () => {
     const status = await window.openRouter.checkApiKey();
-    setKeyStatus(status);
+    setHasSecret(status);
   };
 
   const saveApiKey = async () => {
@@ -55,9 +52,9 @@ const ApiKeySettings = () => {
       <h3 className="text-xl mb-2.5">OpenRouter API Key</h3>
 
       <div>
-        {keyStatus && (
-          <div style={{ color: keyStatus.hasKey ? "#0a0" : "#a00" }}>
-            {keyStatus.message}
+        {hasSecret !== null && (
+          <div style={{ color: hasSecret ? "#0a0" : "#a00" }}>
+            API key is {hasSecret ? "" : "not "}configured
           </div>
         )}
       </div>

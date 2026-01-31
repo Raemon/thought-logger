@@ -5,10 +5,7 @@ const EncryptionSettings = () => {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
 
-  const [passwordStatus, setPasswordStatus] = useState<{
-    hasPassword: boolean;
-    message: string;
-  } | null>(null);
+  const [hasSecret, setHasSecret] = useState<boolean | null>(null);
   const [message, setMessage] = useState<{
     text: string;
     isError: boolean;
@@ -20,7 +17,7 @@ const EncryptionSettings = () => {
 
   const checkPassword = async () => {
     const status = await window.encryption.checkPassword();
-    setPasswordStatus(status);
+    setHasSecret(status);
   };
 
   const savePassword = async () => {
@@ -52,9 +49,9 @@ const EncryptionSettings = () => {
       <h3 className="text-xl mb-2.5">Encryption Password</h3>
 
       <div>
-        {passwordStatus && (
-          <div style={{ color: passwordStatus.hasPassword ? "#0a0" : "#a00" }}>
-            {passwordStatus.message}
+        {hasSecret !== null && (
+          <div style={{ color: hasSecret ? "#0a0" : "#a00" }}>
+            Encryption password is {hasSecret ? "" : "not "}configured
           </div>
         )}
       </div>

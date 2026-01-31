@@ -155,8 +155,9 @@ ipcMain.on("OPEN_EXTERNAL_URL", (_event, url) => {
   });
 });
 
-ipcMain.handle("CHECK_SECRET", (_event, account: string) => {
-  return getSecret(account);
+ipcMain.handle("CHECK_SECRET", async (_event, account: string) => {
+  const secret = await getSecret(account);
+  return !!secret;
 });
 
 ipcMain.handle("SAVE_SECRET", (_event, account: string, secret: string) => {
