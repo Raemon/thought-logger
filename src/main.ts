@@ -25,11 +25,8 @@ import logger, {
   updateDebugPreferences,
 } from "./logging";
 import { getRecentApps, getRecentSummaries } from "./electron/files";
-import {
-  getSecret,
-  LOG_FILE_ENCRYPTION,
-  setSecret,
-} from "./electron/credentials";
+import { getSecret, setSecret } from "./electron/credentials";
+import { LOG_FILE_ENCRYPTION } from "./constants/credentials";
 import {
   readFile,
   changePassword,

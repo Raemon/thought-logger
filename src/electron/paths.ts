@@ -2,7 +2,8 @@ import { app } from "electron";
 import fs from "node:fs/promises";
 import path from "node:path";
 import sodium, { ready as sodiumReady } from "libsodium-wrappers-sumo";
-import { getSecret, LOG_FILE_ENCRYPTION, setSecret } from "./credentials";
+import { getSecret, setSecret } from "./credentials";
+import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 import logger from "../logging";
 
 const ENCRYPTED_FILE_EXT = ".crypt";

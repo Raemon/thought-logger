@@ -34,10 +34,8 @@ try {
   }
 }
 
-// Constants for keychain access
+// Constants for keychain access are imported from ../constants/credentials.ts
 const SERVICE_NAME = "ThoughtLogger";
-export const OPEN_ROUTER = "OpenRouter";
-export const LOG_FILE_ENCRYPTION = "Log file encryption";
 
 const cache: { [key: string]: string | null } = {};
 

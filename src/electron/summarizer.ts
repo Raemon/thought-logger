@@ -7,7 +7,8 @@ import { Keylog, Summary, SummaryScopeTypes } from "../types/files.d";
 import logger from "../logging";
 import { loadPreferences } from "../preferences";
 import { getRecentSummaries, maybeReadContents } from "./files";
-import { getSecret, OPEN_ROUTER } from "./credentials";
+import { getSecret } from "./credentials";
+import { OPEN_ROUTER } from "../constants/credentials";
 import { readFile } from "./paths";
 
 setDefaultOptions({ weekStartsOn: 1 });

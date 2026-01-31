@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import { Preferences } from "./types/preferences.d";
 import { Summary } from "./types/files.d";
-import { OPEN_ROUTER } from "./electron/credentials";
+import { OPEN_ROUTER } from "./constants/credentials";
 
 contextBridge.exposeInMainWorld("permissions", {
   requestPermissionsStatus: () =>

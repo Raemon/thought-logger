@@ -10,7 +10,8 @@ import { z } from "zod";
 import { getCurrentApplication } from "../keylogger";
 
 import logger from "../logging";
-import { getSecret, OPEN_ROUTER } from "./credentials";
+import { getSecret } from "./credentials";
+import { OPEN_ROUTER } from "../constants/credentials";
 
 const ScreenshotText = z.object({
   project: z
