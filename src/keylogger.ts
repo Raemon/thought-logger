@@ -1,13 +1,12 @@
 import { app } from "electron";
 import path from "node:path";
-import fs from "node:fs";
 import forEach from "lodash/forEach";
 import {
   GlobalKeyboardListener,
   IGlobalKeyDownMap,
   IGlobalKeyEvent,
 } from "node-global-key-listener";
-import { appendFile, currentKeyLogFile } from "./electron/paths";
+import { currentKeyLogFile, readFile, writeFile } from "./electron/paths";
 import { loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences.d";
 import logger from "./logging";
@@ -16,7 +15,7 @@ const BINARY_NAME = "MacKeyServer";
 
 const binaryPath = app.isPackaged
   ? path.join(process.resourcesPath, BINARY_NAME)
-  : path.join(app.getAppPath(), "src", "native", BINARY_NAME);
+  : path.join(app.getAppPath(), "bin", BINARY_NAME);
 
 const keylogger = new GlobalKeyboardListener({
   mac: { serverPath: binaryPath },
@@ -275,9 +274,22 @@ const specialChars = new Set([
 ]);
 
 /** Rebuild log chronologically, filtering out empty app sections */
-export function rebuildChronologicalLog(filePath: string) {
+export async function rebuildChronologicalLog(filePath: string) {
+  let rawText: string;
+
   try {
-    const rawText = fs.readFileSync(filePath, "utf-8");
+    rawText = await readFile(filePath);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      logger.info(`Skipping chronological log rebuild for ${filePath}`);
+    } else {
+      throw error;
+    }
+
+    return;
+  }
+
+  try {
     const lines = rawText.split("\n");
     let processedContent = "";
 
@@ -326,7 +338,7 @@ export function rebuildChronologicalLog(filePath: string) {
         dir,
         `${basename}processed.chronological.log`,
       );
-      appendFile(outputPath, processedContent, true);
+      writeFile(outputPath, processedContent);
     }
   } catch (error) {
     logger.error("Failed to rebuild chronological log:", error);
@@ -334,9 +346,22 @@ export function rebuildChronologicalLog(filePath: string) {
 }
 
 // Refactor rebuildLogByApp to use the shared processRawText function
-export function rebuildLogByApp(filePath: string) {
+export async function rebuildLogByApp(filePath: string) {
+  let rawText: string;
+
   try {
-    const rawText = fs.readFileSync(filePath, "utf-8");
+    rawText = await readFile(filePath);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      logger.info(`Skipping log by app rebuild for ${filePath}`);
+    } else {
+      throw error;
+    }
+
+    return;
+  }
+
+  try {
     const lines = rawText.split("\n");
     const appBuffers = new Map<string, string>();
     let activeApp = "Unknown";
@@ -390,7 +415,7 @@ export function rebuildLogByApp(filePath: string) {
       const dir = path.dirname(filePath);
       const basename = path.basename(filePath, "log");
       const outputPath = path.join(dir, `${basename}processed.by-app.log`);
-      appendFile(outputPath, processedContent, true);
+      writeFile(outputPath, processedContent);
     }
   } catch (error) {
     logger.error("Failed to rebuild processed log:", error);
@@ -402,9 +427,9 @@ export async function initializeKeylogger() {
   preferences = loadPreferences();
 
   // Set up periodic re-processing of logs
-  setInterval(() => {
-    rebuildLogByApp(currentKeyLogFile());
-    rebuildChronologicalLog(currentKeyLogFile());
+  setInterval(async () => {
+    await rebuildLogByApp(currentKeyLogFile());
+    await rebuildChronologicalLog(currentKeyLogFile());
   }, 5 * 1000);
 
   keylogger.addListener((event, down) => {
@@ -412,7 +437,7 @@ export async function initializeKeylogger() {
 
     // Write to raw log
     if (raw) {
-      appendFile(currentKeyLogFile(), raw);
+      writeFile(currentKeyLogFile(), raw, true);
     }
   });
 }

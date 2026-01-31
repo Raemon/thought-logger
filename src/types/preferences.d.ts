@@ -22,10 +22,9 @@ export interface DebugPreferences {
 }
 
 export interface Preferences
-  extends ScreenshotPreferences,
-    SummaryPreferences,
-    DebugPreferences {
+  extends ScreenshotPreferences, SummaryPreferences, DebugPreferences {
   blockedApps: string[];
+  encryptionEnabled: boolean;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {

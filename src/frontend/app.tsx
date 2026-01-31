@@ -6,6 +6,7 @@ import BlockedAppsEditor from "./BlockedAppsEditor";
 import ApiKeySettings from "./ApiKeySettings";
 import SummarySettings from "./SummarySettings";
 import DebugSettings from "./DebugSettings";
+import EncryptionSettings from "./EncryptionSettings";
 
 const TabButton = ({
   selected,
@@ -31,7 +32,7 @@ const TabButton = ({
 
 export function App() {
   const [activeTab, setActiveTab] = useState<"logs" | "settings">("settings");
-  const [hasLogs, setHasLogs] = useState(false);
+  const [_, setHasLogs] = useState(false);
   const [recentErrors, setRecentErrors] = useState<string[]>([]);
 
   const formatErrorLine = (line: string) => {
@@ -67,7 +68,9 @@ export function App() {
 
   useEffect(() => {
     window.errors.getRecentErrors().then((errors) => setRecentErrors(errors));
-    const cleanup = window.errors.onRecentErrors((errors) => setRecentErrors(errors));
+    const cleanup = window.errors.onRecentErrors((errors) =>
+      setRecentErrors(errors),
+    );
     return cleanup;
   }, []);
 
@@ -114,6 +117,7 @@ export function App() {
           <ScreenshotController />
           <SummarySettings />
           <ApiKeySettings />
+          <EncryptionSettings />
           <Permissions />
           <BlockedAppsEditor />
           <DebugSettings />

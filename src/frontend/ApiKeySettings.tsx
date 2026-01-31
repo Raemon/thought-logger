@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { OPEN_ROUTER } from "../constants/credentials";
 
 const ApiKeySettings = () => {
   const [apiKey, setApiKey] = useState<string>("");
-  const [keyStatus, setKeyStatus] = useState<{
-    hasKey: boolean;
-    message: string;
-  } | null>(null);
+  const [hasSecret, setHasSecret] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [message, setMessage] = useState<{
     text: string;
@@ -17,8 +15,8 @@ const ApiKeySettings = () => {
   }, []);
 
   const checkApiKey = async () => {
-    const status = await window.openRouter.checkApiKey();
-    setKeyStatus(status);
+    const status = await window.credentials.checkSecret(OPEN_ROUTER);
+    setHasSecret(status);
   };
 
   const saveApiKey = async () => {
@@ -31,7 +29,7 @@ const ApiKeySettings = () => {
     setMessage(null);
 
     try {
-      const result = await window.openRouter.saveApiKey(apiKey);
+      const result = await window.credentials.saveSecret(OPEN_ROUTER, apiKey);
 
       if (result.success) {
         setMessage({ text: result.message, isError: false });
@@ -55,9 +53,9 @@ const ApiKeySettings = () => {
       <h3 className="text-xl mb-2.5">OpenRouter API Key</h3>
 
       <div>
-        {keyStatus && (
-          <div style={{ color: keyStatus.hasKey ? "#0a0" : "#a00" }}>
-            {keyStatus.message}
+        {hasSecret !== null && (
+          <div style={{ color: hasSecret ? "#0a0" : "#a00" }}>
+            API key is {hasSecret ? "" : "not "}configured
           </div>
         )}
       </div>

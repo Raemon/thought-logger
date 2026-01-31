@@ -37,12 +37,13 @@ declare global {
       onLatestError: (callback: (message: string) => void) => () => void;
       onRecentErrors: (callback: (messages: string[]) => void) => () => void;
     };
+    credentials: {
+      checkSecret: (account: string) => Promise<boolean>;
+      saveSecret: (account: string, secret: string) => Promise<{ success: boolean; message: string }>;
+      changePassword: (newPassword: string) => Promise<{ success: boolean; message: string }>;
+    };
     openRouter: {
-      checkApiKey: () => Promise<{ hasKey: boolean; message: string }>;
-      saveApiKey: (
-        apiKey: string,
-      ) => Promise<{ success: boolean; message: string }>;
-      getAvailableModels: (imageSupport: boolean = false) => Promise<string[]>;
+      getAvailableModels: (imageSupport?: boolean) => Promise<string[]>;
     };
   }
 }

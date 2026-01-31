@@ -25,7 +25,7 @@ const userDataPath = app.getPath("userData");
 function groupByWeek<T>(record: Record<string, T>): Map<string, T[]> {
   const groups = new Map<string, T[]>();
 
-  for (let dateString of Object.keys(record)) {
+  for (const dateString of Object.keys(record)) {
     const date = parse(dateString, "yyyy-MM-dd", new Date());
     const week = format(startOfWeek(date), "YYYY-'W'ww", {
       useAdditionalWeekYearTokens: true,
@@ -74,12 +74,12 @@ async function getKeylogs(): Promise<Record<string, Keylog>> {
   const keylogs: Record<string, Keylog> = {};
   const keylogFiles = await readFilesFromDirectory(keylogsPath);
 
-  for (let file of keylogFiles) {
+  for (const file of keylogFiles) {
     const fileName = path.basename(file.name);
     const dir = file.parentPath;
     const result = fileName.match(/[^.]+/);
     const dateString = result[0];
-    let date = parse(dateString, "yyyy-MM-dd", new Date());
+    const date = parse(dateString, "yyyy-MM-dd", new Date());
     if (isNaN(date.getTime())) continue;
 
     keylogs[dateString] = keylogs[dateString] || {
@@ -100,13 +100,13 @@ async function getScreenshots(): Promise<
 
   const files = await readFilesFromDirectory(screenshotsPath);
 
-  for (let file of files) {
+  for (const file of files) {
     const fileName = path.basename(file.name);
     const dir = file.parentPath;
     const ext = path.extname(file.name);
     const result = fileName.match(/[^.]+/);
     const dateString = result[0];
-    let date = parse(dateString, "yyyy-MM-dd HH_mm_ss", new Date());
+    const date = parse(dateString, "yyyy-MM-dd HH_mm_ss", new Date());
     if (isNaN(date.getTime())) continue;
     const dayString = format(date, "yyyy-MM-dd");
 
@@ -145,7 +145,7 @@ export async function getRecentSummaries(
     new Set(Object.keys(keylogs).concat(Object.keys(screenshots))),
   );
 
-  for (let dateString of dateStrings) {
+  for (const dateString of dateStrings) {
     const date = parse(dateString, "yyyy-MM-dd", new Date());
 
     if (differenceInSeconds(now, date) >= ageInSeconds) {
@@ -191,7 +191,7 @@ export async function getRecentSummaries(
 
   const weeklySummaries: Summary[] = [];
 
-  for (let week of weeks) {
+  for (const week of weeks) {
     const date = parse(week, "YYYY-'W'ww", new Date(), {
       useAdditionalWeekYearTokens: true,
     });
@@ -226,7 +226,7 @@ export async function getRecentSummaries(
 }
 
 export async function getRecentApps(): Promise<string[]> {
-  let apps = new Set<string>();
+  const apps = new Set<string>();
   const now = new Date();
 
   const keylogs = await getKeylogs()
@@ -235,11 +235,19 @@ export async function getRecentApps(): Promise<string[]> {
       keylogs.filter((keylog) => differenceInHours(now, keylog.date) <= 24),
     );
 
-  for (let keylog of keylogs) {
-    const content = await fs.readFile(keylog.appPath);
-    const appRegex = /=== (.*) ===/g;
-    const matches = content.toLocaleString().matchAll(appRegex);
-    matches.forEach((m) => apps.add(m[1]));
+  for (const keylog of keylogs) {
+    try {
+      const content = await fs.readFile(keylog.appPath);
+      const appRegex = /=== (.*) ===/g;
+      const matches = content.toLocaleString().matchAll(appRegex);
+      matches.forEach((m) => apps.add(m[1]));
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        logger.info(`Keylog for ${keylog.date} didn't exist`);
+      } else {
+        throw error;
+      }
+    }
   }
 
   return Array.from(apps);

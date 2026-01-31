@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { currentScreenshotFile } from "./paths";
 import { Preferences } from "../types/preferences.d";
-import { desktopCapturer, app, systemPreferences } from "electron";
+import { desktopCapturer } from "electron";
 
 import fetch from "node-fetch";
 import { loadPreferences } from "../preferences";
@@ -10,7 +10,8 @@ import { z } from "zod";
 import { getCurrentApplication } from "../keylogger";
 
 import logger from "../logging";
-import { getApiKey } from "./credentials";
+import { getSecret } from "./credentials";
+import { OPEN_ROUTER } from "../constants/credentials";
 
 const ScreenshotText = z.object({
   project: z
@@ -31,7 +32,7 @@ async function extractTextFromImage(
   const base64Image = imageBuffer.toString("base64");
   const imageUrl = `data:image/jpeg;base64,${base64Image}`;
   try {
-    const apiKey = await getApiKey();
+    const apiKey = await getSecret(OPEN_ROUTER);
     if (!apiKey) {
       logger.error("API key not found in keychain");
       throw "ERROR: OpenRouter API key is not set. Use setApiKey() to set your API key.";
@@ -86,7 +87,7 @@ async function extractTextFromImage(
     let response = await sendRequest(true);
 
     if (!response.ok) {
-      let errorData: any = null;
+      let errorData: unknown = null;
       try {
         errorData = await response.json();
       } catch {
@@ -94,8 +95,12 @@ async function extractTextFromImage(
       }
 
       const errorMessage =
-        (typeof errorData === "object" && errorData !== null
-          ? errorData?.error?.message
+        (typeof errorData === "object" &&
+        errorData !== null &&
+        "error" in errorData &&
+        typeof errorData.error === "object" &&
+        "message" in errorData.error
+          ? errorData.error.message
           : null) || `${errorData}`;
 
       const structuredOutputUnsupported =
@@ -108,7 +113,7 @@ async function extractTextFromImage(
         );
         response = await sendRequest(false);
         if (!response.ok) {
-          let retryErrorData: any = null;
+          let retryErrorData: unknown = null;
           try {
             retryErrorData = await response.json();
           } catch {

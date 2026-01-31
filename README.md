@@ -1,159 +1,243 @@
-# Memory assistant app
+# Thought Logger
 
-This is an Electron app that regularly takes screenshot and keylog data, and makes it accessible via a local web server.
+An Electron application that captures keystrokes and screenshots, making them accessible through a local web server and MCP (Model Context Protocol) interface.
+
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Development](#development)
+- [Testing](#testing)
+- [Building and Distribution](#building-and-distribution)
+- [Configuration](#configuration)
+- [Integration with Claude Desktop](#integration-with-claude-desktop)
+- [Contributing](#contributing)
+
+## Features
+
+- **Keystroke logging**: Capture and store keyboard input
+- **Screenshot capture**: Automatically take screenshots at configurable intervals
+- **Local web server**: Access captured data through a web interface
+- **MCP server integration**: Connect with AI assistants like Claude Desktop
+- **Encryption support**: Secure sensitive data with encryption
+
+## Tech Stack
+
+### Core Framework
+- **Electron**: Cross-platform desktop application framework
+- **React 19**: User interface library
+- **TypeScript**: Type-safe JavaScript development
+
+### Build and Development Tools
+- **Vite**: Fast build tool and development server
+- **Electron Forge**: Application packaging and distribution
+- **Tailwind CSS**: Utility-first CSS framework
+- **ESLint**: Code linting and formatting
+- **Vitest**: Testing framework with browser support
+
+### Native Components
+- **Swift**: Native macOS keylogger implementation
+- **Node.js native modules**: keytar for secure credential storage
+
+### Key Dependencies
+- **Model Context Protocol SDK**: For AI assistant integration
+- **Winston**: Logging framework
+- **Zod**: Runtime type validation
+- **Date-fns**: Date manipulation utilities
+
+## Project Structure
 
 ```
+thought-logger/
+├── src/
+│   ├── electron/          # Main Electron process modules
+│   │   ├── server.ts      # Local web server
+│   │   ├── screenshots.ts # Screenshot capture logic
+│   │   ├── credentials.ts # Credential management
+│   │   └── paths.ts       # File path utilities
+│   ├── frontend/          # React UI components
+│   │   ├── app.tsx        # Main application component
+│   │   ├── Summary.tsx    # Data summary interface
+│   │   └── *Settings.tsx  # Various settings panels
+│   ├── native/            # Native code
+│   │   └── MacKeyServer/  # Swift keylogger for macOS
+│   ├── types/             # TypeScript type definitions
+│   ├── main.ts            # Electron main process
+│   ├── preload.ts         # Preload script
+│   └── renderer.tsx       # Renderer process
+├── tests/                 # Test files
+├── out/                   # Build output
+└── forge.config.ts        # Electron Forge configuration
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- Swift compiler (for building native keylogger)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd thought-logger
+
+# Install dependencies
+yarn install
+
+# Build native components
+yarn prepBuild
+```
+
+## Permissions (macOS)
+
+The app requires the following permissions:
+- Screen Recording (for screenshots)
+- Accessibility (for keystroke logging)
+
+Set permissions in: `System Settings > Privacy & Security`
+
+## Development
+
+### Running the Application
+
+```bash
+# Start development mode
+yarn start
+```
+
+### Code Quality
+
+```bash
+# Run linting
+yarn lint
+
+# Run type checking
+yarn typecheck
+```
+
+## Testing
+
+The project uses Vitest for both main process and renderer process testing.
+
+### Running Tests
+
+```bash
+# Run all tests
+yarn test
+
+# Run main process tests only
+yarn test:main
+
+# Run renderer process tests only
+yarn test:renderer
+```
+
+### Test Structure
+
+- `tests/main/`: Tests for Electron main process modules
+- `tests/renderer/`: Tests for React components and renderer process
+- `tests/setup.ts`: Shared test configuration
+
+## Building and Distribution
+
+### Local Build
+
+```bash
+# Build the application
 yarn make
+
+# Package without creating distributables
+yarn package
+```
+
+### Platform-Specific Builds
+
+Electron Forge automatically creates platform-specific distributables:
+- macOS: `.app` in ZIP archive
+- Windows: `.exe` installer
+- Linux: `.deb` and `.rpm` packages
+
+### Code Signing (macOS)
+
+For local testing without signing:
+```bash
+# Ad-hoc signing for local use
 codesign --deep --force --verbose --sign - out/make/zip/darwin/arm64/thought-logger.app
 ```
 
-
-
-```yarn start```
-
-
-
-
-# Building, Signing, and Distributing `thought-logger`
-
-This document provides instructions for building, signing, and distributing the `thought-logger` Electron app both locally and for wider distribution.
-
----
-
-## Local Build and Testing
-
-### Build Locally
-1. Ensure you have all dependencies installed:
-   ```bash
-   yarn install
-   ```
-2. Generate distributables:
-   ```bash
-   yarn run make
-   ```
-3. Check the output folder for artifacts:
-   ```bash
-   ls out/make
-   ```
-
-### Sign Locally
-For macOS, if you wish to run the app locally without signing:
-1. If absent, create the app by double-clicking the `.zip` file to give a `.app` file in the output folder.
-
-To sign locally:
-1. Use the `codesign` utility:
-   ```bash
-   codesign --deep --force --verbose --sign - out/make/zip/darwin/arm64/thought-logger.app
-   ```
-
-### Run Locally
-After signing:
-- Move the `.app` file into the Applications folder
-- Double-click the `.app` file to launch the application.
-- Permissions can be set in System Settings > Privacy & Security for
-   - Screen Recording
-   - Accessibility (Key Logging)
-- Quit thought-logger with ⌘-q and Reopen for full functionality.
-- Capture Thoughts. 🧠🥅 
----
-
-## Wide Distribution
-
-Documentation Note: The following steps are untested.
-
-### Prepare for Distribution
-1. Ensure your macOS developer tools are installed and configured:
-   ```bash
-   xcode-select --install
-   ```
-   Ensure your Apple Developer ID is configured.
-
-2. Build the app with `yarn run make`, ensuring the `forge.config.ts` includes:
-   ```javascript
-   electronPackagerConfig: {
-     platform: "darwin",
-     arch: "arm64",
-   }
-   ```
-
-### Code Signing
-Sign the app using your Apple Developer ID:
+For distribution with Developer ID:
 ```bash
+# Sign with Developer ID
 codesign --deep --force --verbose \
   --sign "Developer ID Application: Your Name (TEAM_ID)" \
   /path/to/thought-logger.app
 ```
 
-### Notarize the App
-1. Archive the app into a `.zip` file:
-   ```bash
-   ditto -c -k --sequesterRsrc --keepParent /path/to/thought-logger.app thought-logger.zip
-   ```
-2. Submit the `.zip` file for notarization:
-   ```bash
-   xcrun altool --notarize-app \
-     --primary-bundle-id "com.electron.thought-logger" \
-     --username "your-apple-id" \
-     --password "app-specific-password" \
-     --file thought-logger.zip
-   ```
-3. Once notarization is complete, staple the ticket:
-   ```bash
-   xcrun stapler staple /path/to/thought-logger.app
-   ```
+### Notarization (macOS)
 
-### Distribute
-- Share the notarized `.zip` file or wrap it in a `.dmg` for cleaner distribution.
-- Use `electron-builder` to create a `.dmg` if required:
-  ```bash
-  yarn add electron-builder
-  yarn run electron-builder --mac --x64 --arm64
-  ```
-
----
-
-## Common Issues
-
-### Gatekeeper Blocking Unsigned Apps
-If the app is unsigned, macOS may block it from running. Use:
+1. Archive the app:
 ```bash
-sudo spctl --master-disable
-```
-for testing unsigned apps locally.
-
-### Signing Errors
-Ensure your Developer ID is correctly installed. Check with:
-```bash
-security find-identity -v -p codesigning
+ditto -c -k --sequesterRsrc --keepParent /path/to/thought-logger.app thought-logger.zip
 ```
 
-### Debugging Notarization
-Use this command to check notarization logs:
+2. Submit for notarization:
 ```bash
-xcrun altool --notarization-info <REQUEST_UUID> --username "your-apple-id" --password "app-specific-password"
+xcrun altool --notarize-app \
+  --primary-bundle-id "com.electron.thought-logger" \
+  --username "your-apple-id" \
+  --password "app-specific-password" \
+  --file thought-logger.zip
 ```
 
-# Use `thought-logger` with Claude Desktop
+3. Staple the notarization ticket:
+```bash
+xcrun stapler staple /path/to/thought-logger.app
+```
 
-1. Start ThoughtLogger to start the MCP server.
-2. Create Claude's configuration file if it does not exist.
-   On OSX: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   On Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-3. Replace the file's contents with this:
-   ```json
-   {
-     "mcpServers": {
-       "remote": {
-         "command": "npx",
-         "args": [
-           "-y",
-           "mcp-remote",
-           "http://localhost:8765/mcp"
-         ]
-       }
-     }
-   }
-   ```
-4. If Claude Desktop is running, restart it.
-5. You should see a hammer icon in the bottom right corner of the input box. Click it to verify that the `keylogs` command appears.
-6. Ask Claude about your keylogs!
+## Integration with Claude Desktop
+
+Thought Logger provides an MCP server interface for integration with AI assistants.
+
+### Setup
+
+1. Start Thought Logger to activate the MCP server
+2. Create/modify Claude Desktop config file:
+   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+3. Add MCP server configuration:
+```json
+{
+  "mcpServers": {
+    "remote": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://localhost:8765/mcp"
+      ]
+    }
+  }
+}
+```
+
+4. Restart Claude Desktop
+5. Look for the hammer icon in the input area
+6. Use the `keylogs` command to query your activity data
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Run the test suite: `yarn test`
+6. Run linting: `yarn lint`
+7. Run type checking: `yarn typecheck`
+8. Submit a pull request

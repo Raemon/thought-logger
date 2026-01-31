@@ -1,3 +1,4 @@
+import "source-map-support/register";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "path";
 import fs from "node:fs/promises";
@@ -24,7 +25,13 @@ import logger, {
   updateDebugPreferences,
 } from "./logging";
 import { getRecentApps, getRecentSummaries } from "./electron/files";
-import { getApiKey, saveApiKey } from "./electron/credentials";
+import { getSecret, setSecret } from "./electron/credentials";
+import { LOG_FILE_ENCRYPTION } from "./constants/credentials";
+import {
+  readFile,
+  changePassword,
+  initializeMasterKey,
+} from "./electron/paths";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
@@ -148,12 +155,20 @@ ipcMain.on("OPEN_EXTERNAL_URL", (_event, url) => {
   });
 });
 
-ipcMain.handle("CHECK_API_KEY", () => {
-  return getApiKey();
+ipcMain.handle("CHECK_SECRET", async (_event, account: string) => {
+  const secret = await getSecret(account);
+  return !!secret;
 });
 
-ipcMain.handle("SAVE_API_KEY", (_event, apiKey: string) => {
-  return saveApiKey(apiKey);
+ipcMain.handle("SAVE_SECRET", (_event, account: string, secret: string) => {
+  if (account === LOG_FILE_ENCRYPTION) {
+    initializeMasterKey(secret);
+  }
+  return setSecret(account, secret);
+});
+
+ipcMain.handle("CHANGE_PASSWORD", async (_event, newPassword: string) => {
+  return changePassword(newPassword);
 });
 
 ipcMain.handle("GET_AVAILABLE_MODELS", (_event, imageSupport) =>
@@ -162,7 +177,7 @@ ipcMain.handle("GET_AVAILABLE_MODELS", (_event, imageSupport) =>
 
 ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
   try {
-    const content = await fs.readFile(filePath, "utf-8");
+    const content = await readFile(filePath);
     return content;
   } catch (error) {
     logger.error("Failed to read file:", error);
