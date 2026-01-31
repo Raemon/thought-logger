@@ -13,7 +13,7 @@ An Electron application that captures keystrokes and screenshots, making them ac
 - [Building and Distribution](#building-and-distribution)
 - [Configuration](#configuration)
 - [Integration with Claude Desktop](#integration-with-claude-desktop)
-- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 
 ## Features
 
