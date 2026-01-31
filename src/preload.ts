@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import { Preferences } from "./types/preferences.d";
 import { Summary } from "./types/files.d";
-import { OPEN_ROUTER } from "./constants/credentials";
 
 contextBridge.exposeInMainWorld("permissions", {
   requestPermissionsStatus: () =>
@@ -50,19 +49,15 @@ contextBridge.exposeInMainWorld("preferences", {
     ipcRenderer.invoke("SET_PREFERENCES", prefs),
 });
 
-contextBridge.exposeInMainWorld("openRouter", {
-  checkApiKey: () => ipcRenderer.invoke("CHECK_SECRET", OPEN_ROUTER),
-  saveApiKey: (apiKey: string) =>
-    ipcRenderer.invoke("SAVE_SECRET", OPEN_ROUTER, apiKey),
-  getAvailableModels: (imageSupport = false) =>
-    ipcRenderer.invoke("GET_AVAILABLE_MODELS", imageSupport),
-});
-
-contextBridge.exposeInMainWorld("encryption", {
-  checkPassword: () =>
-    ipcRenderer.invoke("CHECK_SECRET", "Log file encryption"),
-  savePassword: (password: string) =>
-    ipcRenderer.invoke("SAVE_SECRET", "Log file encryption", password),
+contextBridge.exposeInMainWorld("credentials", {
+  checkSecret: (account: string) => ipcRenderer.invoke("CHECK_SECRET", account),
+  saveSecret: (account: string, secret: string) =>
+    ipcRenderer.invoke("SAVE_SECRET", account, secret),
   changePassword: (newPassword: string) =>
     ipcRenderer.invoke("CHANGE_PASSWORD", newPassword),
+});
+
+contextBridge.exposeInMainWorld("openRouter", {
+  getAvailableModels: (imageSupport = false) =>
+    ipcRenderer.invoke("GET_AVAILABLE_MODELS", imageSupport),
 });

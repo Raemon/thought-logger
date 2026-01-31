@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 
 const EncryptionSettings = () => {
   const [saving, setSaving] = useState(false);
@@ -16,7 +17,7 @@ const EncryptionSettings = () => {
   }, []);
 
   const checkPassword = async () => {
-    const status = await window.encryption.checkPassword();
+    const status = await window.credentials.checkSecret(LOG_FILE_ENCRYPTION);
     setHasSecret(status);
   };
 
@@ -24,7 +25,7 @@ const EncryptionSettings = () => {
     setSaving(true);
 
     try {
-      const result = await window.encryption.changePassword(password);
+      const result = await window.credentials.changePassword(password);
 
       if (result.success) {
         setMessage({ text: result.message, isError: false });

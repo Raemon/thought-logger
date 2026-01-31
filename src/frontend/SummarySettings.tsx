@@ -27,7 +27,7 @@ const SummarySettings = () => {
 
     window.openRouter
       .getAvailableModels()
-      .then((models) => setAvailableModels(models));
+      .then((models: string[]) => setAvailableModels(models));
   }, []);
 
   return (

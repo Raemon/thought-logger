@@ -21,7 +21,7 @@ export function ScreenshotController() {
     window.preferences.getPreferences().then((prefs) => setPrefs(prefs));
     window.openRouter
       .getAvailableModels(true)
-      .then((models) => setAvailableModels(models));
+      .then((models: string[]) => setAvailableModels(models));
     window.userData.getRecentApps().then((apps) => setRecentApplications(apps));
   }, []);
 

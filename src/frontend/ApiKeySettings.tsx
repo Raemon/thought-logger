@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { OPEN_ROUTER } from "../constants/credentials";
 
 const ApiKeySettings = () => {
   const [apiKey, setApiKey] = useState<string>("");
@@ -14,7 +15,7 @@ const ApiKeySettings = () => {
   }, []);
 
   const checkApiKey = async () => {
-    const status = await window.openRouter.checkApiKey();
+    const status = await window.credentials.checkSecret(OPEN_ROUTER);
     setHasSecret(status);
   };
 
@@ -28,7 +29,7 @@ const ApiKeySettings = () => {
     setMessage(null);
 
     try {
-      const result = await window.openRouter.saveApiKey(apiKey);
+      const result = await window.credentials.saveSecret(OPEN_ROUTER, apiKey);
 
       if (result.success) {
         setMessage({ text: result.message, isError: false });
