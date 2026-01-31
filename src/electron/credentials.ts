@@ -38,15 +38,15 @@ try {
 const SERVICE_NAME = "ThoughtLogger";
 
 const cache: { [key: string]: string | null } = {};
+let queue: Promise<string | null> = Promise.resolve(null);
 
 export async function getSecret(account: string): Promise<string | null> {
-  try {
+  queue = queue.then(async () => {
     cache[account] ||= await keytar.getPassword(SERVICE_NAME, account);
     return cache[account];
-  } catch (error) {
-    logger.error("Error accessing keychain:", error);
-    return null;
-  }
+  });
+
+  return queue;
 }
 
 export async function setSecret(
