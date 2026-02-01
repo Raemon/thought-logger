@@ -116,25 +116,25 @@ export function App() {
       {activeTab === "settings" && (
         <>
           <UserFilesInfo />
-          <div className="border border-gray-300 pb-4 mt-4">
+          <div className="border border-gray-300 pb-4 mt-4 shadow-sm">
             <ScreenshotController />
           </div>
-          <div className="border border-gray-300 pb-4 pt-4 mt-4 ">
+          <div className="border border-gray-300 pb-4 pt-4 mt-4 shadow-sm">
             <SummarySettings />
           </div>
-          <div className="border border-gray-300 pb-4 pt-4 mt-4">
+          <div className="border border-gray-300 pb-4 pt-4 mt-4 shadow-sm">
             <ApiKeySettings />
           </div>
-          <div className="border border-gray-300 pb-4 pt-4 mt-4">
+          <div className="border border-gray-300 pb-4 pt-4 mt-4 shadow-sm">
             <EncryptionSettings />
           </div>
-          <div className="border-  order-gray-300 pb-4 pt-4">
+          <div className="border border-gray-300 pb-4 pt-4 shadow-sm">
             <Permissions />
           </div>
-          <div className="border border-gray-300 pb-4 pt-4">
+          <div className="border border-gray-300 pb-4 pt-4 shadow-sm">
             <BlockedAppsEditor />
           </div>
-          <div className="pt-4">
+          <div className="pt-4 shadow-sm border-t border-gray-300 mt-4">
             <DebugSettings />
           </div>
         </>
