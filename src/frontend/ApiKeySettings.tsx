@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { OPEN_ROUTER } from "../../constants/credentials";
+import { OPEN_ROUTER } from "../constants/credentials";
 
 const ApiKeySettings = () => {
   const [apiKey, setApiKey] = useState<string>("");
