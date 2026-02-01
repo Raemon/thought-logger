@@ -211,4 +211,10 @@ ipcMain.handle("GET_RECENT_LOGS", async () => {
   );
 });
 
+ipcMain.handle("GET_ALL_LOGS", async () => {
+  return getRecentSummaries(Infinity).then((summaries) =>
+    summaries.filter((summary) => summary.contents),
+  );
+});
+
 ipcMain.handle("GET_RECENT_APPS", getRecentApps);
