@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "node:fs/promises";
+import sumBy from "lodash/sumBy";
 import {
   differenceInHours,
   differenceInSeconds,
@@ -203,6 +204,11 @@ export async function getScreenshotImagePaths(): Promise<string[]> {
 
 const TWO_WEEKS_IN_SECONDS = 60 * 60 * 24 * 7;
 
+async function getCharCount<T>(items: T[], getPath: (item: T) => string): Promise<number> {
+  const contents = await Promise.all(items.map(item => maybeReadContents(getPath(item))));
+  return sumBy(contents, c => c?.length ?? 0);
+}
+
 export async function getRecentSummaries(
   ageInSeconds: number = TWO_WEEKS_IN_SECONDS,
 ): Promise<Summary[]> {
@@ -242,6 +248,8 @@ export async function getRecentSummaries(
     );
 
     const contents = await maybeReadContents(summaryPath);
+    const keylogCharCount = await getCharCount(availableKeylogs, k => k.chronoPath);
+    const screenshotSummaryCharCount = await getCharCount(availableScreenshots, s => s.summaryPath);
 
     dailySummaries[dateString] = dailySummaries[dateString] || {
       path: summaryPath,
@@ -251,6 +259,8 @@ export async function getRecentSummaries(
       screenshots: availableScreenshots,
       loading: false,
       scope: SummaryScopeTypes.Day,
+      keylogCharCount,
+      screenshotSummaryCharCount,
     };
   }
 
