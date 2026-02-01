@@ -109,7 +109,7 @@ export function FileInfo() {
             </div>
           ))}
         </div>
-        <div className="min-w-[300px] flex-1">
+        <div className="min-w-[300px] flex-1 space-y-12">
           {serializedLogs
             .sort((a, b) => compareDesc(a.date, b.date))
             .map((log) => (

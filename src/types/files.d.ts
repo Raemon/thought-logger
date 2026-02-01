@@ -24,4 +24,6 @@ export interface Summary {
   scope: SummaryScopeTypes;
   contents?: string;
   path: string;
+  keylogCharCount?: number;
+  screenshotSummaryCharCount?: number;
 }

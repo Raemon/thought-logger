@@ -15,12 +15,11 @@ export const endpointList = [
 
 // These endpoints have dynamic paths and are not directly linkable from the UI
 export const dynamicEndpoints = [
-  { path: "/screenshot/[filepath]", description: "Serve a screenshot image" },
-  { path: "/mcp", description: "MCP server endpoint" },
-  { path: "/YYYY-MM-DD", description: "Processed keylog for date" },
-  { path: "/YYYY-MM-DD/screenshots", description: "Screenshot images for date" },
-  { path: "/YYYY-MM-DD/screenshots/all", description: "Screenshot images gallery for date" },
-  { path: "/YYYY-MM-DD/screenshots/summaries", description: "Screenshot summaries for date" },
+  { path: "/screenshot/[filepath]", label: "Screenshot", description: "Serve a screenshot image" },
+  { path: "/mcp", label: "MCP", description: "MCP server endpoint" },
+  { path: "/YYYY-MM-DD", label: "Keylog", description: "Processed keylog for date" },
+  { path: "/YYYY-MM-DD/screenshots", label: "Screenshots", description: "Screenshot images for date" },
+  { path: "/YYYY-MM-DD/screenshots/summaries", label: "Summaries", description: "Screenshot summaries for date" },
 ];
 
 // Combined list for the index page
