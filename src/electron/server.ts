@@ -15,6 +15,7 @@ import {
   getScreenshotImagePaths,
   getScreenshotImagePathsForDate,
 } from "./files";
+import { allEndpoints } from "../constants/endpoints";
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 
@@ -325,54 +326,10 @@ async function handleMCPPostRequest(
   await transport.handleRequest(req, res, body);
 }
 
-const endpointList = [
-  { path: "/today", description: "Today's processed keylog" },
-  { path: "/today/raw", description: "Today's raw keylog" },
-  {
-    path: "/today/screenshots",
-    description: "Today's screenshot image paths",
-  },
-  {
-    path: "/today/screenshots/all",
-    description: "Today's screenshot images gallery",
-  },
-  {
-    path: "/today/screenshots/summaries",
-    description: "Today's screenshot summaries",
-  },
-  { path: "/yesterday", description: "Yesterday's processed keylog" },
-  { path: "/yesterday/raw", description: "Yesterday's raw keylog" },
-  {
-    path: "/yesterday/screenshots",
-    description: "Yesterday's screenshot image paths",
-  },
-  {
-    path: "/yesterday/screenshots/all",
-    description: "Yesterday's screenshot images gallery",
-  },
-  {
-    path: "/yesterday/screenshots/summaries",
-    description: "Yesterday's screenshot summaries",
-  },
-  { path: "/week", description: "Past week processed keylogs" },
-  { path: "/week/raw", description: "Past week raw keylogs" },
-  { path: "/screenshot/[filepath]", description: "Serve a screenshot image" },
-  { path: "/mcp", description: "MCP server endpoint" },
-  { path: "/YYYY-MM-DD", description: "Processed keylog for date" },
-  { path: "/YYYY-MM-DD/screenshots", description: "Screenshot images for date" },
-  {
-    path: "/YYYY-MM-DD/screenshots/all",
-    description: "Screenshot images gallery for date",
-  },
-  {
-    path: "/YYYY-MM-DD/screenshots/summaries",
-    description: "Screenshot summaries for date",
-  },
-];
 
 function handleIndexRequest(res: http.ServerResponse) {
   const todayDate = new Date().toLocaleDateString("en-CA");
-  const endpointLines = endpointList
+  const endpointLines = allEndpoints
     .map((endpoint) => {
       const path = endpoint.path.replace("YYYY-MM-DD", todayDate);
       return `<li><a href="${path}" target="_blank" rel="noopener noreferrer">${path}</a> - ${endpoint.description}</li>`;

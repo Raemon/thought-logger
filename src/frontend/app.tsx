@@ -7,6 +7,7 @@ import ApiKeySettings from "./ApiKeySettings";
 import SummarySettings from "./SummarySettings";
 import DebugSettings from "./DebugSettings";
 import EncryptionSettings from "./EncryptionSettings";
+import { UserFilesInfo } from "./UserFilesInfo";
 
 const TabButton = ({
   selected,
@@ -20,10 +21,10 @@ const TabButton = ({
   <button
     onClick={onClick}
     className={
-      `px-4 py-2 border-none cursor-pointer mr-0.5 ` +
+      `px-4 py-2 cursor-pointer mr-0.5 -mb-px ` +
       (selected
-        ? "bg-white border-b-0"
-        : "bg-gray-100 border-b border-gray-300")
+        ? "bg-white border-t border-l border-r border-gray-300 border-b-0"
+        : "border-transparent border-t border-l border-r")
     }
   >
     {children}
@@ -114,13 +115,28 @@ export function App() {
 
       {activeTab === "settings" && (
         <>
-          <ScreenshotController />
-          <SummarySettings />
-          <ApiKeySettings />
-          <EncryptionSettings />
-          <Permissions />
-          <BlockedAppsEditor />
-          <DebugSettings />
+          <UserFilesInfo />
+          <div className="border border-gray-300 pb-4 mt-4 shadow-sm">
+            <ScreenshotController />
+          </div>
+          <div className="border border-gray-300 pb-4 pt-4 mt-4 shadow-sm">
+            <SummarySettings />
+          </div>
+          <div className="border border-gray-300 pb-4 pt-4 mt-4 shadow-sm">
+            <ApiKeySettings />
+          </div>
+          <div className="border border-gray-300 pb-4 pt-4 mt-4 shadow-sm">
+            <EncryptionSettings />
+          </div>
+          <div className="border border-gray-300 pb-4 pt-4 shadow-sm">
+            <Permissions />
+          </div>
+          <div className="border border-gray-300 pb-4 pt-4 shadow-sm">
+            <BlockedAppsEditor />
+          </div>
+          <div className="pt-4 shadow-sm border-t border-gray-300 mt-4">
+            <DebugSettings />
+          </div>
         </>
       )}
     </div>
