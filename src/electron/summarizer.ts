@@ -9,6 +9,7 @@ import { loadPreferences } from "../preferences";
 import { getRecentSummaries, maybeReadContents } from "./files";
 import { getSecret } from "./credentials";
 import { OPEN_ROUTER } from "../constants/credentials";
+import { SUMMARIZER_SYSTEM_PROMPT } from "../constants/prompts";
 import { readFile } from "./paths";
 
 setDefaultOptions({ weekStartsOn: 1 });
@@ -81,8 +82,7 @@ async function generateAISummary(
             messages: [
               {
                 role: "system",
-                content:
-                  "You are a helpful assistant that analyzes computer activity logs and identifies major projects and tasks worked on. Focus on identifying distinct projects, and significant activities. Be concise but informative.",
+                content: SUMMARIZER_SYSTEM_PROMPT,
               },
               {
                 role: "user",
