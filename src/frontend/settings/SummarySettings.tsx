@@ -3,8 +3,8 @@ import React, { useEffect, useState } from "react";
 import {
   SummaryPreferences,
   DEFAULT_PREFERENCES,
-} from "../types/preferences.d";
-import TypeaheadDropdown from "./TypeaheadDropdown";
+} from "../../types/preferences.d";
+import TypeaheadDropdown from "../common/TypeaheadDropdown";
 
 const SummarySettings = () => {
   const [summaryPrefs, setSummaryPrefs] = useState<SummaryPreferences>({
