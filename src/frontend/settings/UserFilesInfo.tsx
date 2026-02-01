@@ -13,10 +13,6 @@ export function UserFilesInfo() {
 
   return (
     <div>
-      <p>
-        This app takes screenshots at regular intervals (configurable below),
-        and logs mouse and keyboard inputs.
-      </p>
       <button onClick={openFolder} className="ml-0 border border-gray-300 rounded-md px-2 py-1">
         Open Files Folder
       </button>

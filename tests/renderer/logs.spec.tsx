@@ -2,7 +2,7 @@ import React from "react";
 import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
-import { FileInfo } from "../../src/frontend/FileInfo";
+import { LogsPage } from "../../src/frontend/logs/LogsPage";
 import { SummaryScopeTypes } from "../../src/types/files.d";
 
 const userData: UserData = {
@@ -56,7 +56,7 @@ const userData: UserData = {
 vi.stubGlobal("userData", userData);
 
 test("Renders the logs", async () => {
-  const { asFragment, getByText } = render(<FileInfo />);
+  const { asFragment, getByText } = render(<LogsPage />);
   await expect.element(getByText("This is a daily summary")).toBeVisible();
   expect(asFragment()).toMatchSnapshot();
 });
