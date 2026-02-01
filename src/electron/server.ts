@@ -3,12 +3,18 @@ import path from "path";
 import { app } from "electron";
 
 import { randomUUID } from "node:crypto";
+import fs from "node:fs/promises";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types";
 import { z } from "zod";
 import logger from "../logging";
 import { readFile } from "./paths";
+import {
+  getScreenshotSummariesForDate,
+  getScreenshotImagePaths,
+  getScreenshotImagePathsForDate,
+} from "./files";
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 
@@ -115,6 +121,93 @@ async function handleLogFileRequest(
   } catch (error) {
     res.writeHead(500, { "Content-Type": "text/plain" });
     res.end(`Failed to read ${description} log file. ${filePath}`);
+  }
+}
+
+async function handleScreenshotSummaryList(
+  res: http.ServerResponse,
+  dateString: string,
+) {
+  const summaries = await getScreenshotSummariesForDate(dateString);
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  if (summaries.length === 0) {
+    res.end(`No screenshot summaries for ${dateString}.`);
+    return;
+  }
+  const contents = summaries
+    .map((summary) => `${summary.path}:\n${summary.contents}`)
+    .join("\n\n");
+  res.end(contents);
+}
+
+async function handleScreenshotImageList(res: http.ServerResponse) {
+  const imagePaths = await getScreenshotImagePaths();
+  res.writeHead(200, { "Content-Type": "text/html" });
+  if (imagePaths.length === 0) {
+    res.end("No screenshot images found.");
+    return;
+  }
+  const images = imagePaths.map((imagePath) => {
+    const url = `/screenshot/${encodeURIComponent(imagePath)}`;
+    return `<a href="${url}" target="_blank"><img src="${url}" style="width:300px" /></a>`;
+  }).join("");
+  res.end(`<h1>Screenshot Images</h1><div style="display:flex;flex-wrap:wrap;gap:8px">${images}</div>`);
+}
+
+async function handleScreenshotImageListForDate(
+  res: http.ServerResponse,
+  dateString: string,
+) {
+  const imagePaths = await getScreenshotImagePathsForDate(dateString);
+  res.writeHead(200, { "Content-Type": "text/html" });
+  if (imagePaths.length === 0) {
+    res.end(`No screenshot images for ${dateString}.`);
+    return;
+  }
+  const images = imagePaths.map((imagePath) => {
+    const url = `/screenshot/${encodeURIComponent(imagePath)}`;
+    return `<a href="${url}" target="_blank"><img src="${url}" style="width:300px" /></a>`;
+  }).join("");
+  res.end(`<h1>Screenshot Images for ${dateString}</h1><div style="display:flex;flex-wrap:wrap;gap:8px">${images}</div>`);
+}
+
+async function handleScreenshotImageGalleryForDate(
+  res: http.ServerResponse,
+  dateString: string,
+) {
+  const imagePaths = await getScreenshotImagePathsForDate(dateString);
+  res.writeHead(200, { "Content-Type": "text/html" });
+  if (imagePaths.length === 0) {
+    res.end(`No screenshot images for ${dateString}.`);
+    return;
+  }
+  const images = imagePaths.map((imagePath) => {
+    const url = `/screenshot/${encodeURIComponent(imagePath)}`;
+    return `<div><img src="${url}" style="max-width:100%" /></div>`;
+  }).join("");
+  res.end(`<h1>Screenshot Images for ${dateString}</h1>${images}`);
+}
+
+async function handleScreenshotImageRequest(
+  res: http.ServerResponse,
+  encodedPath: string,
+) {
+  try {
+    const screenshotRoot = path.join(userDataPath, "files", "screenshots");
+    const requestedPath = decodeURIComponent(encodedPath);
+    const resolvedPath = path.resolve(requestedPath);
+    const relativePath = path.relative(screenshotRoot, resolvedPath);
+    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+      res.writeHead(403, { "Content-Type": "text/plain" });
+      res.end("Invalid screenshot path.");
+      return;
+    }
+    const imageData = await fs.readFile(resolvedPath);
+    res.writeHead(200, { "Content-Type": "image/jpeg" });
+    res.end(imageData);
+  } catch (error) {
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Screenshot not found.");
   }
 }
 
@@ -232,6 +325,63 @@ async function handleMCPPostRequest(
   await transport.handleRequest(req, res, body);
 }
 
+const endpointList = [
+  { path: "/today", description: "Today's processed keylog" },
+  { path: "/today/raw", description: "Today's raw keylog" },
+  {
+    path: "/today/screenshots",
+    description: "Today's screenshot image paths",
+  },
+  {
+    path: "/today/screenshots/all",
+    description: "Today's screenshot images gallery",
+  },
+  {
+    path: "/today/screenshots/summaries",
+    description: "Today's screenshot summaries",
+  },
+  { path: "/yesterday", description: "Yesterday's processed keylog" },
+  { path: "/yesterday/raw", description: "Yesterday's raw keylog" },
+  {
+    path: "/yesterday/screenshots",
+    description: "Yesterday's screenshot image paths",
+  },
+  {
+    path: "/yesterday/screenshots/all",
+    description: "Yesterday's screenshot images gallery",
+  },
+  {
+    path: "/yesterday/screenshots/summaries",
+    description: "Yesterday's screenshot summaries",
+  },
+  { path: "/week", description: "Past week processed keylogs" },
+  { path: "/week/raw", description: "Past week raw keylogs" },
+  { path: "/screenshot/[filepath]", description: "Serve a screenshot image" },
+  { path: "/mcp", description: "MCP server endpoint" },
+  { path: "/YYYY-MM-DD", description: "Processed keylog for date" },
+  { path: "/YYYY-MM-DD/screenshots", description: "Screenshot images for date" },
+  {
+    path: "/YYYY-MM-DD/screenshots/all",
+    description: "Screenshot images gallery for date",
+  },
+  {
+    path: "/YYYY-MM-DD/screenshots/summaries",
+    description: "Screenshot summaries for date",
+  },
+];
+
+function handleIndexRequest(res: http.ServerResponse) {
+  const todayDate = new Date().toLocaleDateString("en-CA");
+  const endpointLines = endpointList
+    .map((endpoint) => {
+      const path = endpoint.path.replace("YYYY-MM-DD", todayDate);
+      return `<li><a href="${path}" target="_blank" rel="noopener noreferrer">${path}</a> - ${endpoint.description}</li>`;
+    })
+    .join("");
+  res.writeHead(200, { "Content-Type": "text/html" });
+  res.end(`<h1>Available endpoints</h1><ul>${endpointLines}</ul>`);
+}
+
 /**
  * Starts the local HTTP server for accessing log files
  * @param port The port to listen on
@@ -241,6 +391,8 @@ export function startLocalServer(port = 8765): http.Server {
   const server = http.createServer(async (req, res) => {
     switch (req.url) {
       case "/":
+        handleIndexRequest(res);
+        break;
       case "/today":
         await handleLogFileRequest(
           res,
@@ -257,6 +409,39 @@ export function startLocalServer(port = 8765): http.Server {
         );
         break;
 
+      case "/today/screenshots": {
+        try {
+          const dateString = new Date().toLocaleDateString("en-CA");
+          await handleScreenshotImageListForDate(res, dateString);
+        } catch (error) {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to list today's screenshot images.");
+        }
+        break;
+      }
+
+      case "/today/screenshots/all": {
+        try {
+          const dateString = new Date().toLocaleDateString("en-CA");
+          await handleScreenshotImageGalleryForDate(res, dateString);
+        } catch (error) {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to render today's screenshot gallery.");
+        }
+        break;
+      }
+
+      case "/today/screenshots/summaries": {
+        try {
+          const dateString = new Date().toLocaleDateString("en-CA");
+          await handleScreenshotSummaryList(res, dateString);
+        } catch (error) {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to list today's screenshot summaries.");
+        }
+        break;
+      }
+
       case "/yesterday":
         await handleLogFileRequest(
           res,
@@ -272,6 +457,45 @@ export function startLocalServer(port = 8765): http.Server {
           "yesterday's",
         );
         break;
+
+      case "/yesterday/screenshots": {
+        try {
+          const date = new Date();
+          date.setDate(date.getDate() - 1);
+          const dateString = date.toLocaleDateString("en-CA");
+          await handleScreenshotImageListForDate(res, dateString);
+        } catch (error) {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to list yesterday's screenshot images.");
+        }
+        break;
+      }
+
+      case "/yesterday/screenshots/all": {
+        try {
+          const date = new Date();
+          date.setDate(date.getDate() - 1);
+          const dateString = date.toLocaleDateString("en-CA");
+          await handleScreenshotImageGalleryForDate(res, dateString);
+        } catch (error) {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to render yesterday's screenshot gallery.");
+        }
+        break;
+      }
+
+      case "/yesterday/screenshots/summaries": {
+        try {
+          const date = new Date();
+          date.setDate(date.getDate() - 1);
+          const dateString = date.toLocaleDateString("en-CA");
+          await handleScreenshotSummaryList(res, dateString);
+        } catch (error) {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to list yesterday's screenshot summaries.");
+        }
+        break;
+      }
 
       case "/week":
         try {
@@ -305,11 +529,20 @@ export function startLocalServer(port = 8765): http.Server {
         break;
 
       default: {
+        const screenshotFileMatch = req.url?.match(/^\/screenshot\/(.+)$/);
         // Check if the URL matches the format /YYYY-MM-DD
+        const screenshotImageMatch =
+          req.url?.match(/^\/(\d{4}-\d{2}-\d{2})\/screenshots$/);
+        const screenshotGalleryMatch =
+          req.url?.match(/^\/(\d{4}-\d{2}-\d{2})\/screenshots\/all$/);
+        const screenshotSummaryMatch =
+          req.url?.match(/^\/(\d{4}-\d{2}-\d{2})\/screenshots\/summaries$/);
         const dateMatch = req.url?.match(/^\/(\d{4}-\d{2}-\d{2})$/);
 
-        if (dateMatch) {
-          const dateStr = dateMatch[1];
+        if (screenshotFileMatch) {
+          await handleScreenshotImageRequest(res, screenshotFileMatch[1]);
+        } else if (screenshotImageMatch || screenshotGalleryMatch || screenshotSummaryMatch || dateMatch) {
+          const dateStr = (screenshotImageMatch || screenshotGalleryMatch || screenshotSummaryMatch || dateMatch)[1];
           try {
             // Parse the date from the URL
             const date = new Date(dateStr);
@@ -321,14 +554,30 @@ export function startLocalServer(port = 8765): http.Server {
               break;
             }
 
-            const filePath = getKeyLogFileForDate(
-              date,
-              "processed.chronological.",
-            );
-            await handleLogFileRequest(res, filePath, `log for ${dateStr}`);
+            if (screenshotSummaryMatch) {
+              await handleScreenshotSummaryList(res, dateStr);
+            } else if (screenshotGalleryMatch) {
+              await handleScreenshotImageGalleryForDate(res, dateStr);
+            } else if (screenshotImageMatch) {
+              await handleScreenshotImageListForDate(res, dateStr);
+            } else {
+              const filePath = getKeyLogFileForDate(
+                date,
+                "processed.chronological.",
+              );
+              await handleLogFileRequest(res, filePath, `log for ${dateStr}`);
+            }
           } catch (error) {
             res.writeHead(500, { "Content-Type": "text/plain" });
-            res.end(`Failed to retrieve log file for ${dateStr}.`);
+            res.end(
+              screenshotSummaryMatch
+                ? `Failed to retrieve screenshot summaries for ${dateStr}.`
+                : screenshotGalleryMatch
+                  ? `Failed to render screenshot gallery for ${dateStr}.`
+                : screenshotImageMatch
+                  ? `Failed to retrieve screenshot images for ${dateStr}.`
+                : `Failed to retrieve log file for ${dateStr}.`,
+            );
           }
         } else {
           res.writeHead(404, { "Content-Type": "text/plain" });
