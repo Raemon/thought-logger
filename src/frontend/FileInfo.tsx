@@ -3,17 +3,14 @@ import { format, compareDesc, compareAsc } from "date-fns";
 
 import SummaryComponent from "./Summary";
 import { Summary, SummaryScopeTypes } from "../types/files.d";
+import { endpointList } from "../constants/endpoints";
 
-function openFolder() {
-  window.userData.openUserDataFolder();
-}
+const BASE_URL = "http://localhost:8765";
 
 export function FileInfo() {
-  const [dataFolder, setDataFolder] = useState("(loading)");
   const [serializedLogs, setSerializedLogs] = useState<Summary[]>([]);
 
   useEffect(() => {
-    window.userData.getUserDataFolder().then(setDataFolder);
     window.userData.getRecentLogs().then(setSerializedLogs);
     window.userData.onUpdateRecentLogs((logs) => setSerializedLogs(logs));
   }, []);
@@ -32,50 +29,23 @@ export function FileInfo() {
 
   return (
     <div>
-      <h3>User files</h3>
-      <p>
-        This app takes screenshots at regular intervals (configurable below),
-        and logs mouse and keyboard inputs.
-      </p>
-      <button onClick={openFolder} className="ml-0">
-        Open Files Folder
-      </button>
-      <span className="ml-2 text-xs text-gray-500">{dataFolder}</span>
-
-      <div className="flex gap-2.5">
-        <a
-          href="http://localhost:8765/today"
-          onClick={(e) => {
-            e.preventDefault();
-            window.userData.openExternalUrl("http://localhost:8765/today");
-          }}
-          className="text-blue-600 no-underline cursor-pointer"
-        >
-          today
-        </a>
-        <a
-          href="http://localhost:8765/yesterday"
-          onClick={(e) => {
-            e.preventDefault();
-            window.userData.openExternalUrl("http://localhost:8765/yesterday");
-          }}
-          className="text-blue-600 no-underline cursor-pointer"
-        >
-          yesterday
-        </a>
-        <a
-          href="http://localhost:8765/last7days"
-          onClick={(e) => {
-            e.preventDefault();
-            window.userData.openExternalUrl("http://localhost:8765/week");
-          }}
-          className="text-blue-600 no-underline cursor-pointer"
-        >
-          week
-        </a>
+      <div className="flex flex-wrap gap-2.5 mb-4">
+        {endpointList.map((endpoint) => (
+          <a
+            key={endpoint.path}
+            href={`${BASE_URL}${endpoint.path}`}
+            onClick={(e) => {
+              e.preventDefault();
+              window.userData.openExternalUrl(`${BASE_URL}${endpoint.path}`);
+            }}
+            className="text-blue-600 border border-gray-300 rounded-sm px-2 py-1 no-underline cursor-pointer text-sm"
+            title={endpoint.description}
+          >
+            {endpoint.label}
+          </a>
+        ))}
       </div>
-
-      <div className="flex gap-5 mt-5">
+      <div className="flex gap-5">
         <div
           className="min-w-[220px] max-w-[250px] pr-2 border-r border-gray-200 text-sm"
           style={{ maxHeight: 600, overflowY: "auto" }}
