@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
+import { LOG_FILE_ENCRYPTION } from "../../constants/credentials";
 
 const EncryptionSettings = () => {
   const [saving, setSaving] = useState(false);

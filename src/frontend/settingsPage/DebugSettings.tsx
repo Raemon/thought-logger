@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { DebugPreferences } from "../types/preferences.d";
+import { DebugPreferences } from "../../types/preferences.d";
 
 const DebugSettings = () => {
   const [debugPrefs, setDebugPrefs] = useState<DebugPreferences>({

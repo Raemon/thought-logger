@@ -1,6 +1,6 @@
 import React from "react";
 import { groupBy } from "lodash";
-import { endpointList } from "../constants/endpoints";
+import { endpointList } from "../../constants/endpoints";
 
 const BASE_URL = "http://localhost:8765";
 

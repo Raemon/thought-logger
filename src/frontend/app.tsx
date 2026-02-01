@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { FileInfo } from "./FileInfo";
-import { Permissions } from "./Permissions";
-import { ScreenshotController } from "./ScreenshotController";
-import BlockedAppsEditor from "./BlockedAppsEditor";
-import ApiKeySettings from "./ApiKeySettings";
-import SummarySettings from "./SummarySettings";
-import DebugSettings from "./DebugSettings";
-import EncryptionSettings from "./EncryptionSettings";
-import { UserFilesInfo } from "./UserFilesInfo";
+import { FileInfo } from "./logsPage/FileInfo";
+import { Permissions } from "./settingsPage/Permissions";
+import { ScreenshotController } from "./settingsPage/ScreenshotController";
+import BlockedAppsEditor from "./settingsPage/BlockedAppsEditor";
+import ApiKeySettings from "./settingsPage/ApiKeySettings";
+import SummarySettings from "./settingsPage/SummarySettings";
+import DebugSettings from "./settingsPage/DebugSettings";
+import EncryptionSettings from "./settingsPage/EncryptionSettings";
+import { UserFilesInfo } from "./settingsPage/UserFilesInfo";
 
 const TabButton = ({
   selected,

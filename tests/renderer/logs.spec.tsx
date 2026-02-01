@@ -2,7 +2,7 @@ import React from "react";
 import { expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
-import { FileInfo } from "../../src/frontend/FileInfo";
+import { FileInfo } from "../../src/frontend/logsPage/FileInfo";
 import { SummaryScopeTypes } from "../../src/types/files.d";
 
 const userData: UserData = {

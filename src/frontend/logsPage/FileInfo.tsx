@@ -4,7 +4,7 @@ import { format, compareDesc } from "date-fns";
 import SummaryComponent from "./Summary";
 import EndpointLinks from "./EndpointLinks";
 import TableOfContents from "./TableOfContents";
-import { Summary, SummaryScopeTypes } from "../types/files.d";
+import { Summary, SummaryScopeTypes } from "../../types/files.d";
 
 export function FileInfo() {
   const [serializedLogs, setSerializedLogs] = useState<Summary[]>([]);
