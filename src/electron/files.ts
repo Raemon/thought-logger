@@ -128,6 +128,79 @@ async function getScreenshots(): Promise<
   return screenshots;
 }
 
+export async function getScreenshotSummariesForDate(
+  dateString: string,
+): Promise<{ path: string; contents: string }[]> {
+  const screenshots = await getScreenshots();
+  const screenshotsForDay = screenshots[dateString]
+    ? Object.values(screenshots[dateString])
+    : ([] as Screenshot[]);
+  const summaryPaths = screenshotsForDay.map((screenshot) => screenshot.summaryPath);
+  const summaries: { path: string; contents: string }[] = [];
+
+  for (const summaryPath of summaryPaths) {
+    const contents = await maybeReadContents(summaryPath);
+    if (contents === null) {
+      continue;
+    }
+    summaries.push({ path: summaryPath, contents });
+  }
+
+  return summaries;
+}
+
+export async function getScreenshotImagePathsForDate(
+  dateString: string,
+): Promise<string[]> {
+  const screenshots = await getScreenshots();
+  const screenshotsForDay = screenshots[dateString]
+    ? Object.values(screenshots[dateString])
+    : ([] as Screenshot[]);
+  const imagePaths = screenshotsForDay.map((screenshot) => screenshot.imagePath);
+  const availableImagePaths: string[] = [];
+
+  for (const imagePath of imagePaths) {
+    try {
+      await fs.access(imagePath);
+      availableImagePaths.push(imagePath);
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+
+  return availableImagePaths;
+}
+
+export async function getScreenshotImagePaths(): Promise<string[]> {
+  const screenshots = await getScreenshots();
+  const dayStrings = Object.keys(screenshots);
+  const imagePaths: string[] = [];
+
+  for (const dayString of dayStrings) {
+    const screenshotsForDay = Object.values(screenshots[dayString]);
+    const dayImagePaths = screenshotsForDay.map(
+      (screenshot) => screenshot.imagePath,
+    );
+    imagePaths.push(...dayImagePaths);
+  }
+
+  const availableImagePaths: string[] = [];
+  for (const imagePath of imagePaths) {
+    try {
+      await fs.access(imagePath);
+      availableImagePaths.push(imagePath);
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+
+  return availableImagePaths;
+}
+
 const TWO_WEEKS_IN_SECONDS = 60 * 60 * 24 * 7;
 
 export async function getRecentSummaries(
