@@ -147,11 +147,11 @@ async function handleScreenshotImageList(res: http.ServerResponse) {
     res.end("No screenshot images found.");
     return;
   }
-  const links = imagePaths.map((imagePath) => {
+  const images = imagePaths.map((imagePath) => {
     const url = `/screenshot/${encodeURIComponent(imagePath)}`;
-    return `<li><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></li>`;
+    return `<a href="${url}" target="_blank"><img src="${url}" style="width:300px" /></a>`;
   }).join("");
-  res.end(`<h1>Screenshot Images</h1><ul>${links}</ul>`);
+  res.end(`<h1>Screenshot Images</h1><div style="display:flex;flex-wrap:wrap;gap:8px">${images}</div>`);
 }
 
 async function handleScreenshotImageListForDate(
@@ -164,11 +164,11 @@ async function handleScreenshotImageListForDate(
     res.end(`No screenshot images for ${dateString}.`);
     return;
   }
-  const links = imagePaths.map((imagePath) => {
+  const images = imagePaths.map((imagePath) => {
     const url = `/screenshot/${encodeURIComponent(imagePath)}`;
-    return `<li><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></li>`;
+    return `<a href="${url}" target="_blank"><img src="${url}" style="width:300px" /></a>`;
   }).join("");
-  res.end(`<h1>Screenshot Images for ${dateString}</h1><ul>${links}</ul>`);
+  res.end(`<h1>Screenshot Images for ${dateString}</h1><div style="display:flex;flex-wrap:wrap;gap:8px">${images}</div>`);
 }
 
 async function handleScreenshotImageGalleryForDate(
