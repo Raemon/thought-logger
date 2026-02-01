@@ -1,3 +1,9 @@
+import {
+  DEFAULT_SCREENSHOT_PROMPT,
+  DEFAULT_DAILY_SUMMARY_PROMPT,
+  DEFAULT_WEEKLY_SUMMARY_PROMPT,
+} from "../constants/prompts";
+
 export interface ScreenshotPreferences {
   screenshotActive: boolean;
   screenshotPeriod: number;
@@ -34,8 +40,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   screenshotTemporary: false,
   screenshotModel: "openai/gpt-4o-mini",
   screenshotPrompt: {
-    default:
-      "Summarize the contents of this screenshot. Include the application is in use, project names, filename or document title. If a chat app is in use, give the channel name. Include each section of the screen with text in it, with an exact copy of all text. Include a summary of images on the screen. Organize the summary into titled sections.",
+    default: DEFAULT_SCREENSHOT_PROMPT,
   },
   screenshotSummaryWindow: 300,
   blockedApps: [
@@ -46,10 +51,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
     "WhatsApp",
     "Slack",
   ],
-  dailySummaryPrompt:
-    "Please analyze this computer activity log and summarize the major projects and tasks worked on:",
-  weeklySummaryPrompt:
-    "Please analyze this computer activity log and summarize the major projects and tasks worked on:",
+  dailySummaryPrompt: DEFAULT_DAILY_SUMMARY_PROMPT,
+  weeklySummaryPrompt: DEFAULT_WEEKLY_SUMMARY_PROMPT,
   summaryModel: "anthropic/claude-3.5-sonnet", // TODO select this from the available models
   loggingEnabled: true,
 };
