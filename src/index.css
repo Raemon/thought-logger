@@ -28,3 +28,7 @@ textarea {
 .markdown pre { background: rgba(0,0,0,0.1); padding: 0.5em; border-radius: 3px; overflow-x: auto; }
 .markdown blockquote { border-left: 3px solid #ccc; padding-left: 1em; margin: 0.5em 0; color: #666; }
 .markdown a { color: #2563eb; text-decoration: underline; }
+.thin-scrollbar::-webkit-scrollbar { width: 4px; }
+.thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.thin-scrollbar::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 2px; }
+.thin-scrollbar::-webkit-scrollbar-thumb:hover { background: #a0a0a0; }

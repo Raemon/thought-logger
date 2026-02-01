@@ -35,6 +35,7 @@ const userData: UserData = {
   generateAISummary: (log: Summary) =>
     ipcRenderer.invoke("GENERATE_AI_SUMMARY", log),
   getRecentLogs: () => ipcRenderer.invoke("GET_RECENT_LOGS"),
+  getAllLogs: () => ipcRenderer.invoke("GET_ALL_LOGS"),
   getRecentApps: () => ipcRenderer.invoke("GET_RECENT_APPS"),
   onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) =>
     ipcRenderer.on("UPDATE_RECENT_LOGS", (_event, summaries) =>

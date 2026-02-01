@@ -202,7 +202,7 @@ export async function getScreenshotImagePaths(): Promise<string[]> {
   return availableImagePaths;
 }
 
-const TWO_WEEKS_IN_SECONDS = 60 * 60 * 24 * 7;
+const THREE_MONTHS_IN_SECONDS = 60 * 60 * 24 * 30 * 3;
 
 async function getCharCount<T>(items: T[], getPath: (item: T) => string): Promise<number> {
   const contents = await Promise.all(items.map(item => maybeReadContents(getPath(item))));
@@ -210,7 +210,7 @@ async function getCharCount<T>(items: T[], getPath: (item: T) => string): Promis
 }
 
 export async function getRecentSummaries(
-  ageInSeconds: number = TWO_WEEKS_IN_SECONDS,
+  ageInSeconds: number = THREE_MONTHS_IN_SECONDS,
 ): Promise<Summary[]> {
   const now = new Date();
   const dailySummaries: Record<string, Summary> = {};
@@ -278,6 +278,9 @@ export async function getRecentSummaries(
     const date = parse(week, "YYYY-'W'ww", new Date(), {
       useAdditionalWeekYearTokens: true,
     });
+    if (differenceInSeconds(now, date) >= ageInSeconds) {
+      continue;
+    }
     const summaryPath = path.join(
       userDataPath,
       "files",

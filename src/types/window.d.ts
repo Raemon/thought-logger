@@ -12,6 +12,7 @@ declare global {
     openDebugLogsFolder: () => void;
     getDebugLogsFolder: () => Promise<string>;
     getRecentLogs: () => Promise<Summary[]>;
+    getAllLogs: () => Promise<Summary[]>;
     getRecentApps: () => Promise<string[]>;
     openFile: (filePath: string) => void;
     openExternalUrl: (url: string) => void;
