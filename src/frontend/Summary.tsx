@@ -1,5 +1,6 @@
 import React, { ReactElement } from "react";
 import { format, startOfWeek, endOfWeek, setDefaultOptions } from "date-fns";
+import Markdown from "react-markdown";
 import { Summary, SummaryScopeTypes } from "../types/files.d";
 import { dynamicEndpoints } from "../constants/endpoints";
 
@@ -85,11 +86,11 @@ export default function SummaryComponent({
       <div className="flex flex-col gap-1">
         <div
           className={
-            "whitespace-pre-wrap p-3 rounded text-sm " +
+            "p-3 rounded text-sm markdown " +
             (log.scope === SummaryScopeTypes.Day ? "bg-gray-100" : "bg-sky-50")
           }
         >
-          {log.loading ? "Generating a summary..." : log.contents}
+          {log.loading ? "Generating a summary..." : <Markdown>{log.contents}</Markdown>}
         </div>
       </div>
       {log.scope === SummaryScopeTypes.Day && (

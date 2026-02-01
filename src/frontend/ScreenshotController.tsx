@@ -148,7 +148,7 @@ export function ScreenshotController() {
         <div className="flex w-full gap-5 p-5">
           <div className="self-center">{app}</div>
           <textarea
-            className="grow p-2 border-2 h-32"
+            className="grow p-2 border-2"
             value={prefs.screenshotPrompt[app]}
             onChange={(event) => {
               updatePreferences({
