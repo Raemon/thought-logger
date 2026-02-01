@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FileInfo } from "./logsPage/FileInfo";
-import { Permissions } from "./settingsPage/Permissions";
-import { ScreenshotController } from "./settingsPage/ScreenshotController";
-import BlockedAppsEditor from "./settingsPage/BlockedAppsEditor";
-import ApiKeySettings from "./settingsPage/ApiKeySettings";
-import SummarySettings from "./settingsPage/SummarySettings";
-import DebugSettings from "./settingsPage/DebugSettings";
-import EncryptionSettings from "./settingsPage/EncryptionSettings";
-import { UserFilesInfo } from "./settingsPage/UserFilesInfo";
+import { SettingsPage } from "./settingsPage/SettingsPage";
 
 const TabButton = ({
   selected,
@@ -113,32 +106,7 @@ export function App() {
 
       {activeTab === "logs" && <FileInfo />}
 
-      {activeTab === "settings" && (
-        <>
-          <UserFilesInfo />
-          <div className="border border-gray-300 pb-4 mt-4 shadow-sm">
-            <ScreenshotController />
-          </div>
-          <div className="border border-gray-300 pb-4 pt-4 mt-4 shadow-sm">
-            <SummarySettings />
-          </div>
-          <div className="border border-gray-300 pb-4 pt-4 mt-4 shadow-sm">
-            <ApiKeySettings />
-          </div>
-          <div className="border border-gray-300 pb-4 pt-4 mt-4 shadow-sm">
-            <EncryptionSettings />
-          </div>
-          <div className="border border-gray-300 pb-4 pt-4 shadow-sm">
-            <Permissions />
-          </div>
-          <div className="border border-gray-300 pb-4 pt-4 shadow-sm">
-            <BlockedAppsEditor />
-          </div>
-          <div className="pt-4 shadow-sm border-t border-gray-300 mt-4">
-            <DebugSettings />
-          </div>
-        </>
-      )}
+      {activeTab === "settings" && <SettingsPage />}
     </div>
   );
 }
