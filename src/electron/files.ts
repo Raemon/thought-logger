@@ -202,7 +202,7 @@ export async function getScreenshotImagePaths(): Promise<string[]> {
   return availableImagePaths;
 }
 
-const THREE_MONTHS_IN_SECONDS = 60 * 60 * 24 * 30 * 3;
+const MONTH_IN_SECONDS = 60 * 60 * 24 * 30
 
 async function getCharCount<T>(items: T[], getPath: (item: T) => string): Promise<number> {
   const contents = await Promise.all(items.map(item => maybeReadContents(getPath(item))));
@@ -210,7 +210,7 @@ async function getCharCount<T>(items: T[], getPath: (item: T) => string): Promis
 }
 
 export async function getRecentSummaries(
-  ageInSeconds: number = THREE_MONTHS_IN_SECONDS,
+  ageInSeconds: number = MONTH_IN_SECONDS,
 ): Promise<Summary[]> {
   const now = new Date();
   const dailySummaries: Record<string, Summary> = {};
