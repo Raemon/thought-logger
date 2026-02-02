@@ -274,11 +274,11 @@ describe("#summarize", () => {
           "2025-08": {
             "2025-08-20": {
               "2025-08-20 10_30_00.jpg": "",
-              "2025-08-20 10_30_00.txt":
-                "This is some included text. This is excluded text.",
+              "2025-08-20 10_30_00.json":
+                JSON.stringify({ project: "test", document: "test", summary: "This is some included text. This is excluded text." }),
               "2025-08-20 11_00_00.jpg": "",
-              "2025-08-20 12_45_00.txt":
-                "This is more text, included. You shouldn't include this text",
+              "2025-08-20 12_45_00.json":
+                JSON.stringify({ project: "test", document: "test", summary: "This is more text, included. You shouldn't include this text" }),
             },
           },
         },
@@ -298,14 +298,14 @@ describe("#summarize", () => {
           imagePath:
             "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.jpg",
           summaryPath:
-            "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.txt",
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.json",
         },
         {
           date: new Date(2025, 7, 20, 12, 45),
           imagePath:
             "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.jpg",
           summaryPath:
-            "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.txt",
+            "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.json",
         },
       ],
       contents: null,

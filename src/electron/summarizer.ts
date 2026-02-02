@@ -232,11 +232,18 @@ export async function summarize(summary: Summary): Promise<void> {
       if (text === null) {
         continue;
       }
-      const excerpt = text
+      let summaryText: string;
+      try {
+        const jsonData = JSON.parse(text);
+        summaryText = jsonData.summary || text;
+      } catch {
+        summaryText = text;
+      }
+      const excerpt = summaryText
         .split(" ")
         .slice(0, screenshotSummaryWindow)
         .join(" ");
-      const filename = path.basename(screenshot.summaryPath, ".txt");
+      const filename = path.basename(screenshot.summaryPath, ".json");
       logData += `Taken on ${filename}:\n${excerpt}\n\n`;
     }
 

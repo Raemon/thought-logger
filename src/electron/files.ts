@@ -114,12 +114,12 @@ async function getScreenshots(): Promise<
     screenshots[dayString] = screenshots[dayString] || {};
     const screenshot = screenshots[dayString][dateString] || {
       imagePath: path.join(dir, dateString + ".jpg"),
-      summaryPath: path.join(dir, dateString + ".txt"),
+      summaryPath: path.join(dir, dateString + ".json"),
       date,
     };
     if (ext === ".jpg") {
       screenshot.imagePath = path.join(file.parentPath, file.name);
-    } else if (ext === ".txt") {
+    } else if (ext === ".json") {
       screenshot.summaryPath = path.join(file.parentPath, file.name);
     }
 

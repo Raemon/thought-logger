@@ -18,6 +18,7 @@ declare global {
     openExternalUrl: (url: string) => void;
     readFile: (filePath: string) => Promise<string>;
     generateAISummary: (log: Summary) => Promise<string>;
+    regenerateScreenshotSummaries: (imagePaths: string[]) => Promise<void>;
     onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => void;
   }
 

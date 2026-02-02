@@ -162,12 +162,12 @@ export async function parseScreenshot(
     const encodedProject = encodeURIComponent(project);
     const encodedDocument = encodeURIComponent(document);
     const encodedApp = encodeURIComponent(currentApplication);
-    const textFilePath = imgPath.replace(
+    const jsonFilePath = imgPath.replace(
       ".jpg",
-      `.${encodedApp}.${encodedProject}.${encodedDocument}.txt`,
+      `.${encodedApp}.${encodedProject}.${encodedDocument}.json`,
     );
 
-    await fs.writeFile(textFilePath, extractedText.summary);
+    await fs.writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
   } catch (error) {
     logger.error(`Failed to extract text from ${imgPath}:`, error);
   }
