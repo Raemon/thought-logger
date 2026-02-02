@@ -136,7 +136,14 @@ async function handleScreenshotSummaryList(
     return;
   }
   const contents = summaries
-    .map((summary) => `${summary.path}:\n${summary.contents}`)
+    .map((summary) => {
+      try {
+        const jsonData = JSON.parse(summary.contents);
+        return `${summary.path}:\n${JSON.stringify(jsonData, null, 2)}`;
+      } catch {
+        return `${summary.path}:\n${summary.contents}`;
+      }
+    })
     .join("\n\n");
   res.end(contents);
 }

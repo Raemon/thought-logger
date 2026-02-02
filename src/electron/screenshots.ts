@@ -2,23 +2,31 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { currentScreenshotFile } from "./paths";
 import { Preferences } from "../types/preferences.d";
-import { desktopCapturer } from "electron";
+import { app, desktopCapturer } from "electron";
 
 import fetch from "node-fetch";
 import { loadPreferences } from "../preferences";
 import { z } from "zod";
-import { getCurrentApplication } from "../keylogger";
+import { getCurrentApplication, isProtectedApp } from "../keylogger";
 
 import logger from "../logging";
 import { getSecret } from "./credentials";
 import { OPEN_ROUTER } from "../constants/credentials";
 
 const ScreenshotText = z.object({
-  project: z
-    .string()
-    .describe("name of the project the user is currently working on"),
-  document: z.string().describe("name of the document the user has open"),
-  summary: z.string().describe("summary of the screenshot"),
+  windows: z.array(z.object({
+    title: z.string().describe("title of the window"),
+    applicationName: z.string().describe("name of the application the window is from"),
+    url: z.string().describe("url of the window"),
+    exactText: z.string().describe("exact text of the window"),
+    frames: z.array(z.object({
+      title: z.string().describe("title of the frame"),
+      exactText: z.string().describe("exact text of the frame"),
+    })).describe("frames in the window"),
+    images: z.array(z.object({
+      description: z.string().describe("description of the image"),
+    })).describe("images in the window"),
+  })).describe("windows in the screenshot"),
 });
 
 type ScreenshotText = z.infer<typeof ScreenshotText>;
@@ -49,7 +57,7 @@ async function extractTextFromImage(
               type: "text",
               text: useSchema
                 ? prompt
-                : `${prompt}\n\nReturn a JSON object with keys project, document, and summary.`,
+                : `${prompt}\n\nReturn a JSON object with keys: windows (array of {title, applicationName, url, exactText, frames: [{title, exactText}], images: [{description}]}).`,
             },
             {
               type: "image_url",
@@ -148,7 +156,7 @@ export async function parseScreenshot(
 ): Promise<void> {
   logger.debug(`Parsing screenshot at ${imgPath}`);
   // Extract and save text
-  const { screenshotModel, screenshotPrompt } = loadPreferences();
+  const { screenshotModel, screenshotPrompt, blockedApps } = loadPreferences();
   const prompt =
     screenshotPrompt[currentApplication] || screenshotPrompt.default;
 
@@ -158,16 +166,21 @@ export async function parseScreenshot(
       screenshotModel,
       prompt,
     );
-    const { project, document } = extractedText;
-    const encodedProject = encodeURIComponent(project);
-    const encodedDocument = encodeURIComponent(document);
+    for (const window of extractedText.windows) {
+      if (isProtectedApp(window.applicationName, blockedApps)) {
+        window.exactText = "skipped";
+        window.frames = [];
+        window.images = [];
+      }
+    }
+    const firstWindow = extractedText.windows[0];
     const encodedApp = encodeURIComponent(currentApplication);
-    const textFilePath = imgPath.replace(
+    const encodedTitle = firstWindow ? encodeURIComponent(firstWindow.title.slice(0, 50)) : "unknown";
+    const jsonFilePath = imgPath.replace(
       ".jpg",
-      `.${encodedApp}.${encodedProject}.${encodedDocument}.txt`,
+      `.${encodedApp}.${encodedTitle}.json`,
     );
-
-    await fs.writeFile(textFilePath, extractedText.summary);
+    await fs.writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
   } catch (error) {
     logger.error(`Failed to extract text from ${imgPath}:`, error);
   }

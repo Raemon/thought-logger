@@ -41,15 +41,15 @@ describe("#getRecentSummaries", () => {
           "2025-08": {
             "2025-08-20": {
               "2025-08-20 10_30_00.jpg": "",
-              "2025-08-20 10_30_00.txt": "",
+              "2025-08-20 10_30_00.json": "",
               "2025-08-20 11_00_00.jpg": "",
-              "2025-08-20 12_45_00.txt": "",
+              "2025-08-20 12_45_00.json": "",
             },
             "2025-08-17": {
               "2025-08-17 10_30_00.jpg": "",
-              "2025-08-17 10_30_00.project.document.txt": "",
+              "2025-08-17 10_30_00.project.document.json": "",
               "2025-08-17 11_00_00.jpg": "",
-              "2025-08-17 12_45_00.txt": "",
+              "2025-08-17 12_45_00.json": "",
             },
           },
         },
@@ -93,21 +93,21 @@ describe("#getRecentSummaries", () => {
             imagePath:
               "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.jpg",
             summaryPath:
-              "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.txt",
+              "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.json",
           },
           {
             date: new Date(2025, 7, 20, 11),
             imagePath:
               "/files/screenshots/2025-08/2025-08-20/2025-08-20 11_00_00.jpg",
             summaryPath:
-              "/files/screenshots/2025-08/2025-08-20/2025-08-20 11_00_00.txt",
+              "/files/screenshots/2025-08/2025-08-20/2025-08-20 11_00_00.json",
           },
           {
             date: new Date(2025, 7, 20, 12, 45),
             imagePath:
               "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.jpg",
             summaryPath:
-              "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.txt",
+              "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.json",
           },
         ],
         loading: false,
@@ -124,21 +124,21 @@ describe("#getRecentSummaries", () => {
             imagePath:
               "/files/screenshots/2025-08/2025-08-17/2025-08-17 10_30_00.jpg",
             summaryPath:
-              "/files/screenshots/2025-08/2025-08-17/2025-08-17 10_30_00.project.document.txt",
+              "/files/screenshots/2025-08/2025-08-17/2025-08-17 10_30_00.project.document.json",
           },
           {
             date: new Date(2025, 7, 17, 11),
             imagePath:
               "/files/screenshots/2025-08/2025-08-17/2025-08-17 11_00_00.jpg",
             summaryPath:
-              "/files/screenshots/2025-08/2025-08-17/2025-08-17 11_00_00.txt",
+              "/files/screenshots/2025-08/2025-08-17/2025-08-17 11_00_00.json",
           },
           {
             date: new Date(2025, 7, 17, 12, 45),
             imagePath:
               "/files/screenshots/2025-08/2025-08-17/2025-08-17 12_45_00.jpg",
             summaryPath:
-              "/files/screenshots/2025-08/2025-08-17/2025-08-17 12_45_00.txt",
+              "/files/screenshots/2025-08/2025-08-17/2025-08-17 12_45_00.json",
           },
         ],
         loading: false,
@@ -164,9 +164,9 @@ describe("#getRecentSummaries", () => {
           "2025-08": {
             "2025-08-13": {
               "2025-08-13 10_30_00.jpg": "",
-              "2025-08-13 10_30_00.txt": "",
+              "2025-08-13 10_30_00.json": "",
               "2025-08-13 11_00_00.jpg": "",
-              "2025-08-13 12_45_00.txt": "",
+              "2025-08-13 12_45_00.json": "",
             },
           },
         },
@@ -194,21 +194,21 @@ describe("#getRecentSummaries", () => {
           imagePath:
             "/files/screenshots/2025-08/2025-08-13/2025-08-13 10_30_00.jpg",
           summaryPath:
-            "/files/screenshots/2025-08/2025-08-13/2025-08-13 10_30_00.txt",
+            "/files/screenshots/2025-08/2025-08-13/2025-08-13 10_30_00.json",
         },
         {
           date: new Date(2025, 7, 13, 11),
           imagePath:
             "/files/screenshots/2025-08/2025-08-13/2025-08-13 11_00_00.jpg",
           summaryPath:
-            "/files/screenshots/2025-08/2025-08-13/2025-08-13 11_00_00.txt",
+            "/files/screenshots/2025-08/2025-08-13/2025-08-13 11_00_00.json",
         },
         {
           date: new Date(2025, 7, 13, 12, 45),
           imagePath:
             "/files/screenshots/2025-08/2025-08-13/2025-08-13 12_45_00.jpg",
           summaryPath:
-            "/files/screenshots/2025-08/2025-08-13/2025-08-13 12_45_00.txt",
+            "/files/screenshots/2025-08/2025-08-13/2025-08-13 12_45_00.json",
         },
       ],
     };
