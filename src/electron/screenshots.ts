@@ -14,10 +14,20 @@ import { getSecret } from "./credentials";
 import { OPEN_ROUTER } from "../constants/credentials";
 
 const ScreenshotText = z.object({
-  project: z
-    .string()
-    .describe("name of the project the user is currently working on"),
-  document: z.string().describe("name of the document the user has open"),
+  windows: z.array(z.object({
+    title: z.string().describe("title of the window"),
+    applicationName: z.string().describe("name of the application the window is from"),
+    url: z.string().describe("url of the window"),
+    exactText: z.string().describe("exact text of the window"),
+    summary: z.string().describe("summary of the window"),
+    frames: z.array(z.object({
+      title: z.string().describe("title of the frame"),
+      exactText: z.string().describe("exact text of the frame"),
+    })).describe("frames in the window"),
+    images: z.array(z.object({
+      description: z.string().describe("description of the image"),
+    })).describe("images in the window"),
+  })).describe("windows in the screenshot"),
   summary: z.string().describe("summary of the screenshot"),
 });
 
@@ -49,7 +59,7 @@ async function extractTextFromImage(
               type: "text",
               text: useSchema
                 ? prompt
-                : `${prompt}\n\nReturn a JSON object with keys project, document, and summary.`,
+                : `${prompt}\n\nReturn only valid JSON with no additional text.`,
             },
             {
               type: "image_url",
@@ -133,7 +143,14 @@ async function extractTextFromImage(
     const data = (await response.json()) as {
       choices: { message: { content: string } }[];
     };
-    const result = JSON.parse(data.choices[0].message.content);
+    let content = data.choices[0].message.content.trim();
+    // Remove any markdown code blocks if present
+    if (content.startsWith("```json")) {
+      content = content.replace(/^```json\n?/, "").replace(/\n?```$/, "");
+    } else if (content.startsWith("```")) {
+      content = content.replace(/^```\n?/, "").replace(/\n?```$/, "");
+    }
+    const result = JSON.parse(content);
     return ScreenshotText.parse(result);
   } catch (error) {
     logger.error("Failed to extract text from image:", error);
@@ -158,16 +175,8 @@ export async function parseScreenshot(
       screenshotModel,
       prompt,
     );
-    const { project, document } = extractedText;
-    const encodedProject = encodeURIComponent(project);
-    const encodedDocument = encodeURIComponent(document);
-    const encodedApp = encodeURIComponent(currentApplication);
-    const textFilePath = imgPath.replace(
-      ".jpg",
-      `.${encodedApp}.${encodedProject}.${encodedDocument}.txt`,
-    );
-
-    await fs.writeFile(textFilePath, extractedText.summary);
+    const jsonFilePath = imgPath.replace(".jpg", ".json");
+    await fs.writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
   } catch (error) {
     logger.error(`Failed to extract text from ${imgPath}:`, error);
   }

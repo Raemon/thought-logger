@@ -1,19 +1,41 @@
 export const DEFAULT_SCREENSHOT_PROMPT = `
-Summarize the contents of this screenshot. Include the application is in use, project names, filename or document title. If a chat app is in use, give the channel name. Include each section of the screen with text in it, with an exact copy of all text. Include a summary of images on the screen. Organize the summary into titled sections.
+Analyze this screenshot and extract information about all visible windows. For each window, identify:
+- The window title
+- The application name
+- The URL (if applicable)
+- All exact text visible in the window
+- A summary of the window's content
+- Any frames within the window (with their titles and exact text)
+- Any images in the window (with descriptions)
 
-Return it as json formatted like:
+Also provide an overall summary of the entire screenshot.
 
+Return only valid JSON matching this structure:
 {
-"filename": string,
-"applicationName": string,
-"windowTitle": string,
-"channelName": string,
-"textSummary": string,
-"imagesSummary": string,
-"textExactContents": string
+  "windows": [
+    {
+      "title": "window title",
+      "applicationName": "application name",
+      "url": "url if applicable",
+      "exactText": "all text visible in window",
+      "summary": "summary of window content",
+      "frames": [
+        {
+          "title": "frame title",
+          "exactText": "exact text in frame"
+        }
+      ],
+      "images": [
+        {
+          "description": "description of image"
+        }
+      ]
+    }
+  ],
+  "summary": "overall summary of screenshot"
 }
 
-fill in as many details as you can. Include no other text but the json.
+Include no other text but the JSON.
 `
 
 export const DEFAULT_DAILY_SUMMARY_PROMPT =`
