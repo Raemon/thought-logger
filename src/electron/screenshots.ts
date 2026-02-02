@@ -2,12 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { currentScreenshotFile } from "./paths";
 import { Preferences } from "../types/preferences.d";
-import { desktopCapturer } from "electron";
+import { app, desktopCapturer } from "electron";
 
 import fetch from "node-fetch";
 import { loadPreferences } from "../preferences";
 import { z } from "zod";
-import { getCurrentApplication } from "../keylogger";
+import { getCurrentApplication, isProtectedApp } from "../keylogger";
 
 import logger from "../logging";
 import { getSecret } from "./credentials";
@@ -156,7 +156,7 @@ export async function parseScreenshot(
 ): Promise<void> {
   logger.debug(`Parsing screenshot at ${imgPath}`);
   // Extract and save text
-  const { screenshotModel, screenshotPrompt } = loadPreferences();
+  const { screenshotModel, screenshotPrompt, blockedApps } = loadPreferences();
   const prompt =
     screenshotPrompt[currentApplication] || screenshotPrompt.default;
 
@@ -166,6 +166,13 @@ export async function parseScreenshot(
       screenshotModel,
       prompt,
     );
+    for (const window of extractedText.windows) {
+      if (isProtectedApp(window.applicationName, blockedApps)) {
+        window.exactText = "skipped";
+        window.frames = [];
+        window.images = [];
+      }
+    }
     const firstWindow = extractedText.windows[0];
     const encodedApp = encodeURIComponent(currentApplication);
     const encodedTitle = firstWindow ? encodeURIComponent(firstWindow.title.slice(0, 50)) : "unknown";

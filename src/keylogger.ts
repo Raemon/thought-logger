@@ -72,8 +72,8 @@ interface ParsedKey {
 let preferences: Preferences;
 
 /** Checks if the current application is a protected messaging app */
-function isProtectedApp(appName: string): boolean {
-  return preferences.blockedApps.some((app) => appName.includes(app));
+export function isProtectedApp(appName: string, blockedApps: string[]): boolean {
+  return blockedApps.some((app) => appName.trim().toLowerCase().includes(app.trim().toLowerCase()));
 }
 
 /** Formats the current timestamp in the required format */
@@ -233,7 +233,7 @@ function parseKeyEvent(
   }
 
   // Don't log keys if in protected apps
-  if (isProtectedApp(currentApplication)) {
+  if (isProtectedApp(currentApplication, preferences.blockedApps)) {
     return { raw: "", processed: "", isAppSwitch: false };
   }
 
