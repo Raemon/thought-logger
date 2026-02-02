@@ -6,11 +6,9 @@ For each window visible:
 - applicationName: the application (e.g. Chrome, VSCode, Slack)
 - url: if a browser, the URL shown in the address bar, otherwise empty string
 - exactText: copy all visible text exactly as shown
-- summary: brief summary of what the window shows
 - frames: any distinct sections/frames within the window (e.g. sidebar, chat panels) with their title and text
 - images: descriptions of any images visible
 
-Provide an overall summary of what's happening on screen.
 `
 
 export const DEFAULT_DAILY_SUMMARY_PROMPT =`

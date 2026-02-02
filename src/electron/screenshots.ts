@@ -19,7 +19,6 @@ const ScreenshotText = z.object({
     applicationName: z.string().describe("name of the application the window is from"),
     url: z.string().describe("url of the window"),
     exactText: z.string().describe("exact text of the window"),
-    summary: z.string().describe("summary of the window"),
     frames: z.array(z.object({
       title: z.string().describe("title of the frame"),
       exactText: z.string().describe("exact text of the frame"),
@@ -28,7 +27,6 @@ const ScreenshotText = z.object({
       description: z.string().describe("description of the image"),
     })).describe("images in the window"),
   })).describe("windows in the screenshot"),
-  summary: z.string().describe("summary of the screenshot"),
 });
 
 type ScreenshotText = z.infer<typeof ScreenshotText>;
@@ -59,7 +57,7 @@ async function extractTextFromImage(
               type: "text",
               text: useSchema
                 ? prompt
-                : `${prompt}\n\nReturn a JSON object with keys: windows (array of {title, applicationName, url, exactText, summary, frames: [{title, exactText}], images: [{description}]}) and summary.`,
+                : `${prompt}\n\nReturn a JSON object with keys: windows (array of {title, applicationName, url, exactText, frames: [{title, exactText}], images: [{description}]}).`,
             },
             {
               type: "image_url",
