@@ -14,10 +14,20 @@ import { getSecret } from "./credentials";
 import { OPEN_ROUTER } from "../constants/credentials";
 
 const ScreenshotText = z.object({
-  project: z
-    .string()
-    .describe("name of the project the user is currently working on"),
-  document: z.string().describe("name of the document the user has open"),
+  windows: z.array(z.object({
+    title: z.string().describe("title of the window"),
+    applicationName: z.string().describe("name of the application the window is from"),
+    url: z.string().describe("url of the window"),
+    exactText: z.string().describe("exact text of the window"),
+    summary: z.string().describe("summary of the window"),
+    frames: z.array(z.object({
+      title: z.string().describe("title of the frame"),
+      exactText: z.string().describe("exact text of the frame"),
+    })).describe("frames in the window"),
+    images: z.array(z.object({
+      description: z.string().describe("description of the image"),
+    })).describe("images in the window"),
+  })).describe("windows in the screenshot"),
   summary: z.string().describe("summary of the screenshot"),
 });
 
@@ -49,7 +59,7 @@ async function extractTextFromImage(
               type: "text",
               text: useSchema
                 ? prompt
-                : `${prompt}\n\nReturn a JSON object with keys project, document, and summary.`,
+                : `${prompt}\n\nReturn a JSON object with keys: windows (array of {title, applicationName, url, exactText, summary, frames: [{title, exactText}], images: [{description}]}) and summary.`,
             },
             {
               type: "image_url",
@@ -158,15 +168,13 @@ export async function parseScreenshot(
       screenshotModel,
       prompt,
     );
-    const { project, document } = extractedText;
-    const encodedProject = encodeURIComponent(project);
-    const encodedDocument = encodeURIComponent(document);
+    const firstWindow = extractedText.windows[0];
     const encodedApp = encodeURIComponent(currentApplication);
+    const encodedTitle = firstWindow ? encodeURIComponent(firstWindow.title.slice(0, 50)) : "unknown";
     const jsonFilePath = imgPath.replace(
       ".jpg",
-      `.${encodedApp}.${encodedProject}.${encodedDocument}.json`,
+      `.${encodedApp}.${encodedTitle}.json`,
     );
-
     await fs.writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
   } catch (error) {
     logger.error(`Failed to extract text from ${imgPath}:`, error);
