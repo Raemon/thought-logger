@@ -9,6 +9,9 @@ For each window visible:
 - frames: any distinct sections/frames within the window (e.g. sidebar, chat panels) with their title and text
 - images: descriptions of any images visible
 
+IMPORTANT: If any browser window appears to be in incognito/private mode, set exactText to "skipped", frames to [], and images to [].
+
+Do not summarize nsfw things.
 `
 
 export const DEFAULT_DAILY_SUMMARY_PROMPT =`
