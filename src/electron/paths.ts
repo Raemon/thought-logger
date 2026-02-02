@@ -321,6 +321,7 @@ export async function writeFile(
   } else {
     fileName = filePath;
   }
+  await fs.mkdir(path.dirname(fileName), { recursive: true });
   return fs.writeFile(fileName, fileData);
 }
 
