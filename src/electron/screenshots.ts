@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { currentScreenshotFile } from "./paths";
 import { Preferences } from "../types/preferences.d";
-import { app, desktopCapturer } from "electron";
+import { desktopCapturer } from "electron";
 
 import fetch from "node-fetch";
 import { loadPreferences } from "../preferences";
@@ -177,7 +177,9 @@ export async function parseScreenshot(
     extractedText.timestamp = new Date().toLocaleString();
     const firstWindow = extractedText.windows[0];
     const encodedApp = encodeURIComponent(currentApplication);
-    const encodedTitle = firstWindow ? encodeURIComponent(firstWindow.title.slice(0, 50)) : "unknown";
+    const encodedTitle = firstWindow
+      ? encodeURIComponent(firstWindow.title.slice(0, 50))
+      : "unknown";
     const jsonFilePath = imgPath.replace(
       ".jpg",
       `.${encodedApp}.${encodedTitle}.json`,

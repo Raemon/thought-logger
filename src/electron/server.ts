@@ -12,7 +12,6 @@ import logger from "../logging";
 import { readFile } from "./paths";
 import {
   getScreenshotSummariesForDate,
-  getScreenshotImagePaths,
   getScreenshotImagePathsForDate,
 } from "./files";
 import { allEndpoints } from "../constants/endpoints";
@@ -148,20 +147,6 @@ async function handleScreenshotSummaryList(
   res.end(contents);
 }
 
-async function handleScreenshotImageList(res: http.ServerResponse) {
-  const imagePaths = await getScreenshotImagePaths();
-  res.writeHead(200, { "Content-Type": "text/html" });
-  if (imagePaths.length === 0) {
-    res.end("No screenshot images found.");
-    return;
-  }
-  const images = imagePaths.map((imagePath) => {
-    const url = `/screenshot/${encodeURIComponent(imagePath)}`;
-    return `<a href="${url}" target="_blank"><img src="${url}" style="width:300px" /></a>`;
-  }).join("");
-  res.end(`<h1>Screenshot Images</h1><div style="display:flex;flex-wrap:wrap;gap:8px">${images}</div>`);
-}
-
 async function handleScreenshotImageListForDate(
   res: http.ServerResponse,
   dateString: string,
@@ -172,11 +157,15 @@ async function handleScreenshotImageListForDate(
     res.end(`No screenshot images for ${dateString}.`);
     return;
   }
-  const images = imagePaths.map((imagePath) => {
-    const url = `/screenshot/${encodeURIComponent(imagePath)}`;
-    return `<a href="${url}" target="_blank"><img src="${url}" style="width:300px" /></a>`;
-  }).join("");
-  res.end(`<h1>Screenshot Images for ${dateString}</h1><div style="display:flex;flex-wrap:wrap;gap:8px">${images}</div>`);
+  const images = imagePaths
+    .map((imagePath) => {
+      const url = `/screenshot/${encodeURIComponent(imagePath)}`;
+      return `<a href="${url}" target="_blank"><img src="${url}" style="width:300px" /></a>`;
+    })
+    .join("");
+  res.end(
+    `<h1>Screenshot Images for ${dateString}</h1><div style="display:flex;flex-wrap:wrap;gap:8px">${images}</div>`,
+  );
 }
 
 async function handleScreenshotImageGalleryForDate(
@@ -189,10 +178,12 @@ async function handleScreenshotImageGalleryForDate(
     res.end(`No screenshot images for ${dateString}.`);
     return;
   }
-  const images = imagePaths.map((imagePath) => {
-    const url = `/screenshot/${encodeURIComponent(imagePath)}`;
-    return `<div><img src="${url}" style="max-width:100%" /></div>`;
-  }).join("");
+  const images = imagePaths
+    .map((imagePath) => {
+      const url = `/screenshot/${encodeURIComponent(imagePath)}`;
+      return `<div><img src="${url}" style="max-width:100%" /></div>`;
+    })
+    .join("");
   res.end(`<h1>Screenshot Images for ${dateString}</h1>${images}`);
 }
 
@@ -332,7 +323,6 @@ async function handleMCPPostRequest(
   // Handle the request
   await transport.handleRequest(req, res, body);
 }
-
 
 function handleIndexRequest(res: http.ServerResponse) {
   const todayDate = new Date().toLocaleDateString("en-CA");
@@ -495,18 +485,29 @@ export function startLocalServer(port = 8765): http.Server {
       default: {
         const screenshotFileMatch = req.url?.match(/^\/screenshot\/(.+)$/);
         // Check if the URL matches the format /YYYY-MM-DD
-        const screenshotImageMatch =
-          req.url?.match(/^\/(\d{4}-\d{2}-\d{2})\/screenshots$/);
-        const screenshotGalleryMatch =
-          req.url?.match(/^\/(\d{4}-\d{2}-\d{2})\/screenshots\/all$/);
-        const screenshotSummaryMatch =
-          req.url?.match(/^\/(\d{4}-\d{2}-\d{2})\/screenshots\/summaries$/);
+        const screenshotImageMatch = req.url?.match(
+          /^\/(\d{4}-\d{2}-\d{2})\/screenshots$/,
+        );
+        const screenshotGalleryMatch = req.url?.match(
+          /^\/(\d{4}-\d{2}-\d{2})\/screenshots\/all$/,
+        );
+        const screenshotSummaryMatch = req.url?.match(
+          /^\/(\d{4}-\d{2}-\d{2})\/screenshots\/summaries$/,
+        );
         const dateMatch = req.url?.match(/^\/(\d{4}-\d{2}-\d{2})$/);
 
         if (screenshotFileMatch) {
           await handleScreenshotImageRequest(res, screenshotFileMatch[1]);
-        } else if (screenshotImageMatch || screenshotGalleryMatch || screenshotSummaryMatch || dateMatch) {
-          const dateStr = (screenshotImageMatch || screenshotGalleryMatch || screenshotSummaryMatch || dateMatch)[1];
+        } else if (
+          screenshotImageMatch ||
+          screenshotGalleryMatch ||
+          screenshotSummaryMatch ||
+          dateMatch
+        ) {
+          const dateStr = (screenshotImageMatch ||
+            screenshotGalleryMatch ||
+            screenshotSummaryMatch ||
+            dateMatch)[1];
           try {
             // Parse the date from the URL
             const date = new Date(dateStr);
@@ -538,9 +539,9 @@ export function startLocalServer(port = 8765): http.Server {
                 ? `Failed to retrieve screenshot summaries for ${dateStr}.`
                 : screenshotGalleryMatch
                   ? `Failed to render screenshot gallery for ${dateStr}.`
-                : screenshotImageMatch
-                  ? `Failed to retrieve screenshot images for ${dateStr}.`
-                : `Failed to retrieve log file for ${dateStr}.`,
+                  : screenshotImageMatch
+                    ? `Failed to retrieve screenshot images for ${dateStr}.`
+                    : `Failed to retrieve log file for ${dateStr}.`,
             );
           }
         } else {
