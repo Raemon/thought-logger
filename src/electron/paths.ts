@@ -133,7 +133,6 @@ export async function initializeMasterKey(password: string): Promise<void> {
   try {
     await getMasterKey(password);
   } catch (error) {
-    console.log(error);
     if (error.code === "ENOENT") {
       const salt = sodium.randombytes_buf(
         sodium.crypto_pwhash_SALTBYTES,
@@ -285,7 +284,6 @@ export async function writeFile(
   await sodiumReady;
   const password = await getSecret(LOG_FILE_ENCRYPTION);
   let fileData: string | Uint8Array<ArrayBufferLike> = "";
-  let fileName: string;
 
   if (append) {
     try {
@@ -304,13 +302,19 @@ export async function writeFile(
     fileData = encryptWithKey(masterKey, fileData + contents);
   }
 
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
   if (fileData instanceof Uint8Array) {
-    fileName = `${filePath}${ENCRYPTED_FILE_EXT}`;
+    await fs.writeFile(`${filePath}${ENCRYPTED_FILE_EXT}`, fileData);
+    try {
+      await fs.rm(filePath);
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
   } else {
-    fileName = filePath;
+    await fs.writeFile(filePath, fileData);
   }
-  await fs.mkdir(path.dirname(fileName), { recursive: true });
-  return fs.writeFile(fileName, fileData);
 }
 
 /**

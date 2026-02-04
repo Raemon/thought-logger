@@ -53,6 +53,7 @@ describe("encryption", () => {
 
     expect(newKey).toStrictEqual(currentKey);
   });
+
   it("generates files readable by the program", async () => {
     const origText = "Hello, world!";
 
@@ -66,6 +67,19 @@ describe("encryption", () => {
     const textB = "world!";
 
     await writeFile("/foo.log", textA);
+    await writeFile("/foo.log", textB, true);
+    const result = await readFile("/foo.log");
+    expect(result).toBe(textA + textB);
+  });
+
+  it("replaces unecrypted files with encrypted files", async () => {
+    const textA = "Hello, ";
+    const textB = "world!";
+
+    vol.fromJSON({
+      "/foo.log": textA,
+    });
+
     await writeFile("/foo.log", textB, true);
     const result = await readFile("/foo.log");
     expect(result).toBe(textA + textB);
