@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { vol } from "memfs";
+import { vol, fs } from "memfs";
 import {
   initializeMasterKey,
   readFile,
@@ -46,6 +46,13 @@ beforeEach(async () => {
 });
 
 describe("encryption", () => {
+  it("doesn't regen existing master keys", async () => {
+    const currentKey = await fs.promises.readFile("/files/masterkey");
+    await initializeMasterKey("password");
+    const newKey = await fs.promises.readFile("/files/masterkey");
+
+    expect(newKey).toStrictEqual(currentKey);
+  });
   it("generates files readable by the program", async () => {
     const origText = "Hello, world!";
 

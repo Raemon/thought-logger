@@ -128,37 +128,31 @@ function decryptWithKey(
 }
 
 export async function initializeMasterKey(password: string): Promise<void> {
-  let masterKey: Uint8Array<ArrayBufferLike>;
-  let salt: Uint8Array<ArrayBufferLike>;
-  let key: Uint8Array<ArrayBufferLike>;
-
   await sodiumReady;
 
   try {
-    const data = await fs.readFile(masterKeyPath);
-    salt = data.subarray(0, sodium.crypto_pwhash_SALTBYTES);
-    key = deriveKey(password, salt);
-    const encMasterKey = data.subarray(sodium.crypto_pwhash_SALTBYTES);
-    masterKey = decryptWithKey(key, encMasterKey);
+    await getMasterKey(password);
   } catch (error) {
+    console.log(error);
     if (error.code === "ENOENT") {
-      salt = sodium.randombytes_buf(
+      const salt = sodium.randombytes_buf(
         sodium.crypto_pwhash_SALTBYTES,
         "uint8array",
       ) as Uint8Array;
-      key = deriveKey(password, salt);
-      masterKey = sodium.crypto_secretbox_keygen("uint8array") as Uint8Array;
+      const key = deriveKey(password, salt);
+      const masterKey = sodium.crypto_secretbox_keygen(
+        "uint8array",
+      ) as Uint8Array;
+      const encryptedMasterKey = encryptWithKey(key, masterKey);
+      const fileData = new Uint8Array(salt.length + encryptedMasterKey.length);
+      fileData.set(salt);
+      fileData.set(encryptedMasterKey, salt.length);
+      await fs.mkdir(path.dirname(masterKeyPath), { recursive: true });
+      await fs.writeFile(masterKeyPath, fileData);
     } else {
       throw error;
     }
   }
-
-  const encryptedMasterKey = encryptWithKey(key, masterKey);
-  const fileData = new Uint8Array(salt.length + encryptedMasterKey.length);
-  fileData.set(salt);
-  fileData.set(encryptedMasterKey, salt.length);
-  await fs.mkdir(path.dirname(masterKeyPath), { recursive: true });
-  await fs.writeFile(masterKeyPath, fileData);
 }
 
 const getMasterKey = memoize(
