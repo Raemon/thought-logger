@@ -4,6 +4,7 @@ import path from "node:path";
 import sodium, { ready as sodiumReady } from "libsodium-wrappers-sumo";
 import { getSecret, setSecret } from "./credentials";
 import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
+import { memoize } from "micro-memoize";
 import logger from "../logging";
 
 const ENCRYPTED_FILE_EXT = ".crypt";
@@ -11,9 +12,6 @@ const ENCRYPTION_CPULIMIT = 3;
 const ENCRYPTION_MEMLIMIT = 268435456;
 const userDataPath = app.getPath("userData");
 const masterKeyPath = path.join(userDataPath, "files", "masterkey");
-
-let cachedMasterKey: Uint8Array | null = null;
-let cachedPassword: string | null = null;
 
 /**
  * Get path to current key log file.
@@ -163,20 +161,17 @@ export async function initializeMasterKey(password: string): Promise<void> {
   await fs.writeFile(masterKeyPath, fileData);
 }
 
-async function getMasterKey(password: string): Promise<Uint8Array> {
-  if (password === cachedPassword) {
-    return cachedMasterKey;
-  }
+const getMasterKey = memoize(
+  async (password: string): Promise<Uint8Array> => {
+    const fileData = await fs.readFile(masterKeyPath);
+    const salt = fileData.subarray(0, sodium.crypto_pwhash_SALTBYTES);
+    const masterKey = fileData.subarray(sodium.crypto_pwhash_SALTBYTES);
+    const key = deriveKey(password, salt);
 
-  const fileData = await fs.readFile(masterKeyPath);
-  const salt = fileData.subarray(0, sodium.crypto_pwhash_SALTBYTES);
-  const masterKey = fileData.subarray(sodium.crypto_pwhash_SALTBYTES);
-  const key = deriveKey(password, salt);
-
-  cachedMasterKey = decryptWithKey(key, masterKey);
-  cachedPassword = password;
-  return cachedMasterKey;
-}
+    return decryptWithKey(key, masterKey);
+  },
+  { async: true },
+);
 
 export async function verifyPassword(password: string): Promise<boolean> {
   try {
@@ -247,9 +242,6 @@ export async function changePassword(
 
       await fs.writeFile(masterKeyPath, newFileData);
     }
-
-    cachedMasterKey = null;
-    cachedPassword = null;
 
     return {
       success: true,

@@ -7,6 +7,7 @@ import {
   verifyPassword,
   changePassword,
 } from "src/electron/paths";
+import sodium from "libsodium-wrappers-sumo";
 
 vi.mock("electron", () => {
   return {
