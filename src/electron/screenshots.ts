@@ -27,6 +27,7 @@ const ScreenshotText = z.object({
       description: z.string().describe("description of the image"),
     })).describe("images in the window"),
   })).describe("windows in the screenshot"),
+  timestamp: z.string().optional().describe("local timestamp when the summary was captured"),
 });
 
 type ScreenshotText = z.infer<typeof ScreenshotText>;
@@ -173,6 +174,7 @@ export async function parseScreenshot(
         window.images = [];
       }
     }
+    extractedText.timestamp = new Date().toLocaleString();
     const firstWindow = extractedText.windows[0];
     const encodedApp = encodeURIComponent(currentApplication);
     const encodedTitle = firstWindow ? encodeURIComponent(firstWindow.title.slice(0, 50)) : "unknown";
