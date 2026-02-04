@@ -3,50 +3,111 @@
 exports[`Renders the logs 1`] = `
 <DocumentFragment>
   <div>
-    <h3>
-      User files
-    </h3>
-    <p>
-      This app takes screenshots at regular intervals (configurable below), and logs mouse and keyboard inputs.
-    </p>
-    <button
-      class="ml-0"
-    >
-      Open Files Folder
-    </button>
-    <span
-      class="ml-2 text-xs text-gray-500"
-    >
-      /User/test/files
-    </span>
     <div
-      class="flex gap-2.5"
-    >
-      <a
-        class="text-blue-600 no-underline cursor-pointer"
-        href="http://localhost:8765/today"
-      >
-        today
-      </a>
-      <a
-        class="text-blue-600 no-underline cursor-pointer"
-        href="http://localhost:8765/yesterday"
-      >
-        yesterday
-      </a>
-      <a
-        class="text-blue-600 no-underline cursor-pointer"
-        href="http://localhost:8765/last7days"
-      >
-        week
-      </a>
-    </div>
-    <div
-      class="flex gap-5 mt-5"
+      class="flex flex-col gap-1 mb-4"
     >
       <div
-        class="min-w-[220px] max-w-[250px] pr-2 border-r border-gray-200 text-sm"
-        style="max-height: 600px; overflow-y: auto;"
+        class="flex flex-wrap gap-2.5"
+      >
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/today"
+          title="Today's processed keylog"
+        >
+          today
+        </a>
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/today/raw"
+          title="Today's raw keylog"
+        >
+          today/raw
+        </a>
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/today/screenshots"
+          title="Today's screenshot image paths"
+        >
+          today/screenshots
+        </a>
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/today/screenshots/all"
+          title="Today's screenshot images gallery"
+        >
+          today/screenshots/all
+        </a>
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/today/screenshots/summaries"
+          title="Today's screenshot summaries"
+        >
+          today/summaries
+        </a>
+      </div>
+      <div
+        class="flex flex-wrap gap-2.5"
+      >
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/yesterday"
+          title="Yesterday's processed keylog"
+        >
+          yesterday
+        </a>
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/yesterday/raw"
+          title="Yesterday's raw keylog"
+        >
+          yesterday/raw
+        </a>
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/yesterday/screenshots"
+          title="Yesterday's screenshot image paths"
+        >
+          yesterday/screenshots
+        </a>
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/yesterday/screenshots/all"
+          title="Yesterday's screenshot images gallery"
+        >
+          yesterday/screenshots/all
+        </a>
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/yesterday/screenshots/summaries"
+          title="Yesterday's screenshot summaries"
+        >
+          yesterday/summaries
+        </a>
+      </div>
+      <div
+        class="flex flex-wrap gap-2.5"
+      >
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/week"
+          title="Past week processed keylogs"
+        >
+          week
+        </a>
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/week/raw"
+          title="Past week raw keylogs"
+        >
+          week/raw
+        </a>
+      </div>
+    </div>
+    <div
+      class="flex gap-5"
+    >
+      <div
+        class="min-w-[220px] max-w-[250px] pr-2 border-r border-gray-200 text-sm sticky top-0 h-screen overflow-y-auto thin-scrollbar"
       >
         <div
           class="font-bold mb-2"
@@ -95,7 +156,7 @@ exports[`Renders the logs 1`] = `
         </div>
       </div>
       <div
-        class="min-w-[300px] flex-1"
+        class="min-w-[300px] flex-1 space-y-12"
       >
         <div
           class="mb-2.5"
@@ -110,34 +171,57 @@ exports[`Renders the logs 1`] = `
               Tuesday, August 19, 2025
             </span>
             <button
-              class="bg-blue-500 hover:bg-blue-700 text-white font-bold rounded ml-2 px-2 py-0.5 text-xs"
+              class="text-gray-600 hover:text-blue-600 group relative ml-2 p-1"
             >
-              regenerate summary
-            </button>
-            <button
-              class="ml-2 px-2 py-2 text-xs text-blue-800 font-normal"
-            >
-              Raw
-            </button>
-            <button
-              class="ml-2 px-2 py-0.5 text-xs text-green-800 font-normal"
-            >
-              By App
-            </button>
-            <button
-              class="ml-2 px-2 py-0.5 text-xs text-green-800 font-normal"
-            >
-              Chronological
+              <span
+                class="absolute right-full mr-1 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs bg-gray-800 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none"
+              >
+                Regenerate summary
+              </span>
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </button>
           </div>
           <div
             class="flex flex-col gap-1"
           >
             <div
-              class="whitespace-pre-wrap p-3 rounded text-sm bg-gray-100"
+              class="p-3 rounded text-sm markdown bg-gray-100"
             >
-              This is a daily summary
+              <p>
+                This is a daily summary
+              </p>
             </div>
+          </div>
+          <div
+            class="flex gap-3 p-1"
+          >
+            <button
+              class="text-xs text-blue-800 font-normal"
+            >
+              Keylog
+            </button>
+            <button
+              class="text-xs text-blue-800 font-normal"
+            >
+              Screenshots
+            </button>
+            <button
+              class="text-xs text-blue-800 font-normal"
+            >
+              Summaries
+            </button>
           </div>
         </div>
         <div
@@ -153,21 +237,45 @@ exports[`Renders the logs 1`] = `
               Week of Monday, August 11, 2025 to Sunday, August 17, 2025
             </span>
             <button
-              class="bg-blue-500 hover:bg-blue-700 text-white font-bold rounded ml-2 px-2 py-0.5 text-xs"
+              class="text-gray-600 hover:text-blue-600 group relative ml-2 p-1"
             >
-              regenerate summary
+              <span
+                class="absolute right-full mr-1 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs bg-gray-800 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none"
+              >
+                Regenerate summary
+              </span>
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
             </button>
           </div>
           <div
             class="flex flex-col gap-1"
           >
             <div
-              class="whitespace-pre-wrap p-3 rounded text-sm bg-sky-50"
+              class="p-3 rounded text-sm markdown bg-sky-50"
             >
-              This is a weekly summary
+              <p>
+                This is a weekly summary
+              </p>
             </div>
           </div>
         </div>
+        <button
+          class="text-blue-600 hover:underline text-sm"
+        >
+          Load all
+        </button>
       </div>
     </div>
   </div>

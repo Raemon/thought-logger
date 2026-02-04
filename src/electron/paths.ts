@@ -243,6 +243,8 @@ export async function changePassword(
       await fs.writeFile(masterKeyPath, newFileData);
     }
 
+    getMasterKey.cache.clear();
+
     return {
       success: true,
       message: "Password changed successfully",

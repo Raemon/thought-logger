@@ -73,6 +73,8 @@ describe("#getRecentSummaries", () => {
         screenshots: [],
         loading: false,
         scope: SummaryScopeTypes.Day,
+        keylogCharCount: 0,
+        screenshotSummaryCharCount: 0,
       },
       {
         path: "/files/keylogs/2025-08/2025-08-20.aisummary.log",
@@ -112,6 +114,8 @@ describe("#getRecentSummaries", () => {
         ],
         loading: false,
         scope: SummaryScopeTypes.Day,
+        keylogCharCount: 0,
+        screenshotSummaryCharCount: 0,
       },
       {
         path: "/files/keylogs/2025-08/2025-08-17.aisummary.log",
@@ -143,6 +147,8 @@ describe("#getRecentSummaries", () => {
         ],
         loading: false,
         scope: SummaryScopeTypes.Day,
+        keylogCharCount: 0,
+        screenshotSummaryCharCount: 0,
       },
     ];
     vol.fromNestedJSON(filesystem, "/");
@@ -309,6 +315,8 @@ describe("#getRecentSummaries", () => {
       loading: false,
       scope: SummaryScopeTypes.Day,
       screenshots: [],
+      keylogCharCount: 0,
+      screenshotSummaryCharCount: 0,
     };
 
     vol.fromNestedJSON(filesystem, "/");
