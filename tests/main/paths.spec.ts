@@ -6,7 +6,7 @@ import {
   writeFile,
   verifyPassword,
   changePassword,
-} from "src/electron/paths";
+} from "../../src/electron/paths";
 
 vi.mock("electron", () => {
   return {

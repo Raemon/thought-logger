@@ -51,6 +51,7 @@ const userData: UserData = {
   readFile: vi
     .fn<UserData["readFile"]>()
     .mockResolvedValue("fake file contents"),
+  getAllLogs: vi.fn<UserData["getAllLogs"]>(),
 };
 
 vi.stubGlobal("userData", userData);

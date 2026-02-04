@@ -18,7 +18,6 @@ declare global {
     openExternalUrl: (url: string) => void;
     readFile: (filePath: string) => Promise<string>;
     generateAISummary: (log: Summary) => Promise<string>;
-    regenerateScreenshotSummaries: (imagePaths: string[]) => Promise<void>;
     onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => void;
   }
 
@@ -41,8 +40,13 @@ declare global {
     };
     credentials: {
       checkSecret: (account: string) => Promise<boolean>;
-      saveSecret: (account: string, secret: string) => Promise<{ success: boolean; message: string }>;
-      changePassword: (newPassword: string) => Promise<{ success: boolean; message: string }>;
+      saveSecret: (
+        account: string,
+        secret: string,
+      ) => Promise<{ success: boolean; message: string }>;
+      changePassword: (
+        newPassword: string,
+      ) => Promise<{ success: boolean; message: string }>;
     };
     openRouter: {
       getAvailableModels: (imageSupport?: boolean) => Promise<string[]>;
