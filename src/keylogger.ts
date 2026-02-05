@@ -72,8 +72,13 @@ interface ParsedKey {
 let preferences: Preferences;
 
 /** Checks if the current application is a protected messaging app */
-export function isProtectedApp(appName: string, blockedApps: string[]): boolean {
-  return blockedApps.some((app) => appName.trim().toLowerCase().includes(app.trim().toLowerCase()));
+export function isProtectedApp(
+  appName: string,
+  blockedApps: string[],
+): boolean {
+  return blockedApps.some((app) =>
+    appName.trim().toLowerCase().includes(app.trim().toLowerCase()),
+  );
 }
 
 /** Formats the current timestamp in the required format */
@@ -422,6 +427,9 @@ export async function rebuildLogByApp(filePath: string) {
   }
 }
 
+let bufferedText = "";
+let timer: NodeJS.Timeout;
+
 export async function initializeKeylogger() {
   // Load initial preferences
   preferences = loadPreferences();
@@ -437,7 +445,12 @@ export async function initializeKeylogger() {
 
     // Write to raw log
     if (raw) {
-      writeFile(currentKeyLogFile(), raw, true);
+      bufferedText += raw;
+      clearInterval(timer);
+      timer = setTimeout(() => {
+        writeFile(currentKeyLogFile(), bufferedText, true);
+        bufferedText = "";
+      }, 500);
     }
   });
 }
