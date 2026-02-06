@@ -1,33 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { FileInfo } from "./logsPage/FileInfo";
 import { SettingsPage } from "./settingsPage/SettingsPage";
-
-const TabButton = ({
-  selected,
-  onClick,
-  children,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) => (
-  <button
-    onClick={onClick}
-    className={
-      `px-4 py-2 cursor-pointer mr-0.5 -mb-px ` +
-      (selected
-        ? "bg-white border-t border-l border-r border-gray-300 border-b-0"
-        : "border-transparent border-t border-l border-r")
-    }
-  >
-    {children}
-  </button>
-);
+import { TabContainer, Tab } from "./TabContainer";
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<"logs" | "settings">("settings");
   const [_, setHasLogs] = useState(false);
   const [recentErrors, setRecentErrors] = useState<string[]>([]);
+  const [defaultTab, setDefaultTab] = useState<"logs" | "settings">("settings");
 
   const formatErrorLine = (line: string) => {
     const match = line.match(
@@ -55,7 +34,7 @@ export function App() {
     window.userData.getRecentLogs().then((logs) => {
       if (logs.length > 0) {
         setHasLogs(true);
-        setActiveTab("logs");
+        setDefaultTab("logs");
       }
     });
   }, []);
@@ -89,24 +68,14 @@ export function App() {
         );
       })}
       {recentErrors.length > 0 && <div className="mb-2" />}
-      <div className="border-b border-gray-300 mb-4">
-        <TabButton
-          selected={activeTab === "logs"}
-          onClick={() => setActiveTab("logs")}
-        >
-          Logs
-        </TabButton>
-        <TabButton
-          selected={activeTab === "settings"}
-          onClick={() => setActiveTab("settings")}
-        >
-          Settings
-        </TabButton>
-      </div>
-
-      {activeTab === "logs" && <FileInfo />}
-
-      {activeTab === "settings" && <SettingsPage />}
+      <TabContainer defaultTab={defaultTab}>
+        <Tab id="logs" label="Logs">
+          <FileInfo />
+        </Tab>
+        <Tab id="settings" label="Settings">
+          <SettingsPage />
+        </Tab>
+      </TabContainer>
     </div>
   );
 }
