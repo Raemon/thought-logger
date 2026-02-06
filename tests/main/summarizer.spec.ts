@@ -7,6 +7,7 @@ import {
   summarize,
 } from "../../src/electron/summarizer";
 import { Summary, SummaryScopeTypes } from "../../src/types/files.d";
+import { initializeMasterKey, readFile } from "../../src/electron/paths";
 
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
@@ -38,8 +39,9 @@ vi.mock("../../src/electron/credentials", async () => {
 vi.mock("node:fs");
 vi.mock("node:fs/promises");
 
-beforeEach(() => {
+beforeEach(async () => {
   vol.reset();
+  await initializeMasterKey("password");
 });
 
 afterEach(() => {
@@ -121,7 +123,7 @@ describe("#summarize", () => {
     };
 
     await summarize(summary);
-    const text = fs.readFileSync(summary.path, { encoding: "utf-8" });
+    const text = await readFile(summary.path);
     expect(text).toBe("This is a daily summary.");
   });
 
@@ -274,11 +276,18 @@ describe("#summarize", () => {
           "2025-08": {
             "2025-08-20": {
               "2025-08-20 10_30_00.jpg": "",
-              "2025-08-20 10_30_00.json":
-                JSON.stringify({ project: "test", document: "test", summary: "This is some included text. This is excluded text." }),
+              "2025-08-20 10_30_00.json": JSON.stringify({
+                project: "test",
+                document: "test",
+                summary: "This is some included text. This is excluded text.",
+              }),
               "2025-08-20 11_00_00.jpg": "",
-              "2025-08-20 12_45_00.json":
-                JSON.stringify({ project: "test", document: "test", summary: "This is more text, included. You shouldn't include this text" }),
+              "2025-08-20 12_45_00.json": JSON.stringify({
+                project: "test",
+                document: "test",
+                summary:
+                  "This is more text, included. You shouldn't include this text",
+              }),
             },
           },
         },

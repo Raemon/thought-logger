@@ -10,7 +10,7 @@ import { getRecentSummaries, maybeReadContents } from "./files";
 import { getSecret } from "./credentials";
 import { OPEN_ROUTER } from "../constants/credentials";
 import { SUMMARIZER_SYSTEM_PROMPT } from "../constants/prompts";
-import { readFile } from "./paths";
+import { readFile, writeFile } from "./paths";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -254,7 +254,7 @@ export async function summarize(summary: Summary): Promise<void> {
         : weeklySummaryPrompt,
       summaryModel,
     );
-    await fs.writeFile(summary.path, text);
+    await writeFile(summary.path, text);
     summary.contents = text;
   } catch (error) {
     logger.error(

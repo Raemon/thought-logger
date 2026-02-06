@@ -18,6 +18,7 @@ import {
 } from "../types/files.d";
 import { Dirent } from "node:fs";
 import logger from "../logging";
+import { readFile } from "./paths";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -323,7 +324,7 @@ export async function getRecentApps(): Promise<string[]> {
 
   for (const keylog of keylogs) {
     try {
-      const content = await fs.readFile(keylog.appPath);
+      const content = await readFile(keylog.appPath);
       const appRegex = /=== (.*) ===/g;
       const matches = content.toLocaleString().matchAll(appRegex);
       matches.forEach((m) => apps.add(m[1]));
