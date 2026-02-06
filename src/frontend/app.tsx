@@ -3,6 +3,7 @@ import { FileInfo } from "./logsPage/FileInfo";
 import { SettingsPage } from "./settingsPage/SettingsPage";
 import { TabContainer, Tab } from "./TabContainer";
 import EncryptionSettings from "./settingsPage/EncryptionSettings";
+import { EncryptionLoader } from "./EncryptionLoader";
 import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 
 export function App() {
@@ -10,6 +11,25 @@ export function App() {
   const [recentErrors, setRecentErrors] = useState<string[]>([]);
   const [defaultTab, setDefaultTab] = useState<"logs" | "settings">("settings");
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+  const [encryptionComplete, setEncryptionComplete] = useState(false);
+  const [shouldEncrypt, setShouldEncrypt] = useState(false);
+
+  const handlePasswordSet = () => {
+    setHasPassword(true);
+    // After password is set, check if we need to encrypt files
+    window.encryption.countUnencryptedFiles().then((count) => {
+      if (count > 0) {
+        setShouldEncrypt(true);
+      } else {
+        setEncryptionComplete(true);
+      }
+    });
+  };
+
+  const handleEncryptionComplete = () => {
+    setEncryptionComplete(true);
+    setShouldEncrypt(false);
+  };
 
   const formatErrorLine = (line: string) => {
     const match = line.match(
@@ -36,6 +56,16 @@ export function App() {
     // Check if encryption password is set
     window.credentials.checkSecret(LOG_FILE_ENCRYPTION).then((status) => {
       setHasPassword(status);
+      if (status) {
+        // If password is set, check if we need to encrypt files
+        window.encryption.countUnencryptedFiles().then((count) => {
+          if (count > 0) {
+            setShouldEncrypt(true);
+          } else {
+            setEncryptionComplete(true);
+          }
+        });
+      }
     });
 
     // Check if there are any log files
@@ -57,6 +87,9 @@ export function App() {
 
   return (
     <div className="bg-white p-4">
+      {shouldEncrypt && !encryptionComplete && (
+        <EncryptionLoader onComplete={handleEncryptionComplete} />
+      )}
       {recentErrors.map((error, idx) => {
         const { timestamp, rest } = formatErrorLine(error);
         return (
@@ -76,7 +109,7 @@ export function App() {
         );
       })}
       {recentErrors.length > 0 && <div className="mb-2" />}
-      {hasPassword === null ? (
+      {hasPassword === null || (shouldEncrypt && !encryptionComplete) ? (
         <div>Loading...</div>
       ) : hasPassword === false ? (
         <div className="max-w-md mx-auto">
@@ -85,7 +118,7 @@ export function App() {
             Please set an encryption password to secure your thought logs before
             continuing.
           </p>
-          <EncryptionSettings onPasswordSet={() => setHasPassword(true)} />
+          <EncryptionSettings onPasswordSet={handlePasswordSet} />
         </div>
       ) : (
         <TabContainer defaultTab={defaultTab}>

@@ -18,7 +18,7 @@ declare global {
     openExternalUrl: (url: string) => void;
     readFile: (filePath: string) => Promise<string>;
     generateAISummary: (log: Summary) => Promise<string>;
-    onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => void;
+    onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => () => void;
   }
 
   interface Window {
@@ -50,6 +50,11 @@ declare global {
     };
     openRouter: {
       getAvailableModels: (imageSupport?: boolean) => Promise<string[]>;
+    };
+    encryption: {
+      countUnencryptedFiles: () => Promise<number>;
+      encryptAllFiles: () => Promise<{success: boolean}>;
+      onEncryptionProgress: (callback: (progress: {current: number, total: number, fileName: string, percentage: number}) => void) => () => void;
     };
   }
 }

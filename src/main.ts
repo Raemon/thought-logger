@@ -31,6 +31,8 @@ import {
   readFile,
   changePassword,
   initializeMasterKey,
+  countUnencryptedFiles,
+  encryptAllUnencryptedFiles,
 } from "./electron/paths";
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -218,3 +220,25 @@ ipcMain.handle("GET_ALL_LOGS", async () => {
 });
 
 ipcMain.handle("GET_RECENT_APPS", getRecentApps);
+
+ipcMain.handle("COUNT_UNENCRYPTED_FILES", async () => {
+  return countUnencryptedFiles();
+});
+
+ipcMain.handle("ENCRYPT_ALL_FILES", async (_event) => {
+  return new Promise((resolve, reject) => {
+    encryptAllUnencryptedFiles((current, total, fileName) => {
+      // Send progress update to renderer
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send("ENCRYPTION_PROGRESS", {
+          current,
+          total,
+          fileName,
+          percentage: Math.round((current / total) * 100),
+        });
+      });
+    })
+      .then(() => resolve({ success: true }))
+      .catch((error) => reject(error));
+  });
+});

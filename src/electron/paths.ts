@@ -335,14 +335,118 @@ export function currentProcessedKeyLogFile(suffix: string): string {
   return path.join(dir, `${basename}${suffix}log`);
 }
 
-export async function encryptAllUnencryptedFiles(): Promise<void> {
+export async function countUnencryptedFiles(): Promise<number> {
+  const keylogs = await getKeylogs();
+  const screenshots = await getScreenshots();
+  let count = 0;
+
+  // Count keylog files
+  for (const keylog of Object.values(keylogs)) {
+    try {
+      await fs.access(keylog.rawPath);
+      count++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+
+    try {
+      await fs.access(keylog.chronoPath);
+      count++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+
+    try {
+      await fs.access(keylog.appPath);
+      count++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+  }
+
+  // Count screenshot files
+  for (const screenshot of Object.values(screenshots).flatMap(
+    (dayScreenshots) => Object.values(dayScreenshots),
+  )) {
+    try {
+      await fs.access(screenshot.imagePath);
+      count++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+
+    try {
+      await fs.access(screenshot.summaryPath);
+      count++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+  }
+
+  return count;
+}
+
+export async function encryptAllUnencryptedFiles(
+  onProgress?: (current: number, total: number, fileName: string) => void
+): Promise<void> {
   const keylogs = await getKeylogs();
   const screenshots = await getScreenshots();
 
+  // Calculate total files to encrypt
+  let totalFiles = 0;
+  let currentFile = 0;
+
+  // Count keylog files
+  for (const keylog of Object.values(keylogs)) {
+    // Check if each file exists and is unencrypted
+    try {
+      await fs.access(keylog.rawPath);
+      totalFiles++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+
+    try {
+      await fs.access(keylog.chronoPath);
+      totalFiles++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+
+    try {
+      await fs.access(keylog.appPath);
+      totalFiles++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+  }
+
+  // Count screenshot files
+  for (const screenshot of Object.values(screenshots).flatMap(
+    (dayScreenshots) => Object.values(dayScreenshots),
+  )) {
+    try {
+      await fs.access(screenshot.imagePath);
+      totalFiles++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+
+    try {
+      await fs.access(screenshot.summaryPath);
+      totalFiles++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+  }
+
+  // Encrypt keylog files
   for (const keylog of Object.values(keylogs)) {
     try {
       const content = await fs.readFile(keylog.rawPath);
       await writeFile(keylog.rawPath, content);
+      currentFile++;
+      onProgress?.(currentFile, totalFiles, `keylog: ${keylog.rawPath.split('/').pop()}`);
     } catch (error: unknown) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
@@ -352,6 +456,8 @@ export async function encryptAllUnencryptedFiles(): Promise<void> {
     try {
       const content = await fs.readFile(keylog.chronoPath);
       await writeFile(keylog.chronoPath, content);
+      currentFile++;
+      onProgress?.(currentFile, totalFiles, `keylog: ${keylog.chronoPath.split('/').pop()}`);
     } catch (error: unknown) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
@@ -361,6 +467,8 @@ export async function encryptAllUnencryptedFiles(): Promise<void> {
     try {
       const content = await fs.readFile(keylog.appPath);
       await writeFile(keylog.appPath, content);
+      currentFile++;
+      onProgress?.(currentFile, totalFiles, `keylog: ${keylog.appPath.split('/').pop()}`);
     } catch (error: unknown) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
@@ -368,12 +476,15 @@ export async function encryptAllUnencryptedFiles(): Promise<void> {
     }
   }
 
+  // Encrypt screenshot files
   for (const screenshot of Object.values(screenshots).flatMap(
     (dayScreenshots) => Object.values(dayScreenshots),
   )) {
     try {
       const content = await fs.readFile(screenshot.imagePath);
       await writeFile(screenshot.imagePath, content, true);
+      currentFile++;
+      onProgress?.(currentFile, totalFiles, `screenshot: ${screenshot.imagePath.split('/').pop()}`);
     } catch (error: unknown) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
@@ -383,6 +494,8 @@ export async function encryptAllUnencryptedFiles(): Promise<void> {
     try {
       const content = await fs.readFile(screenshot.summaryPath);
       await writeFile(screenshot.summaryPath, content, true);
+      currentFile++;
+      onProgress?.(currentFile, totalFiles, `screenshot: ${screenshot.summaryPath.split('/').pop()}`);
     } catch (error: unknown) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;

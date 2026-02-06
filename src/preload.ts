@@ -37,11 +37,14 @@ const userData: UserData = {
   getRecentLogs: () => ipcRenderer.invoke("GET_RECENT_LOGS"),
   getAllLogs: () => ipcRenderer.invoke("GET_ALL_LOGS"),
   getRecentApps: () => ipcRenderer.invoke("GET_RECENT_APPS"),
-  onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) =>
-    ipcRenderer.on("UPDATE_RECENT_LOGS", (_event, summaries) =>
-      callback(summaries),
-    ),
+  onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => {
+    const handler = (_event: IpcRendererEvent, summaries: Summary[]) =>
+      callback(summaries);
+    ipcRenderer.on("UPDATE_RECENT_LOGS", handler);
+    return () => ipcRenderer.removeListener("UPDATE_RECENT_LOGS", handler);
+  },
 };
+
 contextBridge.exposeInMainWorld("userData", userData);
 
 contextBridge.exposeInMainWorld("preferences", {
@@ -62,3 +65,29 @@ contextBridge.exposeInMainWorld("openRouter", {
   getAvailableModels: (imageSupport = false) =>
     ipcRenderer.invoke("GET_AVAILABLE_MODELS", imageSupport),
 });
+
+contextBridge.exposeInMainWorld("encryption", {
+  countUnencryptedFiles: () => ipcRenderer.invoke("COUNT_UNENCRYPTED_FILES"),
+  encryptAllFiles: () => ipcRenderer.invoke("ENCRYPT_ALL_FILES"),
+  onEncryptionProgress: (callback: (progress: {current: number, total: number, fileName: string, percentage: number}) => void) => {
+    const handler = (_event: IpcRendererEvent, progress: {current: number, total: number, fileName: string, percentage: number}) =>
+      callback(progress);
+    ipcRenderer.on("ENCRYPTION_PROGRESS", handler);
+    return () => ipcRenderer.removeListener("ENCRYPTION_PROGRESS", handler);
+  },
+});
+
+interface UserData {
+  openUserDataFolder: () => void;
+  getUserDataFolder: () => Promise<string>;
+  openDebugLogsFolder: () => void;
+  getDebugLogsFolder: () => Promise<string>;
+  openFile: (path: string) => void;
+  openExternalUrl: (url: string) => void;
+  readFile: (path: string) => Promise<string>;
+  generateAISummary: (log: Summary) => Promise<void>;
+  getRecentLogs: () => Promise<Summary[]>;
+  getAllLogs: () => Promise<Summary[]>;
+  getRecentApps: () => Promise<string[]>;
+  onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => void;
+}
