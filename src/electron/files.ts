@@ -72,7 +72,7 @@ export async function maybeReadContents(path: string): Promise<string | null> {
   return readFile(path);
 }
 
-async function getKeylogs(): Promise<Record<string, Keylog>> {
+export async function getKeylogs(): Promise<Record<string, Keylog>> {
   const keylogsPath = path.join(userDataPath, "files", "keylogs");
   const keylogs: Record<string, Keylog> = {};
   const keylogFiles = await readFilesFromDirectory(keylogsPath);
@@ -96,7 +96,7 @@ async function getKeylogs(): Promise<Record<string, Keylog>> {
   return keylogs;
 }
 
-async function getScreenshots(): Promise<
+export async function getScreenshots(): Promise<
   Record<string, Record<string, Screenshot>>
 > {
   const screenshotsPath = path.join(userDataPath, "files", "screenshots");

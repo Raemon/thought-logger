@@ -7,8 +7,9 @@ import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 import { memoize } from "micro-memoize";
 import logger from "../logging";
 import { isErrnoException } from "./utils";
+import { getKeylogs, getScreenshots } from "./files";
 
-const ENCRYPTED_FILE_EXT = ".crypt";
+export const ENCRYPTED_FILE_EXT = ".crypt";
 const ENCRYPTION_CPULIMIT = 3;
 const ENCRYPTION_MEMLIMIT = 268435456;
 const userDataPath = app.getPath("userData");
@@ -332,4 +333,60 @@ export function currentProcessedKeyLogFile(suffix: string): string {
   const dir = path.dirname(rawPath);
   const basename = path.basename(rawPath, "log");
   return path.join(dir, `${basename}${suffix}log`);
+}
+
+export async function encryptAllUnencryptedFiles(): Promise<void> {
+  const keylogs = await getKeylogs();
+  const screenshots = await getScreenshots();
+
+  for (const keylog of Object.values(keylogs)) {
+    try {
+      const content = await fs.readFile(keylog.rawPath);
+      await writeFile(keylog.rawPath, content);
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+
+    try {
+      const content = await fs.readFile(keylog.chronoPath);
+      await writeFile(keylog.chronoPath, content);
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+
+    try {
+      const content = await fs.readFile(keylog.appPath);
+      await writeFile(keylog.appPath, content);
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+  }
+
+  for (const screenshot of Object.values(screenshots).flatMap(
+    (dayScreenshots) => Object.values(dayScreenshots),
+  )) {
+    try {
+      const content = await fs.readFile(screenshot.imagePath);
+      await writeFile(screenshot.imagePath, content, true);
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+
+    try {
+      const content = await fs.readFile(screenshot.summaryPath);
+      await writeFile(screenshot.summaryPath, content, true);
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+  }
 }
