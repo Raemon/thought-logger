@@ -173,7 +173,7 @@ export async function getScreenshotImagePathsForDate(
       await fs.access(imagePath);
       availableImagePaths.push(imagePath);
     } catch (error) {
-      if (isErrnoException(error) && error.code !== "ENOENT") {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
       }
     }
@@ -201,7 +201,7 @@ export async function getScreenshotImagePaths(): Promise<string[]> {
       await fs.access(imagePath);
       availableImagePaths.push(imagePath);
     } catch (error) {
-      if (isErrnoException(error) && error.code !== "ENOENT") {
+      if (!(isErrnoException(error) && error.code !== "ENOENT")) {
         throw error;
       }
     }
@@ -315,12 +315,12 @@ export async function getRecentSummaries(
       loading: false,
       scope: SummaryScopeTypes.Week,
       screenshots: weeklyScreenshots.get(week)
-        ? weeklyScreenshots
+        ? (weeklyScreenshots
             .get(week)
             ?.reduce(
               (acc, screenshot) => acc.concat(Object.values(screenshot)),
               [] as Screenshot[],
-            ) ?? []
+            ) ?? [])
         : ([] as Screenshot[]),
     });
   }

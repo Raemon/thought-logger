@@ -297,7 +297,7 @@ export async function writeFile(
     try {
       oldFileData = (await readFile(filePath, true)) as Uint8Array;
     } catch (error) {
-      if (!(isErrnoException(error) && error.code !== "ENOENT")) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
       }
     }
@@ -314,7 +314,7 @@ export async function writeFile(
     try {
       await fs.rm(filePath);
     } catch (error) {
-      if (isErrnoException(error) && error.code !== "ENOENT") {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
       }
     }
