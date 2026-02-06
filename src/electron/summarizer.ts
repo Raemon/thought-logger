@@ -11,6 +11,7 @@ import { getSecret } from "./credentials";
 import { OPEN_ROUTER } from "../constants/credentials";
 import { SUMMARIZER_SYSTEM_PROMPT } from "../constants/prompts";
 import { readFile, writeFile } from "./paths";
+import { isErrnoException } from "./utils";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -160,7 +161,7 @@ async function checkAndGenerateSummaries() {
   for (const summary of summaries) {
     logger.debug(`Checking summary of ${summary.path}`);
     for (const keylog of summary.keylogs) {
-      if (needsProcessing(keylog)) {
+      if (await needsProcessing(keylog)) {
         processKeylog(keylog);
       }
     }
@@ -217,7 +218,7 @@ export async function summarize(summary: Summary): Promise<void> {
         const filename = path.basename(keylog.rawPath);
         logData += `${filename}:\n${text}\n\n`;
       } catch (error) {
-        if (error.code === "ENOENT") {
+        if (isErrnoException(error) && error.code === "ENOENT") {
           logger.info(`Keylog for ${keylog.date} didn't exist`);
         } else {
           throw error;

@@ -67,11 +67,17 @@ export async function setSecret(
       success: true,
       message: `${account} secret saved successfully`,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error(`Failed to save ${account} secret:`, error);
+
+    let errorMsg = "Unknown error";
+    if (error instanceof Error) {
+      errorMsg = error.message;
+    }
+
     return {
       success: false,
-      message: `Failed to save ${account} secret: ${error.message}`,
+      message: `Failed to save ${account} secret: ${errorMsg}`,
     };
   }
 }

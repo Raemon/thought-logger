@@ -6,6 +6,7 @@ import { getSecret, setSecret } from "./credentials";
 import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 import { memoize } from "micro-memoize";
 import logger from "../logging";
+import { isErrnoException } from "./utils";
 
 const ENCRYPTED_FILE_EXT = ".crypt";
 const ENCRYPTION_CPULIMIT = 3;
@@ -133,7 +134,7 @@ export async function initializeMasterKey(password: string): Promise<void> {
   try {
     await getMasterKey(password);
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if (isErrnoException(error) && error.code === "ENOENT") {
       const salt = sodium.randombytes_buf(
         sodium.crypto_pwhash_SALTBYTES,
         "uint8array",
@@ -197,18 +198,12 @@ export async function changePassword(
     await sodiumReady;
 
     // Read current master key file
-    let oldMasterKey: Uint8Array<ArrayBufferLike> | null;
+    let oldMasterKey: Uint8Array<ArrayBufferLike> | null = null;
 
     try {
-      const fileData = await fs.readFile(masterKeyPath);
-      const oldSalt = fileData.subarray(0, sodium.crypto_pwhash_SALTBYTES);
-      const oldEncMasterKey = fileData.subarray(sodium.crypto_pwhash_SALTBYTES);
-      const oldKey = deriveKey(oldPassword, oldSalt);
-      oldMasterKey = decryptWithKey(oldKey, oldEncMasterKey);
+      oldMasterKey = oldPassword ? await getMasterKey(oldPassword) : null;
     } catch (error) {
-      if (error.code === "ENOENT") {
-        oldMasterKey = null;
-      } else {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
       }
     }
@@ -246,7 +241,7 @@ export async function changePassword(
     logger.error("Failed to change password:", error);
     return {
       success: false,
-      message: `Failed to change password: ${error.message}`,
+      message: `Failed to change password: ${(error as Error).message}`,
     };
   }
 }
@@ -255,8 +250,8 @@ export async function readFile(filePath: string): Promise<string> {
   try {
     const rawData = await fs.readFile(filePath);
     return Buffer.from(rawData).toString("utf8");
-  } catch (error) {
-    if (error.code !== "ENOENT") {
+  } catch (error: unknown) {
+    if (!(isErrnoException(error) && error.code === "ENOENT")) {
       throw error;
     }
   }
@@ -289,7 +284,7 @@ export async function writeFile(
     try {
       fileData = await readFile(filePath);
     } catch (error) {
-      if (error.code !== "ENOENT") {
+      if (!(isErrnoException(error) && error.code !== "ENOENT")) {
         throw error;
       }
     }
@@ -308,7 +303,7 @@ export async function writeFile(
     try {
       await fs.rm(filePath);
     } catch (error) {
-      if (error.code !== "ENOENT") {
+      if (isErrnoException(error) && error.code !== "ENOENT") {
         throw error;
       }
     }

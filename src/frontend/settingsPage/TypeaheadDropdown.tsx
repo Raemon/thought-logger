@@ -32,7 +32,7 @@ export default function TypeaheadDropdown({
                         case "Enter":
                             e.preventDefault();
                             onChange(
-                                items.find((item) => item.includes(value)),
+                                items.find((item) => item.includes(value)) || value,
                             );
                             setFocused(false);
                             break;

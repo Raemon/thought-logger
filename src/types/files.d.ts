@@ -22,7 +22,7 @@ export interface Summary {
   keylogs: Keylog[];
   screenshots: Screenshot[];
   scope: SummaryScopeTypes;
-  contents?: string;
+  contents: string | null;
   path: string;
   keylogCharCount?: number;
   screenshotSummaryCharCount?: number;

@@ -10,6 +10,7 @@ import { currentKeyLogFile, readFile, writeFile } from "./electron/paths";
 import { loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences.d";
 import logger from "./logging";
+import { isErrnoException } from "./electron/utils";
 
 const BINARY_NAME = "MacKeyServer";
 
@@ -132,16 +133,16 @@ function processKeyPress(
 
   // Handle modifier-only keypresses, but don't skip for Shift
   if (
-    event.name.includes("CTRL") ||
-    event.name.includes("META") ||
-    event.name.includes("ALT")
+    event.name?.includes("CTRL") ||
+    event.name?.includes("META") ||
+    event.name?.includes("ALT")
   ) {
     skipNext = true;
     return { raw: key, processed: "", isAppSwitch: false };
   }
 
   // Handle shift key presses without affecting the next character
-  if (event.name.includes("SHIFT")) {
+  if (event.name?.includes("SHIFT")) {
     return { raw: key, processed: "", isAppSwitch: false };
   }
 
@@ -166,9 +167,9 @@ function processKeyPress(
     "RIGHT ALT",
     "LEFT SHIFT",
     "RIGHT SHIFT",
-  ].includes(event.name);
+  ].includes(event.name || "");
 
-  return processKeyCharacter(event, isShift, key, isSpecialKey);
+  return processKeyCharacter(event, !!isShift, key, isSpecialKey);
 }
 
 /** Process a single character keypress */
@@ -181,15 +182,17 @@ function processKeyCharacter(
   let shouldLog = false;
   let shouldProcessLog = false;
 
-  if (KEY_MAP.has(event.name)) {
-    const mappedChars = KEY_MAP.get(event.name);
+  if (KEY_MAP.has(event.name || "")) {
+    const mappedChars = KEY_MAP.get(event.name || "");
     if (!mappedChars) return { raw: "", processed: "", isAppSwitch: false };
 
     key += event.name === "RETURN" ? "⏎" : mappedChars[isShift ? 1 : 0];
     shouldLog = true;
     shouldProcessLog = !isSpecialKey && event.name !== "BACKSPACE";
-  } else if (event.name.length === 1) {
-    key += isShift ? event.name.toUpperCase() : event.name.toLowerCase();
+  } else if ((event.name || "").length === 1) {
+    key += isShift
+      ? (event.name || "").toUpperCase()
+      : (event.name || "").toLowerCase();
     shouldLog = true;
     shouldProcessLog = true;
   }
@@ -213,11 +216,13 @@ function handleBufferUpdate(
     applicationBuffers.set(currentApplication, currentBuffer.slice(0, -1));
   } else if (shouldProcessLog) {
     let keyToAdd;
-    if (KEY_MAP.has(event.name)) {
-      const [unshifted, shifted] = KEY_MAP.get(event.name) || ["", ""];
+    if (KEY_MAP.has(event.name || "")) {
+      const [unshifted, shifted] = KEY_MAP.get(event.name || "") || ["", ""];
       keyToAdd = isShift ? shifted : unshifted;
     } else {
-      keyToAdd = isShift ? event.name.toUpperCase() : event.name.toLowerCase();
+      keyToAdd = isShift
+        ? (event.name || "").toUpperCase()
+        : (event.name || "").toLowerCase();
     }
     applicationBuffers.set(currentApplication, currentBuffer + keyToAdd);
     processedKey = keyToAdd;
@@ -285,7 +290,7 @@ export async function rebuildChronologicalLog(filePath: string) {
   try {
     rawText = await readFile(filePath);
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if (isErrnoException(error) && error.code === "ENOENT") {
       logger.info(`Skipping chronological log rebuild for ${filePath}`);
     } else {
       throw error;
@@ -357,7 +362,7 @@ export async function rebuildLogByApp(filePath: string) {
   try {
     rawText = await readFile(filePath);
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if (isErrnoException(error) && error.code === "ENOENT") {
       logger.info(`Skipping log by app rebuild for ${filePath}`);
     } else {
       throw error;

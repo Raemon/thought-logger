@@ -108,6 +108,7 @@ async function extractTextFromImage(
         errorData !== null &&
         "error" in errorData &&
         typeof errorData.error === "object" &&
+        errorData.error !== null &&
         "message" in errorData.error
           ? errorData.error.message
           : null) || `${errorData}`;
@@ -146,7 +147,12 @@ async function extractTextFromImage(
     return ScreenshotText.parse(result);
   } catch (error) {
     logger.error("Failed to extract text from image:", error);
-    throw `ERROR: Failed to extract text: ${error.message}`;
+
+    if (error instanceof Error) {
+      throw `ERROR: Failed to extract text: ${error.message}`;
+    } else {
+      throw error;
+    }
   }
 }
 

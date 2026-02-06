@@ -19,6 +19,7 @@ import {
 import { Dirent } from "node:fs";
 import logger from "../logging";
 import { readFile } from "./paths";
+import { isErrnoException } from "./utils";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -35,7 +36,7 @@ function groupByWeek<T>(record: Record<string, T>): Map<string, T[]> {
 
     if (groups.has(week)) {
       const groupData = groups.get(week);
-      groupData.push(record[dateString]);
+      groupData?.push(record[dateString]);
     } else {
       groups.set(week, [record[dateString]]);
     }
@@ -80,6 +81,7 @@ async function getKeylogs(): Promise<Record<string, Keylog>> {
     const fileName = path.basename(file.name);
     const dir = file.parentPath;
     const result = fileName.match(/[^.]+/);
+    if (result === null) continue;
     const dateString = result[0];
     const date = parse(dateString, "yyyy-MM-dd", new Date());
     if (isNaN(date.getTime())) continue;
@@ -107,6 +109,7 @@ async function getScreenshots(): Promise<
     const dir = file.parentPath;
     const ext = path.extname(file.name);
     const result = fileName.match(/[^.]+/);
+    if (result === null) continue;
     const dateString = result[0];
     const date = parse(dateString, "yyyy-MM-dd HH_mm_ss", new Date());
     if (isNaN(date.getTime())) continue;
@@ -137,7 +140,9 @@ export async function getScreenshotSummariesForDate(
   const screenshotsForDay = screenshots[dateString]
     ? Object.values(screenshots[dateString])
     : ([] as Screenshot[]);
-  const summaryPaths = screenshotsForDay.map((screenshot) => screenshot.summaryPath);
+  const summaryPaths = screenshotsForDay.map(
+    (screenshot) => screenshot.summaryPath,
+  );
   const summaries: { path: string; contents: string }[] = [];
 
   for (const summaryPath of summaryPaths) {
@@ -158,7 +163,9 @@ export async function getScreenshotImagePathsForDate(
   const screenshotsForDay = screenshots[dateString]
     ? Object.values(screenshots[dateString])
     : ([] as Screenshot[]);
-  const imagePaths = screenshotsForDay.map((screenshot) => screenshot.imagePath);
+  const imagePaths = screenshotsForDay.map(
+    (screenshot) => screenshot.imagePath,
+  );
   const availableImagePaths: string[] = [];
 
   for (const imagePath of imagePaths) {
@@ -166,7 +173,7 @@ export async function getScreenshotImagePathsForDate(
       await fs.access(imagePath);
       availableImagePaths.push(imagePath);
     } catch (error) {
-      if (error.code !== "ENOENT") {
+      if (isErrnoException(error) && error.code !== "ENOENT") {
         throw error;
       }
     }
@@ -194,7 +201,7 @@ export async function getScreenshotImagePaths(): Promise<string[]> {
       await fs.access(imagePath);
       availableImagePaths.push(imagePath);
     } catch (error) {
-      if (error.code !== "ENOENT") {
+      if (isErrnoException(error) && error.code !== "ENOENT") {
         throw error;
       }
     }
@@ -203,11 +210,16 @@ export async function getScreenshotImagePaths(): Promise<string[]> {
   return availableImagePaths;
 }
 
-const MONTH_IN_SECONDS = 60 * 60 * 24 * 30
+const MONTH_IN_SECONDS = 60 * 60 * 24 * 30;
 
-async function getCharCount<T>(items: T[], getPath: (item: T) => string): Promise<number> {
-  const contents = await Promise.all(items.map(item => maybeReadContents(getPath(item))));
-  return sumBy(contents, c => c?.length ?? 0);
+async function getCharCount<T>(
+  items: T[],
+  getPath: (item: T) => string,
+): Promise<number> {
+  const contents = await Promise.all(
+    items.map((item) => maybeReadContents(getPath(item))),
+  );
+  return sumBy(contents, (c) => c?.length ?? 0);
 }
 
 export async function getRecentSummaries(
@@ -249,8 +261,14 @@ export async function getRecentSummaries(
     );
 
     const contents = await maybeReadContents(summaryPath);
-    const keylogCharCount = await getCharCount(availableKeylogs, k => k.chronoPath);
-    const screenshotSummaryCharCount = await getCharCount(availableScreenshots, s => s.summaryPath);
+    const keylogCharCount = await getCharCount(
+      availableKeylogs,
+      (k) => k.chronoPath,
+    );
+    const screenshotSummaryCharCount = await getCharCount(
+      availableScreenshots,
+      (s) => s.summaryPath,
+    );
 
     dailySummaries[dateString] = dailySummaries[dateString] || {
       path: summaryPath,
@@ -293,18 +311,16 @@ export async function getRecentSummaries(
       path: summaryPath,
       contents,
       date,
-      keylogs: weeklyKeylogs.get(week)
-        ? weeklyKeylogs.get(week)
-        : ([] as Keylog[]),
+      keylogs: weeklyKeylogs.get(week) ?? [],
       loading: false,
       scope: SummaryScopeTypes.Week,
       screenshots: weeklyScreenshots.get(week)
         ? weeklyScreenshots
             .get(week)
-            .reduce(
+            ?.reduce(
               (acc, screenshot) => acc.concat(Object.values(screenshot)),
-              [],
-            )
+              [] as Screenshot[],
+            ) ?? []
         : ([] as Screenshot[]),
     });
   }
@@ -329,7 +345,7 @@ export async function getRecentApps(): Promise<string[]> {
       const matches = content.toLocaleString().matchAll(appRegex);
       matches.forEach((m) => apps.add(m[1]));
     } catch (error) {
-      if (error.code === "ENOENT") {
+      if (isErrnoException(error) && error.code === "ENOENT") {
         logger.info(`Keylog for ${keylog.date} didn't exist`);
       } else {
         throw error;

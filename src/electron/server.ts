@@ -276,7 +276,7 @@ async function handleMCPPostRequest(
       {
         date: z.string().date(),
       },
-      async ({ date }: { date: string }) => {
+      async ({ date }) => {
         let text: string;
 
         const parsedDate = new Date(date);
@@ -288,7 +288,11 @@ async function handleMCPPostRequest(
           );
           text = await readFile(filePath);
         } catch (error) {
-          text = `Unable to fetch keylog data for ${date}: ${error}`;
+          if (error instanceof Error) {
+            text = `Unable to fetch keylog data for ${date}: ${error.message}`;
+          } else {
+            throw error;
+          }
         }
 
         return {
@@ -507,7 +511,14 @@ export function startLocalServer(port = 8765): http.Server {
           const dateStr = (screenshotImageMatch ||
             screenshotGalleryMatch ||
             screenshotSummaryMatch ||
-            dateMatch)[1];
+            dateMatch)?.[1];
+
+          if (!dateStr) {
+            res.writeHead(400, { "Content-Type": "text/plain" });
+            res.end("Invalid URL pattern.");
+            break;
+          }
+
           try {
             // Parse the date from the URL
             const date = new Date(dateStr);

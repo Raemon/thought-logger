@@ -250,7 +250,7 @@ describe("#getRecentSummaries", () => {
     const dailySummary = summaries.find(
       (summary) => summary.scope === SummaryScopeTypes.Day,
     );
-    expect(dailySummary.contents).toBe("This is a daily summary.");
+    expect(dailySummary?.contents).toBe("This is a daily summary.");
   });
 
   it("doesn't fail on invalid files", async () => {
