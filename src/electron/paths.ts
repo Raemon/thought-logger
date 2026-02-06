@@ -246,10 +246,18 @@ export async function changePassword(
   }
 }
 
-export async function readFile(filePath: string): Promise<string> {
+export async function readFile<T extends boolean = false>(
+  filePath: string,
+  binary?: T,
+): Promise<T extends true ? Uint8Array : string>;
+export async function readFile(
+  filePath: string,
+  binary = false,
+): Promise<string | Uint8Array> {
   try {
     const rawData = await fs.readFile(filePath);
-    return Buffer.from(rawData).toString("utf8");
+
+    return binary ? rawData : Buffer.from(rawData).toString("utf8");
   } catch (error: unknown) {
     if (!(isErrnoException(error) && error.code === "ENOENT")) {
       throw error;
@@ -268,21 +276,26 @@ export async function readFile(filePath: string): Promise<string> {
 
   const plaintext = decryptWithKey(masterKey, fileData);
 
-  return Buffer.from(plaintext).toString("utf8");
+  return binary ? plaintext : Buffer.from(plaintext).toString("utf8");
 }
 
 export async function writeFile(
   filePath: string,
-  contents: string,
+  contents: string | Uint8Array,
   append = false,
 ): Promise<void> {
   await sodiumReady;
   const password = await getSecret(LOG_FILE_ENCRYPTION);
-  let fileData: string | Uint8Array<ArrayBufferLike> = "";
+  let oldFileData: Uint8Array = new Uint8Array();
+  let newFileData: Uint8Array = new Uint8Array();
+  const contentData: Uint8Array =
+    contents instanceof Uint8Array
+      ? contents
+      : new TextEncoder().encode(contents);
 
   if (append) {
     try {
-      fileData = await readFile(filePath);
+      oldFileData = (await readFile(filePath, true)) as Uint8Array;
     } catch (error) {
       if (!(isErrnoException(error) && error.code !== "ENOENT")) {
         throw error;
@@ -290,16 +303,14 @@ export async function writeFile(
     }
   }
 
-  if (password === null) {
-    fileData += contents;
-  } else {
-    const masterKey = await getMasterKey(password);
-    fileData = encryptWithKey(masterKey, fileData + contents);
-  }
-
+  newFileData = new Uint8Array(oldFileData.length + contentData.length);
+  newFileData.set(oldFileData);
+  newFileData.set(contentData, oldFileData.length);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  if (fileData instanceof Uint8Array) {
-    await fs.writeFile(`${filePath}${ENCRYPTED_FILE_EXT}`, fileData);
+  if (password) {
+    const masterKey = await getMasterKey(password);
+    newFileData = encryptWithKey(masterKey, newFileData);
+    await fs.writeFile(`${filePath}${ENCRYPTED_FILE_EXT}`, newFileData);
     try {
       await fs.rm(filePath);
     } catch (error) {
@@ -308,7 +319,7 @@ export async function writeFile(
       }
     }
   } else {
-    await fs.writeFile(filePath, fileData);
+    await fs.writeFile(filePath, newFileData);
   }
 }
 

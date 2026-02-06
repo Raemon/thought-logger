@@ -69,7 +69,7 @@ export async function maybeReadContents(path: string): Promise<string | null> {
     return null;
   }
 
-  return fs.readFile(path, { encoding: "utf-8" });
+  return readFile(path);
 }
 
 async function getKeylogs(): Promise<Record<string, Keylog>> {

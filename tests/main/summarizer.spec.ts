@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { vol, fs } from "memfs";
+import { vol } from "memfs";
 
 import {
   needsSummary,

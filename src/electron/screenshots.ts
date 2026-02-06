@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { currentScreenshotFile } from "./paths";
+import { currentScreenshotFile, writeFile } from "./paths";
 import { Preferences } from "../types/preferences.d";
 import { desktopCapturer } from "electron";
 
@@ -190,7 +190,7 @@ export async function parseScreenshot(
       ".jpg",
       `.${encodedApp}.${encodedTitle}.json`,
     );
-    await fs.writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
+    await writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
   } catch (error) {
     logger.error(`Failed to extract text from ${imgPath}:`, error);
   }
@@ -207,7 +207,7 @@ async function takeScreenshot(quality: number) {
     const currentApplication = getCurrentApplication();
     const filePath = currentScreenshotFile();
     await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, img);
+    await writeFile(filePath, img);
 
     await parseScreenshot(img, filePath, currentApplication);
 

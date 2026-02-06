@@ -3,7 +3,6 @@ import path from "path";
 import { app } from "electron";
 
 import { randomUUID } from "node:crypto";
-import fs from "node:fs/promises";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types";
@@ -201,7 +200,7 @@ async function handleScreenshotImageRequest(
       res.end("Invalid screenshot path.");
       return;
     }
-    const imageData = await fs.readFile(resolvedPath);
+    const imageData = await readFile(resolvedPath, true);
     res.writeHead(200, { "Content-Type": "image/jpeg" });
     res.end(imageData);
   } catch (error) {
