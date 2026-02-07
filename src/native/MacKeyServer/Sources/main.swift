@@ -286,8 +286,6 @@ func myCGEventTapCallback(
 
     } else if type == CGEventType.tapDisabledByTimeout {
         logErr("Timeout error raised on key listener")
-        // CGEvent.tapEnable(tap: eventTap, enable: true)
-        // logErr("Event tap re-enabled")
         return nil
     }
     return Unmanaged.passUnretained(event)
@@ -366,20 +364,6 @@ watchdogThread.async {
         CGEvent.tapEnable(tap: eventTap, enable: true)
         // No need to log successful re-enable here as it's just a precaution
     }
-}
-
-// Add this function for testing only
-func simulateTapTimeout() {
-    alert("Simulating tap disable...")
-    CGEvent.tapEnable(tap: eventTap, enable: false)
-    logErr("Tap manually disabled for testing")
-}
-
-// Then add this somewhere after the event tap is created but before the event loop
-// (Add temporarily, just for testing)
-DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
-    alert("Simulating tap disable...")
-    simulateTapTimeout()
 }
 
 logErr("Hello, world!")
