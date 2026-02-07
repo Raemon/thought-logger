@@ -195,10 +195,10 @@ ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
 
 ipcMain.handle("GENERATE_AI_SUMMARY", async (_event, summary: Summary) => {
   const oldLogs = await getRecentSummaries();
-  for (const i in oldLogs) {
-    const { date, scope } = oldLogs[i];
+  for (const log of oldLogs) {
+    const { date, scope } = log;
     if (isEqual(date, summary.date) && scope === summary.scope) {
-      oldLogs[i].loading = true;
+      log.loading = true;
     }
   }
   updateSummaries(oldLogs);
