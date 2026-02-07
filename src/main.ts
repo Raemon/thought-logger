@@ -135,8 +135,6 @@ ipcMain.on("OPEN_DEBUG_LOGS_FOLDER", () => {
   shell.openPath(debugLogsPath);
 });
 
-ipcMain.handle;
-
 ipcMain.handle("GET_PREFERENCES", () => loadPreferences());
 
 ipcMain.handle(
