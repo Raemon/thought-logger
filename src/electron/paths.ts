@@ -287,6 +287,11 @@ export async function writeFile(
 ): Promise<void> {
   await sodiumReady;
   const password = await getSecret(LOG_FILE_ENCRYPTION);
+
+  if (!password) {
+    throw new Error("Tried to write file with no password");
+  }
+
   let oldFileData: Uint8Array = new Uint8Array();
   let newFileData: Uint8Array = new Uint8Array();
   const contentData: Uint8Array =
@@ -308,20 +313,10 @@ export async function writeFile(
   newFileData.set(oldFileData);
   newFileData.set(contentData, oldFileData.length);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-  if (password) {
-    const masterKey = await getMasterKey(password);
-    newFileData = encryptWithKey(masterKey, newFileData);
-    await fs.writeFile(`${filePath}${ENCRYPTED_FILE_EXT}`, newFileData);
-    try {
-      await fs.rm(filePath);
-    } catch (error) {
-      if (!(isErrnoException(error) && error.code === "ENOENT")) {
-        throw error;
-      }
-    }
-  } else {
-    await fs.writeFile(filePath, newFileData);
-  }
+
+  const masterKey = await getMasterKey(password);
+  newFileData = encryptWithKey(masterKey, newFileData);
+  await fs.writeFile(`${filePath}${ENCRYPTED_FILE_EXT}`, newFileData);
 }
 
 /**
@@ -387,7 +382,7 @@ export async function countUnencryptedFiles(): Promise<number> {
 }
 
 export async function encryptAllUnencryptedFiles(
-  onProgress?: (current: number, total: number, fileName: string) => void
+  onProgress?: (current: number, total: number, fileName: string) => void,
 ): Promise<void> {
   const keylogs = await getKeylogs();
   const screenshots = await getScreenshots();
@@ -446,7 +441,11 @@ export async function encryptAllUnencryptedFiles(
       const content = await fs.readFile(keylog.rawPath);
       await writeFile(keylog.rawPath, content);
       currentFile++;
-      onProgress?.(currentFile, totalFiles, `keylog: ${keylog.rawPath.split('/').pop()}`);
+      onProgress?.(
+        currentFile,
+        totalFiles,
+        `keylog: ${keylog.rawPath.split("/").pop()}`,
+      );
     } catch (error: unknown) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
@@ -457,7 +456,11 @@ export async function encryptAllUnencryptedFiles(
       const content = await fs.readFile(keylog.chronoPath);
       await writeFile(keylog.chronoPath, content);
       currentFile++;
-      onProgress?.(currentFile, totalFiles, `keylog: ${keylog.chronoPath.split('/').pop()}`);
+      onProgress?.(
+        currentFile,
+        totalFiles,
+        `keylog: ${keylog.chronoPath.split("/").pop()}`,
+      );
     } catch (error: unknown) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
@@ -468,7 +471,11 @@ export async function encryptAllUnencryptedFiles(
       const content = await fs.readFile(keylog.appPath);
       await writeFile(keylog.appPath, content);
       currentFile++;
-      onProgress?.(currentFile, totalFiles, `keylog: ${keylog.appPath.split('/').pop()}`);
+      onProgress?.(
+        currentFile,
+        totalFiles,
+        `keylog: ${keylog.appPath.split("/").pop()}`,
+      );
     } catch (error: unknown) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
@@ -484,7 +491,11 @@ export async function encryptAllUnencryptedFiles(
       const content = await fs.readFile(screenshot.imagePath);
       await writeFile(screenshot.imagePath, content, true);
       currentFile++;
-      onProgress?.(currentFile, totalFiles, `screenshot: ${screenshot.imagePath.split('/').pop()}`);
+      onProgress?.(
+        currentFile,
+        totalFiles,
+        `screenshot: ${screenshot.imagePath.split("/").pop()}`,
+      );
     } catch (error: unknown) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;
@@ -495,7 +506,11 @@ export async function encryptAllUnencryptedFiles(
       const content = await fs.readFile(screenshot.summaryPath);
       await writeFile(screenshot.summaryPath, content, true);
       currentFile++;
-      onProgress?.(currentFile, totalFiles, `screenshot: ${screenshot.summaryPath.split('/').pop()}`);
+      onProgress?.(
+        currentFile,
+        totalFiles,
+        `screenshot: ${screenshot.summaryPath.split("/").pop()}`,
+      );
     } catch (error: unknown) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         throw error;

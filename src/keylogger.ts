@@ -434,8 +434,11 @@ export async function rebuildLogByApp(filePath: string) {
 
 let bufferedText = "";
 let timer: NodeJS.Timeout;
+let initialized = false;
 
 export async function initializeKeylogger() {
+  if (initialized) return;
+  initialized = true;
   // Load initial preferences
   preferences = loadPreferences();
 

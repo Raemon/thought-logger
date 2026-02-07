@@ -11,7 +11,7 @@ import { getCurrentApplication, isProtectedApp } from "../keylogger";
 
 import logger from "../logging";
 import { getSecret } from "./credentials";
-import { OPEN_ROUTER } from "../constants/credentials";
+import { LOG_FILE_ENCRYPTION, OPEN_ROUTER } from "../constants/credentials";
 
 const ScreenshotText = z.object({
   windows: z.array(z.object({
@@ -231,7 +231,10 @@ export function toggleScheduledScreenshots(prefs: Preferences) {
 
   if (prefs.screenshotActive) {
     screenshotIntervalID = setInterval(
-      () => takeScreenshot(prefs.screenshotQuality),
+      () =>
+        getSecret(LOG_FILE_ENCRYPTION).then((password) =>
+          password ? takeScreenshot(prefs.screenshotQuality) : null,
+        ),
       prefs.screenshotPeriod * 1000,
     );
   }

@@ -97,7 +97,9 @@ app.on("activate", () => {
   }
 });
 
-initializeKeylogger();
+getSecret(LOG_FILE_ENCRYPTION).then((password) =>
+  password ? initializeKeylogger() : null,
+);
 
 ipcMain.handle("REQUEST_PERMISSIONS_STATUS", () => {
   return checkPermissions();
@@ -170,6 +172,7 @@ ipcMain.handle("SAVE_SECRET", (_event, account: string, secret: string) => {
 });
 
 ipcMain.handle("CHANGE_PASSWORD", async (_event, newPassword: string) => {
+  initializeKeylogger();
   return changePassword(newPassword);
 });
 
