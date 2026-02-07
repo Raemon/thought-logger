@@ -317,6 +317,13 @@ export async function writeFile(
   const masterKey = await getMasterKey(password);
   newFileData = encryptWithKey(masterKey, newFileData);
   await fs.writeFile(`${filePath}${ENCRYPTED_FILE_EXT}`, newFileData);
+  
+  // Delete the original unencrypted file if it exists
+  try {
+    await fs.unlink(filePath);
+  } catch (error) {
+    // File doesn't exist, which is fine
+  }
 }
 
 /**
@@ -440,6 +447,7 @@ export async function encryptAllUnencryptedFiles(
     try {
       const content = await fs.readFile(keylog.rawPath);
       await writeFile(keylog.rawPath, content);
+      await fs.unlink(keylog.rawPath); // Delete original unencrypted file
       currentFile++;
       onProgress?.(
         currentFile,
@@ -455,6 +463,7 @@ export async function encryptAllUnencryptedFiles(
     try {
       const content = await fs.readFile(keylog.chronoPath);
       await writeFile(keylog.chronoPath, content);
+      await fs.unlink(keylog.chronoPath); // Delete original unencrypted file
       currentFile++;
       onProgress?.(
         currentFile,
@@ -470,6 +479,7 @@ export async function encryptAllUnencryptedFiles(
     try {
       const content = await fs.readFile(keylog.appPath);
       await writeFile(keylog.appPath, content);
+      await fs.unlink(keylog.appPath); // Delete original unencrypted file
       currentFile++;
       onProgress?.(
         currentFile,
@@ -490,6 +500,7 @@ export async function encryptAllUnencryptedFiles(
     try {
       const content = await fs.readFile(screenshot.imagePath);
       await writeFile(screenshot.imagePath, content, true);
+      await fs.unlink(screenshot.imagePath); // Delete original unencrypted file
       currentFile++;
       onProgress?.(
         currentFile,
@@ -505,6 +516,7 @@ export async function encryptAllUnencryptedFiles(
     try {
       const content = await fs.readFile(screenshot.summaryPath);
       await writeFile(screenshot.summaryPath, content, true);
+      await fs.unlink(screenshot.summaryPath); // Delete original unencrypted file
       currentFile++;
       onProgress?.(
         currentFile,
