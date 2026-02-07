@@ -3,7 +3,7 @@ import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "path";
 import fs from "node:fs/promises";
 import started from "electron-squirrel-startup";
-import { initializeKeylogger, updateKeyloggerPreferences } from "./keylogger";
+import { initializeKeylogger, updateKeyloggerPreferences, cleanupKeylogger } from "./keylogger";
 import { checkPermissions } from "./electron/permissions";
 import { savePreferences, loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences.d";
@@ -95,6 +95,11 @@ app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// Handle app shutdown to ensure all buffered data is saved
+app.on("before-quit", () => {
+  cleanupKeylogger();
 });
 
 getSecret(LOG_FILE_ENCRYPTION).then((password) =>

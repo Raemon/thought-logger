@@ -463,6 +463,17 @@ export async function initializeKeylogger() {
   });
 }
 
+// Export function to handle cleanup when app is shutting down
+export function cleanupKeylogger() {
+  if (timer) {
+    clearTimeout(timer);
+  }
+  if (bufferedText) {
+    writeFile(currentKeyLogFile(), bufferedText, true);
+    bufferedText = "";
+  }
+}
+
 export function updateKeyloggerPreferences(newPrefs: Preferences) {
   preferences = newPrefs;
 }
