@@ -45,6 +45,7 @@
     "eslint": "^8.0.1",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.25.0",
+    "join-images": "^1.1.5",
     "libsodium": "^0.8.0",
     "memfs": "^4.36.3",
     "playwright": "^1.54.2",

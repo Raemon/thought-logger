@@ -3,6 +3,7 @@ import path from "node:path";
 import { currentScreenshotFile, writeFile } from "./paths";
 import { Preferences } from "../types/preferences.d";
 import { desktopCapturer } from "electron";
+import joinImages from "join-images";
 
 import fetch from "node-fetch";
 import { loadPreferences } from "../preferences";
@@ -203,7 +204,9 @@ async function takeScreenshot(quality: number) {
       types: ["screen"],
       thumbnailSize: { width: 1920, height: 1080 },
     });
-    const img = sources[0].thumbnail.toJPEG(quality);
+    const img = await joinImages(
+      sources.map((s) => s.thumbnail.toJPEG(quality)),
+    );
     const currentApplication = getCurrentApplication();
     const filePath = currentScreenshotFile();
     await fs.mkdir(path.dirname(filePath), { recursive: true });
