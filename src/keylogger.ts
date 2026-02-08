@@ -6,11 +6,12 @@ import {
   IGlobalKeyDownMap,
   IGlobalKeyEvent,
 } from "node-global-key-listener";
-import { currentKeyLogFile, readFile, writeFile } from "./electron/paths";
+import { currentKeyLogFile } from "./electron/paths";
 import { loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences.d";
 import logger from "./logging";
 import { isErrnoException } from "./electron/utils";
+import { readFile, writeFile } from "./electron/files";
 
 const BINARY_NAME = "MacKeyServer";
 

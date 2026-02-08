@@ -4,7 +4,7 @@ interface EncryptionProgress {
   current: number;
   total: number;
   fileName: string;
-  percentage: number;
+  percentage: number; // TODO: calculate this
 }
 
 interface EncryptingProps {
@@ -18,16 +18,18 @@ export function Encrypting({ progress }: EncryptingProps) {
         <h2 className="text-2xl font-bold mb-6 text-gray-800">
           Encrypting Files
         </h2>
-        
+
         {progress && (
           <div className="w-full">
             <div className="mb-4">
               <div className="flex justify-between text-sm text-gray-600 mb-2">
-                <span>{progress.current} / {progress.total} files</span>
+                <span>
+                  {progress.current} / {progress.total} files
+                </span>
                 <span>{progress.percentage}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
+                <div
                   className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
                   style={{ width: `${progress.percentage}%` }}
                 ></div>
@@ -38,7 +40,7 @@ export function Encrypting({ progress }: EncryptingProps) {
             </p>
           </div>
         )}
-        
+
         <p className="text-sm text-gray-500 mt-4">
           Please wait while we secure your thought logs...
         </p>

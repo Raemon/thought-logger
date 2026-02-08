@@ -7,7 +7,8 @@ import {
   summarize,
 } from "../../src/electron/summarizer";
 import { Summary, SummaryScopeTypes } from "../../src/types/files.d";
-import { initializeMasterKey, readFile } from "../../src/electron/paths";
+import { initializeMasterKey } from "src/electron/encryption";
+import { readFile } from "src/electron/files";
 
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);

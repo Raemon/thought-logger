@@ -1,3 +1,5 @@
+// TODO: move to src/utils.ts
+
 export function isErrnoException(
     error: unknown,
 ): error is NodeJS.ErrnoException {

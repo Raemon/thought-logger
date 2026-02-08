@@ -5,6 +5,8 @@ import { Encrypting } from "./Encrypting";
 import { Error } from "./Error";
 import { Complete } from "./Complete";
 
+// TODO: cleanup
+
 interface EncryptionProgress {
   current: number;
   total: number;
@@ -43,7 +45,10 @@ export function EncryptionLoader({ onComplete }: EncryptionLoaderProps) {
           setState("confirmation");
         }
       } catch (err) {
-        const errorMessage = err && typeof err === 'object' && 'message' in err ? (err as Error).message : "Failed to check files";
+        const errorMessage =
+          err && typeof err === "object" && "message" in err
+            ? (err as Error).message
+            : "Failed to check files";
         setError(errorMessage);
         setState("error");
       }
@@ -72,7 +77,10 @@ export function EncryptionLoader({ onComplete }: EncryptionLoaderProps) {
       await window.encryption.encryptAllFiles();
       cleanup();
     } catch (err) {
-      const errorMessage = err && typeof err === 'object' && 'message' in err ? (err as Error).message : "Failed to encrypt files";
+      const errorMessage =
+        err && typeof err === "object" && "message" in err
+          ? (err as Error).message
+          : "Failed to encrypt files";
       setError(errorMessage);
       setState("error");
     }
@@ -98,7 +106,7 @@ export function EncryptionLoader({ onComplete }: EncryptionLoaderProps) {
   switch (state) {
     case "loading":
       return <Loading />;
-    
+
     case "confirmation":
       return (
         <Confirmation
@@ -107,19 +115,13 @@ export function EncryptionLoader({ onComplete }: EncryptionLoaderProps) {
           onCancel={handleCancel}
         />
       );
-    
+
     case "encrypting":
       return <Encrypting progress={progress} />;
-    
+
     case "error":
-      return (
-        <Error
-          error={error}
-          onRetry={handleRetry}
-          onSkip={handleSkip}
-        />
-      );
-    
+      return <Error error={error} onRetry={handleRetry} onSkip={handleSkip} />;
+
     case "complete":
       return (
         <Complete
@@ -128,7 +130,7 @@ export function EncryptionLoader({ onComplete }: EncryptionLoaderProps) {
           onComplete={handleComplete}
         />
       );
-    
+
     default:
       return null;
   }

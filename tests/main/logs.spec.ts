@@ -4,6 +4,8 @@ import { vol } from "memfs";
 import { getRecentSummaries } from "../../src/electron/files";
 import { Summary, SummaryScopeTypes } from "../../src/types/files.d";
 
+// TODO: move common mocks into global config
+
 vi.mock("electron", () => {
   return {
     ipcMain: {

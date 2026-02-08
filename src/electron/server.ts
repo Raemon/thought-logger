@@ -8,10 +8,10 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types";
 import { z } from "zod";
 import logger from "../logging";
-import { readFile } from "./paths";
 import {
   getScreenshotSummariesForDate,
   getScreenshotImagePathsForDate,
+  readFile,
 } from "./files";
 import { allEndpoints } from "../constants/endpoints";
 

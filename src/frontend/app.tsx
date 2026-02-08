@@ -6,6 +6,7 @@ import EncryptionSettings from "./settingsPage/EncryptionSettings";
 import { EncryptionLoader } from "./EncryptionLoader";
 import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 
+// TODO: fix verbage and cleanup
 export function App() {
   const [_, setHasLogs] = useState(false);
   const [recentErrors, setRecentErrors] = useState<string[]>([]);

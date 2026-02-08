@@ -3,7 +3,11 @@ import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "path";
 import fs from "node:fs/promises";
 import started from "electron-squirrel-startup";
-import { initializeKeylogger, updateKeyloggerPreferences, cleanupKeylogger } from "./keylogger";
+import {
+  initializeKeylogger,
+  updateKeyloggerPreferences,
+  cleanupKeylogger,
+} from "./keylogger";
 import { checkPermissions } from "./electron/permissions";
 import { savePreferences, loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences.d";
@@ -24,16 +28,16 @@ import logger, {
   onRecentErrors,
   updateDebugPreferences,
 } from "./logging";
-import { getRecentApps, getRecentSummaries } from "./electron/files";
+import {
+  encryptAllUnencryptedFiles,
+  getRecentApps,
+  getRecentSummaries,
+  readFile,
+} from "./electron/files";
 import { getSecret, setSecret } from "./electron/credentials";
 import { LOG_FILE_ENCRYPTION } from "./constants/credentials";
-import {
-  readFile,
-  changePassword,
-  initializeMasterKey,
-  countUnencryptedFiles,
-  encryptAllUnencryptedFiles,
-} from "./electron/paths";
+import { countUnencryptedFiles } from "./electron/paths";
+import { changePassword, initializeMasterKey } from "./electron/encryption";
 setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");

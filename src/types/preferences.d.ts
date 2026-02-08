@@ -53,6 +53,6 @@ export const DEFAULT_PREFERENCES: Preferences = {
   ],
   dailySummaryPrompt: DEFAULT_DAILY_SUMMARY_PROMPT,
   weeklySummaryPrompt: DEFAULT_WEEKLY_SUMMARY_PROMPT,
-  summaryModel: "anthropic/claude-3.5-sonnet", // TODO select this from the available models
+  summaryModel: "anthropic/claude-3.5-sonnet", // TODO: select this from the available models
   loggingEnabled: true,
 };

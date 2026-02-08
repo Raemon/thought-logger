@@ -18,8 +18,12 @@ import {
 } from "../types/files.d";
 import { Dirent } from "node:fs";
 import logger from "../logging";
-import { readFile } from "./paths";
 import { isErrnoException } from "./utils";
+import {
+  decryptUserData,
+  ENCRYPTED_FILE_EXT,
+  encryptUserData,
+} from "./encryption";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -354,4 +358,210 @@ export async function getRecentApps(): Promise<string[]> {
   }
 
   return Array.from(apps);
+}
+
+export async function readFile<T extends boolean = false>(
+  filePath: string,
+  binary?: T,
+): Promise<T extends true ? Uint8Array : string>;
+export async function readFile(
+  filePath: string,
+  binary = false,
+): Promise<string | Uint8Array> {
+  try {
+    const rawData = await fs.readFile(filePath);
+
+    return binary ? rawData : Buffer.from(rawData).toString("utf8");
+  } catch (error: unknown) {
+    if (!(isErrnoException(error) && error.code === "ENOENT")) {
+      throw error;
+    }
+  }
+
+  const fileData = await fs.readFile(`${filePath}.crypt`);
+
+  const plaintext = await decryptUserData(fileData);
+
+  return binary ? plaintext : Buffer.from(plaintext).toString("utf8");
+}
+
+export async function writeFile(
+  filePath: string,
+  contents: string | Uint8Array,
+  append = false,
+): Promise<void> {
+  let oldFileData: Uint8Array = new Uint8Array();
+  let newFileData: Uint8Array = new Uint8Array();
+  const contentData: Uint8Array =
+    contents instanceof Uint8Array
+      ? contents
+      : new TextEncoder().encode(contents);
+
+  if (append) {
+    try {
+      oldFileData = (await readFile(filePath, true)) as Uint8Array;
+    } catch (error) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+  }
+
+  newFileData = new Uint8Array(oldFileData.length + contentData.length);
+  newFileData.set(oldFileData);
+  newFileData.set(contentData, oldFileData.length);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+
+  newFileData = await encryptUserData(newFileData);
+  await fs.writeFile(`${filePath}${ENCRYPTED_FILE_EXT}`, newFileData);
+
+  // Delete the original unencrypted file if it exists
+  try {
+    await fs.unlink(filePath);
+  } catch (error) {
+    // File doesn't exist, which is fine
+  }
+}
+
+export async function encryptAllUnencryptedFiles(
+  onProgress?: (current: number, total: number, fileName: string) => void,
+): Promise<void> {
+  const keylogs = await getKeylogs();
+  const screenshots = await getScreenshots();
+
+  // Calculate total files to encrypt
+  let totalFiles = 0;
+  let currentFile = 0;
+
+  // Count keylog files
+  for (const keylog of Object.values(keylogs)) {
+    // Check if each file exists and is unencrypted
+    try {
+      await fs.access(keylog.rawPath);
+      totalFiles++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+
+    try {
+      await fs.access(keylog.chronoPath);
+      totalFiles++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+
+    try {
+      await fs.access(keylog.appPath);
+      totalFiles++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+  }
+
+  // Count screenshot files
+  for (const screenshot of Object.values(screenshots).flatMap(
+    (dayScreenshots) => Object.values(dayScreenshots),
+  )) {
+    try {
+      await fs.access(screenshot.imagePath);
+      totalFiles++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+
+    try {
+      await fs.access(screenshot.summaryPath);
+      totalFiles++;
+    } catch (error) {
+      // File doesn't exist or already encrypted
+    }
+  }
+
+  // Encrypt keylog files
+  for (const keylog of Object.values(keylogs)) {
+    try {
+      const content = await fs.readFile(keylog.rawPath);
+      await writeFile(keylog.rawPath, content);
+      await fs.unlink(keylog.rawPath); // Delete original unencrypted file
+      currentFile++;
+      onProgress?.(
+        currentFile,
+        totalFiles,
+        `keylog: ${keylog.rawPath.split("/").pop()}`,
+      );
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+
+    try {
+      const content = await fs.readFile(keylog.chronoPath);
+      await writeFile(keylog.chronoPath, content);
+      await fs.unlink(keylog.chronoPath); // Delete original unencrypted file
+      currentFile++;
+      onProgress?.(
+        currentFile,
+        totalFiles,
+        `keylog: ${keylog.chronoPath.split("/").pop()}`,
+      );
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+
+    try {
+      const content = await fs.readFile(keylog.appPath);
+      await writeFile(keylog.appPath, content);
+      await fs.unlink(keylog.appPath); // Delete original unencrypted file
+      currentFile++;
+      onProgress?.(
+        currentFile,
+        totalFiles,
+        `keylog: ${keylog.appPath.split("/").pop()}`,
+      );
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+  }
+
+  // Encrypt screenshot files
+  for (const screenshot of Object.values(screenshots).flatMap(
+    (dayScreenshots) => Object.values(dayScreenshots),
+  )) {
+    try {
+      const content = await fs.readFile(screenshot.imagePath);
+      await writeFile(screenshot.imagePath, content, true);
+      await fs.unlink(screenshot.imagePath); // Delete original unencrypted file
+      currentFile++;
+      onProgress?.(
+        currentFile,
+        totalFiles,
+        `screenshot: ${screenshot.imagePath.split("/").pop()}`,
+      );
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+
+    try {
+      const content = await fs.readFile(screenshot.summaryPath);
+      await writeFile(screenshot.summaryPath, content, true);
+      await fs.unlink(screenshot.summaryPath); // Delete original unencrypted file
+      currentFile++;
+      onProgress?.(
+        currentFile,
+        totalFiles,
+        `screenshot: ${screenshot.summaryPath.split("/").pop()}`,
+      );
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+  }
 }

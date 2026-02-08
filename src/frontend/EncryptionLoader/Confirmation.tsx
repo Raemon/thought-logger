@@ -6,13 +6,16 @@ interface ConfirmationProps {
   onCancel: () => void;
 }
 
-export function Confirmation({ totalFiles, onStartEncryption, onCancel }: ConfirmationProps) {
+// TODO: remove puffery and cleanup
+export function Confirmation({
+  totalFiles,
+  onStartEncryption,
+  onCancel,
+}: ConfirmationProps) {
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
-        <h2 className="text-2xl font-bold mb-4 text-gray-800">
-          Encrypt Files
-        </h2>
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">Encrypt Files</h2>
         <div className="mb-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
             <p className="text-lg font-semibold text-blue-800">
@@ -24,20 +27,50 @@ export function Confirmation({ totalFiles, onStartEncryption, onCancel }: Confir
           </div>
           <div className="text-left text-sm text-gray-600 space-y-2">
             <div className="flex items-center">
-              <svg className="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-4 h-4 mr-2 text-green-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               Files are encrypted with military-grade security
             </div>
             <div className="flex items-center">
-              <svg className="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-4 h-4 mr-2 text-green-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               Only accessible with your password
             </div>
             <div className="flex items-center">
-              <svg className="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-4 h-4 mr-2 text-green-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               Original files are securely deleted
             </div>

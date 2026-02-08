@@ -6,11 +6,15 @@ import { setDefaultOptions, isSameWeek, isSameDay } from "date-fns";
 import { Keylog, Summary, SummaryScopeTypes } from "../types/files.d";
 import logger from "../logging";
 import { loadPreferences } from "../preferences";
-import { getRecentSummaries, maybeReadContents } from "./files";
+import {
+  getRecentSummaries,
+  maybeReadContents,
+  readFile,
+  writeFile,
+} from "./files";
 import { getSecret } from "./credentials";
 import { OPEN_ROUTER } from "../constants/credentials";
 import { SUMMARIZER_SYSTEM_PROMPT } from "../constants/prompts";
-import { readFile, writeFile } from "./paths";
 import { isErrnoException } from "./utils";
 
 setDefaultOptions({ weekStartsOn: 1 });

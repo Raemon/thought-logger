@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
 import {
-  initializeMasterKey,
   ENCRYPTED_FILE_EXT,
-  encryptAllUnencryptedFiles,
-} from "../../src/electron/paths";
+  initializeMasterKey,
+} from "src/electron/encryption";
+import { encryptAllUnencryptedFiles } from "src/electron/files";
 
 vi.mock("electron", () => {
   return {

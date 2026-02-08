@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { currentScreenshotFile, writeFile } from "./paths";
+import { currentScreenshotFile } from "./paths";
 import { Preferences } from "../types/preferences.d";
 import { desktopCapturer } from "electron";
 import joinImages from "join-images";
@@ -13,22 +13,40 @@ import { getCurrentApplication, isProtectedApp } from "../keylogger";
 import logger from "../logging";
 import { getSecret } from "./credentials";
 import { LOG_FILE_ENCRYPTION, OPEN_ROUTER } from "../constants/credentials";
+import { writeFile } from "./files";
 
 const ScreenshotText = z.object({
-  windows: z.array(z.object({
-    title: z.string().describe("title of the window"),
-    applicationName: z.string().describe("name of the application the window is from"),
-    url: z.string().describe("url of the window"),
-    exactText: z.string().describe("exact text of the window"),
-    frames: z.array(z.object({
-      title: z.string().describe("title of the frame"),
-      exactText: z.string().describe("exact text of the frame"),
-    })).describe("frames in the window"),
-    images: z.array(z.object({
-      description: z.string().describe("description of the image"),
-    })).describe("images in the window"),
-  })).describe("windows in the screenshot"),
-  timestamp: z.string().optional().describe("local timestamp when the summary was captured"),
+  windows: z
+    .array(
+      z.object({
+        title: z.string().describe("title of the window"),
+        applicationName: z
+          .string()
+          .describe("name of the application the window is from"),
+        url: z.string().describe("url of the window"),
+        exactText: z.string().describe("exact text of the window"),
+        frames: z
+          .array(
+            z.object({
+              title: z.string().describe("title of the frame"),
+              exactText: z.string().describe("exact text of the frame"),
+            }),
+          )
+          .describe("frames in the window"),
+        images: z
+          .array(
+            z.object({
+              description: z.string().describe("description of the image"),
+            }),
+          )
+          .describe("images in the window"),
+      }),
+    )
+    .describe("windows in the screenshot"),
+  timestamp: z
+    .string()
+    .optional()
+    .describe("local timestamp when the summary was captured"),
 });
 
 type ScreenshotText = z.infer<typeof ScreenshotText>;
