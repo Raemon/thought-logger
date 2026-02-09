@@ -6,7 +6,6 @@ import EncryptionSettings from "./settingsPage/EncryptionSettings";
 import { EncryptionLoader } from "./EncryptionLoader";
 import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 
-// TODO: fix verbage and cleanup
 export function App() {
   const [_, setHasLogs] = useState(false);
   const [recentErrors, setRecentErrors] = useState<string[]>([]);
@@ -114,9 +113,8 @@ export function App() {
         <div>Loading...</div>
       ) : hasPassword === false ? (
         <div className="max-w-md mx-auto">
-          <h2 className="text-2xl font-bold mb-4">Welcome to Thought Logger</h2>
           <p className="mb-6 text-gray-600">
-            Please set an encryption password to secure your thought logs before
+            Please set an encryption password to secure your logs before
             continuing.
           </p>
           <EncryptionSettings onPasswordSet={handlePasswordSet} />
