@@ -489,7 +489,19 @@ async function unencryptedFiles(): Promise<string[]> {
       .filter((file) => file !== null),
   );
 
-  return files;
+  const unencryptedFiles = [];
+  for (const file of files) {
+    try {
+      await fs.access(file);
+      unencryptedFiles.push(file);
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      }
+    }
+  }
+
+  return unencryptedFiles;
 }
 
 export async function countUnencryptedFiles(): Promise<number> {

@@ -4,7 +4,10 @@ import {
   ENCRYPTED_FILE_EXT,
   initializeMasterKey,
 } from "src/electron/encryption";
-import { encryptAllUnencryptedFiles } from "src/electron/files";
+import {
+  countUnencryptedFiles,
+  encryptAllUnencryptedFiles,
+} from "src/electron/files";
 
 vi.mock("electron", () => {
   return {
@@ -74,5 +77,27 @@ describe("encryptAllUnencryptedFiles", () => {
       "/files/masterkey",
       ...expectedFilePaths,
     ]);
+  });
+});
+
+describe("#countUnencryptedFiles", () => {
+  it("counts the unencrypted files", async () => {
+    const binaryData = Buffer.from([1, 2, 3, 4]);
+    const filesystem = {
+      "/files/keylogs/2025-08/2025-08-19.log": "test data",
+      "/files/keylogs/2025-08/2025-08-19.processed.chronological.log.crypt":
+        binaryData,
+      "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.jpg":
+        binaryData,
+      "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.json":
+        '["test data"]',
+      "/files/screenshots/2025-08/2025-08-20/2025-08-20 11_00_00.jpg.crypt":
+        binaryData,
+      "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.jsoncrypt":
+        binaryData,
+    };
+    vol.fromJSON(filesystem);
+    const count = await countUnencryptedFiles();
+    expect(count).toBe(3);
   });
 });
