@@ -6,7 +6,6 @@ interface ConfirmationProps {
   onCancel: () => void;
 }
 
-// TODO: remove puffery and cleanup
 export function Confirmation({
   totalFiles,
   onStartEncryption,
@@ -24,56 +23,6 @@ export function Confirmation({
             <p className="text-sm text-blue-600 mt-1">
               These files will be secured with your encryption password
             </p>
-          </div>
-          <div className="text-left text-sm text-gray-600 space-y-2">
-            <div className="flex items-center">
-              <svg
-                className="w-4 h-4 mr-2 text-green-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Files are encrypted with military-grade security
-            </div>
-            <div className="flex items-center">
-              <svg
-                className="w-4 h-4 mr-2 text-green-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Only accessible with your password
-            </div>
-            <div className="flex items-center">
-              <svg
-                className="w-4 h-4 mr-2 text-green-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Original files are securely deleted
-            </div>
           </div>
         </div>
         <div className="flex space-x-3">
