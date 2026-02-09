@@ -4,15 +4,15 @@ export enum SummaryScopeTypes {
 }
 
 export interface Keylog {
-  rawPath: string;
-  appPath: string;
-  chronoPath: string;
+  rawPath: string | null;
+  appPath: string | null;
+  chronoPath: string | null;
   date: Date;
 }
 
 export interface Screenshot {
-  imagePath: string;
-  summaryPath: string;
+  imagePath: string | null;
+  summaryPath: string | null;
   date: Date;
 }
 
@@ -23,7 +23,7 @@ export interface Summary {
   screenshots: Screenshot[];
   scope: SummaryScopeTypes;
   contents: string | null;
-  path: string;
+  path: string | null;
   keylogCharCount?: number;
   screenshotSummaryCharCount?: number;
 }

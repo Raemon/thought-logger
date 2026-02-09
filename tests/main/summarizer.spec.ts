@@ -113,18 +113,19 @@ describe("#summarize", () => {
       json: () => Promise.resolve(mockResponse),
     });
 
+    const summaryPath = "/files/keylogs/2028-08/2028-08-20.aisummary.log";
     const summary: Summary = {
-      date: new Date(),
+      date: new Date(2028, 7, 20),
       keylogs: [],
       loading: false,
-      path: "/2028-08-20.aisummary.log",
+      path: null,
       scope: SummaryScopeTypes.Day,
       screenshots: [],
       contents: null,
     };
 
     await summarize(summary);
-    const text = await readFile(summary.path);
+    const text = await readFile(summaryPath);
     expect(text).toBe("This is a daily summary.");
   });
 
@@ -153,7 +154,7 @@ describe("#summarize", () => {
       date: new Date(),
       keylogs: [
         {
-          appPath: "/2025-08-20.by-app.log",
+          appPath: null,
           chronoPath: "/2025-08-20.chronological.log",
           date: new Date(),
           rawPath: "/2025-08-20.log",
@@ -200,7 +201,7 @@ describe("#summarize", () => {
       date: new Date(),
       keylogs: [
         {
-          appPath: "/2025-08-13.by-app.log",
+          appPath: null,
           chronoPath: "/2025-08-13.chronological.log",
           date: new Date(),
           rawPath: "/2025-08-13.log",

@@ -33,10 +33,9 @@ import {
   getRecentApps,
   getRecentSummaries,
   readFile,
-} from "./electron/files";
+ countUnencryptedFiles } from "./electron/files";
 import { getSecret, setSecret } from "./electron/credentials";
 import { LOG_FILE_ENCRYPTION } from "./constants/credentials";
-import { countUnencryptedFiles } from "./electron/paths";
 import { changePassword, initializeMasterKey } from "./electron/encryption";
 setDefaultOptions({ weekStartsOn: 1 });
 

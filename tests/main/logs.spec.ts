@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
 
-import { getRecentSummaries } from "../../src/electron/files";
+import { getRecentSummaries, writeFile } from "../../src/electron/files";
 import { Summary, SummaryScopeTypes } from "../../src/types/files.d";
+import { initializeMasterKey } from "../../src/electron/encryption";
 
 // TODO: move common mocks into global config
 
@@ -22,11 +23,25 @@ vi.mock("electron", () => {
   };
 });
 
+vi.mock("../../src/electron/credentials", async () => {
+  const origModule = await vi.importActual("../../src/electron/credentials");
+  let secret = "password";
+  return {
+    ...origModule,
+    getSecret: async (_account: string) => Promise.resolve(secret),
+    setSecret: async (_account: string, newSecret: string) => {
+      secret = newSecret;
+      return { success: true, message: "Password set successfully" };
+    },
+  };
+});
+
 vi.mock("node:fs");
 vi.mock("node:fs/promises");
 
-beforeEach(() => {
+beforeEach(async () => {
   vol.reset();
+  await initializeMasterKey("password");
 });
 
 describe("#getRecentSummaries", () => {
@@ -60,15 +75,15 @@ describe("#getRecentSummaries", () => {
 
     const expectedSummaries: Summary[] = [
       {
-        path: "/files/keylogs/2025-08/2025-08-19.aisummary.log",
+        path: null,
         contents: null,
         date: new Date(2025, 7, 19),
         keylogs: [
           {
-            appPath: "/files/keylogs/2025-08/2025-08-19.processed.by-app.log",
+            appPath: null,
             chronoPath:
               "/files/keylogs/2025-08/2025-08-19.processed.chronological.log",
-            rawPath: "/files/keylogs/2025-08/2025-08-19.log",
+            rawPath: null,
             date: new Date(2025, 7, 19),
           },
         ],
@@ -79,14 +94,13 @@ describe("#getRecentSummaries", () => {
         screenshotSummaryCharCount: 0,
       },
       {
-        path: "/files/keylogs/2025-08/2025-08-20.aisummary.log",
+        path: null,
         contents: null,
         date: new Date(2025, 7, 20),
         keylogs: [
           {
-            appPath: "/files/keylogs/2025-08/2025-08-20.processed.by-app.log",
-            chronoPath:
-              "/files/keylogs/2025-08/2025-08-20.processed.chronological.log",
+            appPath: null,
+            chronoPath: null,
             rawPath: "/files/keylogs/2025-08/2025-08-20.log",
             date: new Date(2025, 7, 20),
           },
@@ -103,13 +117,11 @@ describe("#getRecentSummaries", () => {
             date: new Date(2025, 7, 20, 11),
             imagePath:
               "/files/screenshots/2025-08/2025-08-20/2025-08-20 11_00_00.jpg",
-            summaryPath:
-              "/files/screenshots/2025-08/2025-08-20/2025-08-20 11_00_00.json",
+            summaryPath: null,
           },
           {
             date: new Date(2025, 7, 20, 12, 45),
-            imagePath:
-              "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.jpg",
+            imagePath: null,
             summaryPath:
               "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.json",
           },
@@ -120,7 +132,7 @@ describe("#getRecentSummaries", () => {
         screenshotSummaryCharCount: 0,
       },
       {
-        path: "/files/keylogs/2025-08/2025-08-17.aisummary.log",
+        path: null,
         contents: null,
         date: new Date(2025, 7, 17),
         keylogs: [],
@@ -136,13 +148,11 @@ describe("#getRecentSummaries", () => {
             date: new Date(2025, 7, 17, 11),
             imagePath:
               "/files/screenshots/2025-08/2025-08-17/2025-08-17 11_00_00.jpg",
-            summaryPath:
-              "/files/screenshots/2025-08/2025-08-17/2025-08-17 11_00_00.json",
+            summaryPath: null,
           },
           {
             date: new Date(2025, 7, 17, 12, 45),
-            imagePath:
-              "/files/screenshots/2025-08/2025-08-17/2025-08-17 12_45_00.jpg",
+            imagePath: null,
             summaryPath:
               "/files/screenshots/2025-08/2025-08-17/2025-08-17 12_45_00.json",
           },
@@ -183,13 +193,12 @@ describe("#getRecentSummaries", () => {
 
     const weeklySummary: Summary = {
       date: new Date(2025, 7, 11),
-      path: "/files/2025-W33.aisummary.log",
+      path: null,
       contents: null,
       keylogs: [
         {
-          appPath: "/files/keylogs/2025-08/2025-08-14.processed.by-app.log",
-          chronoPath:
-            "/files/keylogs/2025-08/2025-08-14.processed.chronological.log",
+          appPath: null,
+          chronoPath: null,
           rawPath: "/files/keylogs/2025-08/2025-08-14.log",
           date: new Date(2025, 7, 14),
         },
@@ -208,13 +217,11 @@ describe("#getRecentSummaries", () => {
           date: new Date(2025, 7, 13, 11),
           imagePath:
             "/files/screenshots/2025-08/2025-08-13/2025-08-13 11_00_00.jpg",
-          summaryPath:
-            "/files/screenshots/2025-08/2025-08-13/2025-08-13 11_00_00.json",
+          summaryPath: null,
         },
         {
           date: new Date(2025, 7, 13, 12, 45),
-          imagePath:
-            "/files/screenshots/2025-08/2025-08-13/2025-08-13 12_45_00.jpg",
+          imagePath: null,
           summaryPath:
             "/files/screenshots/2025-08/2025-08-13/2025-08-13 12_45_00.json",
         },
@@ -273,25 +280,16 @@ describe("#getRecentSummaries", () => {
   });
 
   it("works on encrypted keylogs", async () => {
-    const filesystem = {
-      files: {
-        keylogs: {
-          "2025-08": {
-            "2025-08-20.aisummary.log.crypt": "",
-          },
-        },
-      },
-    };
+    await writeFile("/files/keylogs/2025-08/2025-08-20.log", "test data");
 
     const encryptedWeeklySummary: Summary = {
       date: new Date(2025, 7, 18),
-      path: "/files/2025-W34.aisummary.log",
+      path: null,
       contents: null,
       keylogs: [
         {
-          appPath: "/files/keylogs/2025-08/2025-08-20.processed.by-app.log",
-          chronoPath:
-            "/files/keylogs/2025-08/2025-08-20.processed.chronological.log",
+          appPath: null,
+          chronoPath: null,
           rawPath: "/files/keylogs/2025-08/2025-08-20.log",
           date: new Date(2025, 7, 20),
         },
@@ -303,13 +301,12 @@ describe("#getRecentSummaries", () => {
 
     const encryptedDailySummary: Summary = {
       date: new Date(2025, 7, 20),
-      path: "/files/keylogs/2025-08/2025-08-20.aisummary.log",
+      path: null,
       contents: null,
       keylogs: [
         {
-          appPath: "/files/keylogs/2025-08/2025-08-20.processed.by-app.log",
-          chronoPath:
-            "/files/keylogs/2025-08/2025-08-20.processed.chronological.log",
+          appPath: null,
+          chronoPath: null,
           rawPath: "/files/keylogs/2025-08/2025-08-20.log",
           date: new Date(2025, 7, 20),
         },
@@ -321,7 +318,6 @@ describe("#getRecentSummaries", () => {
       screenshotSummaryCharCount: 0,
     };
 
-    vol.fromNestedJSON(filesystem, "/");
     const summaries = await getRecentSummaries();
     expect(summaries).toStrictEqual([
       encryptedWeeklySummary,

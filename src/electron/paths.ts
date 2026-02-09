@@ -1,7 +1,7 @@
 import { app } from "electron";
-import fs from "node:fs/promises";
 import path from "node:path";
-import { getKeylogs, getScreenshots } from "./files";
+import { Summary, SummaryScopeTypes } from "../types/files.d";
+import { format } from "date-fns";
 
 const userDataPath = app.getPath("userData");
 
@@ -72,53 +72,17 @@ export function currentProcessedKeyLogFile(suffix: string): string {
   return path.join(dir, `${basename}${suffix}log`);
 }
 
-export async function countUnencryptedFiles(): Promise<number> {
-  const keylogs = await getKeylogs();
-  const screenshots = await getScreenshots();
-  let count = 0;
-
-  // TODO: compress this function
-  for (const keylog of Object.values(keylogs)) {
-    try {
-      await fs.access(keylog.rawPath);
-      count++;
-    } catch (error) {
-      // File doesn't exist or already encrypted
-    }
-
-    try {
-      await fs.access(keylog.chronoPath);
-      count++;
-    } catch (error) {
-      // File doesn't exist or already encrypted
-    }
-
-    try {
-      await fs.access(keylog.appPath);
-      count++;
-    } catch (error) {
-      // File doesn't exist or already encrypted
-    }
-  }
-
-  // Count screenshot files
-  for (const screenshot of Object.values(screenshots).flatMap(
-    (dayScreenshots) => Object.values(dayScreenshots),
-  )) {
-    try {
-      await fs.access(screenshot.imagePath);
-      count++;
-    } catch (error) {
-      // File doesn't exist or already encrypted
-    }
-
-    try {
-      await fs.access(screenshot.summaryPath);
-      count++;
-    } catch (error) {
-      // File doesn't exist or already encrypted
-    }
-  }
-
-  return count;
+export function getSummaryPath(summary: Summary): string {
+  const dateString = format(summary.date, "yyyy-MM-dd");
+  const weekString = format(summary.date, "YYYY-'W'ww", {
+    useAdditionalWeekYearTokens: true,
+  });
+  const monthString = format(summary.date, "yyyy-MM");
+  const fileName =
+    summary.scope === SummaryScopeTypes.Week
+      ? `${weekString}.aisummary.log`
+      : `${dateString}.aisummary.log`;
+  return summary.scope === SummaryScopeTypes.Week
+    ? path.join(userDataPath, "files", fileName)
+    : path.join(userDataPath, "files", "keylogs", monthString, fileName);
 }

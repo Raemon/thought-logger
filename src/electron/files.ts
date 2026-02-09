@@ -65,37 +65,35 @@ async function readFilesFromDirectory(path: string): Promise<Dirent[]> {
     .then((files) => files.filter((file) => file.isFile()));
 }
 
-export async function maybeReadContents(path: string): Promise<string | null> {
-  try {
-    await fs.access(path);
-  } catch (error) {
-    logger.info(`No file at ${path}.`);
-    return null;
-  }
-
-  return readFile(path);
-}
-
 export async function getKeylogs(): Promise<Record<string, Keylog>> {
   const keylogsPath = path.join(userDataPath, "files", "keylogs");
   const keylogs: Record<string, Keylog> = {};
   const keylogFiles = await readFilesFromDirectory(keylogsPath);
 
   for (const file of keylogFiles) {
-    const fileName = path.basename(file.name);
-    const dir = file.parentPath;
+    const fileName = file.name.endsWith(ENCRYPTED_FILE_EXT)
+      ? file.name.slice(0, -ENCRYPTED_FILE_EXT.length)
+      : file.name;
     const result = fileName.match(/[^.]+/);
     if (result === null) continue;
     const dateString = result[0];
     const date = parse(dateString, "yyyy-MM-dd", new Date());
     if (isNaN(date.getTime())) continue;
 
-    keylogs[dateString] = keylogs[dateString] || {
-      appPath: path.join(dir, dateString + ".processed.by-app.log"),
-      chronoPath: path.join(dir, dateString + ".processed.chronological.log"),
-      rawPath: path.join(dir, dateString + ".log"),
+    keylogs[dateString] ||= {
       date,
+      appPath: null,
+      chronoPath: null,
+      rawPath: null,
     };
+
+    if (/\.processed\.by-app\./.test(fileName)) {
+      keylogs[dateString].appPath = path.join(file.parentPath, fileName);
+    } else if (/\.processed\.chronological\./.test(fileName)) {
+      keylogs[dateString].chronoPath = path.join(file.parentPath, fileName);
+    } else {
+      keylogs[dateString].rawPath = path.join(file.parentPath, fileName);
+    }
   }
   return keylogs;
 }
@@ -109,9 +107,10 @@ export async function getScreenshots(): Promise<
   const files = await readFilesFromDirectory(screenshotsPath);
 
   for (const file of files) {
-    const fileName = path.basename(file.name);
-    const dir = file.parentPath;
-    const ext = path.extname(file.name);
+    const fileName = file.name.endsWith(ENCRYPTED_FILE_EXT)
+      ? file.name.slice(0, -ENCRYPTED_FILE_EXT.length)
+      : file.name;
+    const ext = path.extname(fileName);
     const result = fileName.match(/[^.]+/);
     if (result === null) continue;
     const dateString = result[0];
@@ -121,14 +120,14 @@ export async function getScreenshots(): Promise<
 
     screenshots[dayString] = screenshots[dayString] || {};
     const screenshot = screenshots[dayString][dateString] || {
-      imagePath: path.join(dir, dateString + ".jpg"),
-      summaryPath: path.join(dir, dateString + ".json"),
+      imagePath: null,
+      summaryPath: null,
       date,
     };
     if (ext === ".jpg") {
-      screenshot.imagePath = path.join(file.parentPath, file.name);
+      screenshot.imagePath = path.join(file.parentPath, fileName);
     } else if (ext === ".json") {
-      screenshot.summaryPath = path.join(file.parentPath, file.name);
+      screenshot.summaryPath = path.join(file.parentPath, fileName);
     }
 
     screenshots[dayString][dateString] = screenshot;
@@ -150,10 +149,10 @@ export async function getScreenshotSummariesForDate(
   const summaries: { path: string; contents: string }[] = [];
 
   for (const summaryPath of summaryPaths) {
-    const contents = await maybeReadContents(summaryPath);
-    if (contents === null) {
+    if (summaryPath === null) {
       continue;
     }
+    const contents = await readFile(summaryPath);
     summaries.push({ path: summaryPath, contents });
   }
 
@@ -173,13 +172,8 @@ export async function getScreenshotImagePathsForDate(
   const availableImagePaths: string[] = [];
 
   for (const imagePath of imagePaths) {
-    try {
-      await fs.access(imagePath);
+    if (imagePath) {
       availableImagePaths.push(imagePath);
-    } catch (error) {
-      if (!(isErrnoException(error) && error.code === "ENOENT")) {
-        throw error;
-      }
     }
   }
 
@@ -193,9 +187,9 @@ export async function getScreenshotImagePaths(): Promise<string[]> {
 
   for (const dayString of dayStrings) {
     const screenshotsForDay = Object.values(screenshots[dayString]);
-    const dayImagePaths = screenshotsForDay.map(
-      (screenshot) => screenshot.imagePath,
-    );
+    const dayImagePaths = screenshotsForDay
+      .map((screenshot) => screenshot.imagePath)
+      .filter((path) => path !== null);
     imagePaths.push(...dayImagePaths);
   }
 
@@ -218,10 +212,13 @@ const MONTH_IN_SECONDS = 60 * 60 * 24 * 30;
 
 async function getCharCount<T>(
   items: T[],
-  getPath: (item: T) => string,
+  getPath: (item: T) => string | null,
 ): Promise<number> {
   const contents = await Promise.all(
-    items.map((item) => maybeReadContents(getPath(item))),
+    items.map((item) => {
+      const path = getPath(item);
+      return path ? readFile(path) : Promise.resolve("");
+    }),
   );
   return sumBy(contents, (c) => c?.length ?? 0);
 }
@@ -256,7 +253,7 @@ export async function getRecentSummaries(
       : ([] as Screenshot[]);
     const monthString = format(date, "yyyy-MM");
 
-    const summaryPath = path.join(
+    let summaryPath: string | null = path.join(
       userDataPath,
       "files",
       "keylogs",
@@ -264,7 +261,17 @@ export async function getRecentSummaries(
       `${dateString}.aisummary.log`,
     );
 
-    const contents = await maybeReadContents(summaryPath);
+    let contents: string | null = null;
+    try {
+      contents = await readFile(summaryPath);
+    } catch (error) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      } else {
+        summaryPath = null;
+      }
+    }
+
     const keylogCharCount = await getCharCount(
       availableKeylogs,
       (k) => k.chronoPath,
@@ -304,13 +311,23 @@ export async function getRecentSummaries(
     if (differenceInSeconds(now, date) >= ageInSeconds) {
       continue;
     }
-    const summaryPath = path.join(
+
+    let summaryPath: string | null = path.join(
       userDataPath,
       "files",
       `${week}.aisummary.log`,
     );
-    const contents = await maybeReadContents(summaryPath);
 
+    let contents: string | null = null;
+    try {
+      contents = await readFile(summaryPath);
+    } catch (error) {
+      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        throw error;
+      } else {
+        summaryPath = null;
+      }
+    }
     weeklySummaries.push({
       path: summaryPath,
       contents,
@@ -343,18 +360,11 @@ export async function getRecentApps(): Promise<string[]> {
     );
 
   for (const keylog of keylogs) {
-    try {
-      const content = await readFile(keylog.appPath);
-      const appRegex = /=== (.*) ===/g;
-      const matches = content.toLocaleString().matchAll(appRegex);
-      matches.forEach((m) => apps.add(m[1]));
-    } catch (error) {
-      if (isErrnoException(error) && error.code === "ENOENT") {
-        logger.info(`Keylog for ${keylog.date} didn't exist`);
-      } else {
-        throw error;
-      }
-    }
+    if (keylog.appPath === null) continue;
+    const content = await readFile(keylog.appPath);
+    const appRegex = /=== (.*) ===/g;
+    const matches = content.toLocaleString().matchAll(appRegex);
+    matches.forEach((m) => apps.add(m[1]));
   }
 
   return Array.from(apps);
@@ -415,153 +425,47 @@ export async function writeFile(
   newFileData = await encryptUserData(newFileData);
   await fs.writeFile(`${filePath}${ENCRYPTED_FILE_EXT}`, newFileData);
 
-  // Delete the original unencrypted file if it exists
   try {
     await fs.unlink(filePath);
-  } catch (error) {
-    // File doesn't exist, which is fine
+  } catch (error: unknown) {
+    if (!(isErrnoException(error) && error.code === "ENOENT")) {
+      throw error;
+    }
   }
+}
+
+async function unencryptedFiles(): Promise<string[]> {
+  const keylogs = await getKeylogs();
+  const screenshots = await getScreenshots();
+
+  let files: string[] = Object.values(keylogs)
+    .flatMap((keylog) => [keylog.rawPath, keylog.appPath, keylog.chronoPath])
+    .filter((file) => file !== null);
+
+  files = files.concat(
+    Object.values(screenshots)
+      .flatMap((dayScreenshots) => Object.values(dayScreenshots))
+      .flatMap((screenshot) => [screenshot.imagePath, screenshot.summaryPath])
+      .filter((file) => file !== null),
+  );
+
+  return files;
+}
+
+export async function countUnencryptedFiles(): Promise<number> {
+  const files = await unencryptedFiles();
+  return files.length;
 }
 
 export async function encryptAllUnencryptedFiles(
   onProgress?: (current: number, total: number, fileName: string) => void,
 ): Promise<void> {
-  const keylogs = await getKeylogs();
-  const screenshots = await getScreenshots();
+  const files = await unencryptedFiles();
 
-  // Calculate total files to encrypt
-  let totalFiles = 0;
-  let currentFile = 0;
-
-  // Count keylog files
-  for (const keylog of Object.values(keylogs)) {
-    // Check if each file exists and is unencrypted
-    try {
-      await fs.access(keylog.rawPath);
-      totalFiles++;
-    } catch (error) {
-      // File doesn't exist or already encrypted
-    }
-
-    try {
-      await fs.access(keylog.chronoPath);
-      totalFiles++;
-    } catch (error) {
-      // File doesn't exist or already encrypted
-    }
-
-    try {
-      await fs.access(keylog.appPath);
-      totalFiles++;
-    } catch (error) {
-      // File doesn't exist or already encrypted
-    }
-  }
-
-  // Count screenshot files
-  for (const screenshot of Object.values(screenshots).flatMap(
-    (dayScreenshots) => Object.values(dayScreenshots),
-  )) {
-    try {
-      await fs.access(screenshot.imagePath);
-      totalFiles++;
-    } catch (error) {
-      // File doesn't exist or already encrypted
-    }
-
-    try {
-      await fs.access(screenshot.summaryPath);
-      totalFiles++;
-    } catch (error) {
-      // File doesn't exist or already encrypted
-    }
-  }
-
-  // Encrypt keylog files
-  for (const keylog of Object.values(keylogs)) {
-    try {
-      const content = await fs.readFile(keylog.rawPath);
-      await writeFile(keylog.rawPath, content);
-      await fs.unlink(keylog.rawPath); // Delete original unencrypted file
-      currentFile++;
-      onProgress?.(
-        currentFile,
-        totalFiles,
-        `keylog: ${keylog.rawPath.split("/").pop()}`,
-      );
-    } catch (error: unknown) {
-      if (!(isErrnoException(error) && error.code === "ENOENT")) {
-        throw error;
-      }
-    }
-
-    try {
-      const content = await fs.readFile(keylog.chronoPath);
-      await writeFile(keylog.chronoPath, content);
-      await fs.unlink(keylog.chronoPath); // Delete original unencrypted file
-      currentFile++;
-      onProgress?.(
-        currentFile,
-        totalFiles,
-        `keylog: ${keylog.chronoPath.split("/").pop()}`,
-      );
-    } catch (error: unknown) {
-      if (!(isErrnoException(error) && error.code === "ENOENT")) {
-        throw error;
-      }
-    }
-
-    try {
-      const content = await fs.readFile(keylog.appPath);
-      await writeFile(keylog.appPath, content);
-      await fs.unlink(keylog.appPath); // Delete original unencrypted file
-      currentFile++;
-      onProgress?.(
-        currentFile,
-        totalFiles,
-        `keylog: ${keylog.appPath.split("/").pop()}`,
-      );
-    } catch (error: unknown) {
-      if (!(isErrnoException(error) && error.code === "ENOENT")) {
-        throw error;
-      }
-    }
-  }
-
-  // Encrypt screenshot files
-  for (const screenshot of Object.values(screenshots).flatMap(
-    (dayScreenshots) => Object.values(dayScreenshots),
-  )) {
-    try {
-      const content = await fs.readFile(screenshot.imagePath);
-      await writeFile(screenshot.imagePath, content, true);
-      await fs.unlink(screenshot.imagePath); // Delete original unencrypted file
-      currentFile++;
-      onProgress?.(
-        currentFile,
-        totalFiles,
-        `screenshot: ${screenshot.imagePath.split("/").pop()}`,
-      );
-    } catch (error: unknown) {
-      if (!(isErrnoException(error) && error.code === "ENOENT")) {
-        throw error;
-      }
-    }
-
-    try {
-      const content = await fs.readFile(screenshot.summaryPath);
-      await writeFile(screenshot.summaryPath, content, true);
-      await fs.unlink(screenshot.summaryPath); // Delete original unencrypted file
-      currentFile++;
-      onProgress?.(
-        currentFile,
-        totalFiles,
-        `screenshot: ${screenshot.summaryPath.split("/").pop()}`,
-      );
-    } catch (error: unknown) {
-      if (!(isErrnoException(error) && error.code === "ENOENT")) {
-        throw error;
-      }
-    }
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const content = await fs.readFile(file);
+    await writeFile(file, content);
+    onProgress?.(i + 1, files.length, `file: ${file}`);
   }
 }

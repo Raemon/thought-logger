@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { app } from "electron";
 import { rebuildLogByApp, rebuildChronologicalLog } from "../keylogger";
@@ -6,16 +5,11 @@ import { setDefaultOptions, isSameWeek, isSameDay } from "date-fns";
 import { Keylog, Summary, SummaryScopeTypes } from "../types/files.d";
 import logger from "../logging";
 import { loadPreferences } from "../preferences";
-import {
-  getRecentSummaries,
-  maybeReadContents,
-  readFile,
-  writeFile,
-} from "./files";
+import { getRecentSummaries, readFile, writeFile } from "./files";
 import { getSecret } from "./credentials";
 import { OPEN_ROUTER } from "../constants/credentials";
 import { SUMMARIZER_SYSTEM_PROMPT } from "../constants/prompts";
-import { isErrnoException } from "./utils";
+import { getSummaryPath } from "./paths";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -119,44 +113,30 @@ async function generateAISummary(
 }
 
 async function needsProcessing(keylog: Keylog): Promise<boolean> {
-  try {
-    await Promise.all([
-      fs.access(keylog.chronoPath),
-      fs.access(keylog.appPath),
-    ]);
-    return false;
-  } catch {
-    return true;
-  }
+  return !(keylog.chronoPath && keylog.appPath);
 }
 
 async function processKeylog(file: Keylog): Promise<void> {
+  if (!file.rawPath) {
+    logger.error(`Missing raw file for keylog ${file.date}`);
+    return;
+  }
   logger.debug(`Processing keylog file: ${path.basename(file.rawPath)}`);
 
-  try {
-    // Generate processed files
-    rebuildChronologicalLog(file.rawPath);
-    rebuildLogByApp(file.rawPath);
-  } catch (error) {
-    logger.error(`Failed to process ${path.basename(file.rawPath)}:`, error);
-    throw error; // Re-throw to handle in the calling function
-  }
+  rebuildChronologicalLog(file.rawPath);
+  rebuildLogByApp(file.rawPath);
 }
 
 export async function needsSummary(summary: Summary): Promise<boolean> {
   const today = new Date();
 
-  try {
-    await fs.access(summary.path);
-    return false;
-  } catch {
-    return (
-      (summary.scope === SummaryScopeTypes.Day &&
-        !isSameDay(today, summary.date)) ||
+  return (
+    summary.path === null &&
+    ((summary.scope === SummaryScopeTypes.Day &&
+      !isSameDay(today, summary.date)) ||
       (summary.scope === SummaryScopeTypes.Week &&
-        !isSameWeek(today, summary.date))
-    );
-  }
+        !isSameWeek(today, summary.date)))
+  );
 }
 
 async function checkAndGenerateSummaries() {
@@ -204,7 +184,8 @@ app.whenReady().then(async () => {
 });
 
 export async function summarize(summary: Summary): Promise<void> {
-  logger.debug(`Generating summary for ${summary.path}`);
+  const summaryPath = getSummaryPath(summary);
+  logger.debug(`Generating summary for ${summaryPath}`);
   try {
     let logData = "";
     const {
@@ -217,26 +198,24 @@ export async function summarize(summary: Summary): Promise<void> {
     logData += "Keylogger data:\n";
 
     for (const keylog of summary.keylogs) {
-      try {
-        const text = await readFile(keylog.rawPath);
-        const filename = path.basename(keylog.rawPath);
-        logData += `${filename}:\n${text}\n\n`;
-      } catch (error) {
-        if (isErrnoException(error) && error.code === "ENOENT") {
-          logger.info(`Keylog for ${keylog.date} didn't exist`);
-        } else {
-          throw error;
-        }
+      if (!keylog.rawPath) {
+        logger.error(`Missing keylog data for ${keylog.date}`);
+        continue;
       }
+
+      const text = await readFile(keylog.rawPath);
+      const filename = path.basename(keylog.rawPath);
+      logData += `${filename}:\n${text}\n\n`;
     }
 
     logData += "Screenshot Summaries:\n";
 
     for (const screenshot of summary.screenshots) {
-      const text = await maybeReadContents(screenshot.summaryPath);
-      if (text === null) {
+      if (!screenshot.summaryPath) {
+        logger.info(`Missing screenshot summary for ${screenshot.imagePath}`);
         continue;
       }
+      const text = await readFile(screenshot.summaryPath);
       let summaryText: string;
       try {
         const jsonData = JSON.parse(text);
@@ -259,11 +238,12 @@ export async function summarize(summary: Summary): Promise<void> {
         : weeklySummaryPrompt,
       summaryModel,
     );
-    await writeFile(summary.path, text);
+    await writeFile(summaryPath, text);
+    summary.path = summaryPath;
     summary.contents = text;
   } catch (error) {
     logger.error(
-      `Failed to generate summary for ${path.basename(summary.path)}:`,
+      `Failed to generate summary for ${path.basename(summaryPath)}:`,
       error,
     );
     throw error; // Re-throw to handle in the calling function
