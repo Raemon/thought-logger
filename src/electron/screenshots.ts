@@ -14,6 +14,7 @@ import logger from "../logging";
 import { getSecret } from "./credentials";
 import { LOG_FILE_ENCRYPTION, OPEN_ROUTER } from "../constants/credentials";
 import { writeFile } from "./files";
+import { ENCRYPTED_FILE_EXT } from "./encryption";
 
 const ScreenshotText = z.object({
   windows: z
@@ -224,7 +225,14 @@ async function takeScreenshot(quality: number) {
     });
     const img = await joinImages(
       sources.map((s) => s.thumbnail.toJPEG(quality)),
-    );
+    )
+      .then((data) =>
+        data.jpeg({
+          quality,
+        }),
+      )
+      .then((data) => data.toBuffer());
+
     const currentApplication = getCurrentApplication();
     const filePath = currentScreenshotFile();
     await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -236,7 +244,7 @@ async function takeScreenshot(quality: number) {
 
     if (screenshotTemporary) {
       // Delete screenshot when we're done extracting.
-      await fs.unlink(filePath);
+      await fs.unlink(`${filePath}${ENCRYPTED_FILE_EXT}`);
     }
   } catch (e) {
     logger.error(`Failed to process screenshot: ${e}`);
