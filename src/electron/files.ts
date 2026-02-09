@@ -228,6 +228,8 @@ export async function getRecentSummaries(
 ): Promise<Summary[]> {
   const now = new Date();
   const dailySummaries: Record<string, Summary> = {};
+  const files = await readFilesFromDirectory(userDataPath);
+  const summaryFiles = files.filter((f) => /\.aisummary\./.test(f.name));
   const keylogs: Record<string, Keylog> = await getKeylogs();
   const screenshots: Record<
     string,
@@ -344,6 +346,44 @@ export async function getRecentSummaries(
             ) ?? [])
         : ([] as Screenshot[]),
     });
+  }
+
+  for (const summaryFile of summaryFiles) {
+    const result = summaryFile.name.match(/[^.]+/);
+    if (!result) continue;
+    const dateString = result[0];
+
+    if (/keylogs/.test(summaryFile.name)) {
+      const date = parse(dateString, "yyyy-MM-dd", new Date());
+      dailySummaries[dateString] = dailySummaries[dateString] || {
+        path: path.join(summaryFile.parentPath, summaryFile.name),
+        contents: null,
+        date,
+        keylogs: [],
+        screenshots: [],
+        loading: false,
+        scope: SummaryScopeTypes.Day,
+        keylogCharCount: 0,
+        screenshotSummaryCharCount: 0,
+      };
+    } else {
+      const date = parse(dateString, "YYYY-'W'ww", new Date(), {
+        useAdditionalWeekYearTokens: true,
+      });
+
+      weeklySummaries.some(
+        (s) => s.path && path.basename(s.path) === summaryFile.name,
+      ) ||
+        weeklySummaries.push({
+          path: path.join(summaryFile.parentPath, summaryFile.name),
+          contents: null,
+          date,
+          keylogs: [],
+          loading: false,
+          scope: SummaryScopeTypes.Week,
+          screenshots: [],
+        });
+    }
   }
 
   return weeklySummaries.concat(Object.values(dailySummaries));
