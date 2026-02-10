@@ -3,7 +3,7 @@ import path from "node:path";
 import { currentScreenshotFile } from "./paths";
 import { Preferences } from "../types/preferences.d";
 import { desktopCapturer } from "electron";
-import joinImages from "join-images";
+import { joinImages } from "join-images";
 
 import fetch from "node-fetch";
 import { loadPreferences } from "../preferences";
