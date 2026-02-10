@@ -8,7 +8,7 @@
         "prepBuild": "./build-keylogger.sh",
         "start": "yarn prepBuild && electron-forge start",
         "package": "electron-forge package",
-        "make": "yarn prepBuild && electron-rebuild -f -o keytar && electron-forge make",
+        "make": "yarn prepBuild && electron-rebuild -f && electron-forge make",
         "verify-build": "find ./out -name \"*.node\" | grep keytar",
         "publish": "electron-forge publish",
         "lint": "eslint --ext .ts,.tsx .",
