@@ -10,10 +10,7 @@ export interface ScreenshotPreferences {
   screenshotQuality: number;
   screenshotTemporary: boolean;
   screenshotModel: string;
-  screenshotPrompt: {
-    default: string;
-    [model: string]: string;
-  };
+  screenshotPrompt: string;
   screenshotSummaryWindow: number;
 }
 
@@ -39,9 +36,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   screenshotQuality: 35,
   screenshotTemporary: false,
   screenshotModel: "openai/gpt-4o-mini",
-  screenshotPrompt: {
-    default: DEFAULT_SCREENSHOT_PROMPT,
-  },
+  screenshotPrompt: DEFAULT_SCREENSHOT_PROMPT,
   screenshotSummaryWindow: 300,
   blockedApps: [
     "Signal",

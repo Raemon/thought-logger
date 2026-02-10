@@ -184,8 +184,7 @@ export async function parseScreenshot(
   logger.debug(`Parsing screenshot at ${imgPath}`);
   // Extract and save text
   const { screenshotModel, screenshotPrompt, blockedApps } = loadPreferences();
-  const prompt =
-    screenshotPrompt[currentApplication] || screenshotPrompt.default;
+  const prompt = screenshotPrompt;
 
   try {
     const extractedText = await extractTextFromImage(

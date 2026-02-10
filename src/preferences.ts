@@ -22,7 +22,18 @@ export async function savePreferences(
 export function loadPreferences(): Preferences {
   try {
     const data = fs.readFileSync(preferencesPath, "utf-8");
-    return { ...DEFAULT_PREFERENCES, ...JSON.parse(data) };
+    const parsed = JSON.parse(data);
+
+    // Migrate screenshotPrompt from object to string if needed
+    if (
+      parsed.screenshotPrompt &&
+      typeof parsed.screenshotPrompt === "object" &&
+      parsed.screenshotPrompt.default
+    ) {
+      parsed.screenshotPrompt = parsed.screenshotPrompt.default;
+    }
+
+    return { ...DEFAULT_PREFERENCES, ...parsed };
   } catch {
     return DEFAULT_PREFERENCES;
   }
