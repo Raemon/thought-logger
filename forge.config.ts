@@ -11,7 +11,7 @@ import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-nati
 const config: ForgeConfig = {
   packagerConfig: {
     asar: {
-      unpack: "**/node_modules/sharp/**/*",
+      unpack: "**/node_modules/{sharp,@img}/**/*",
     },
     osxSign: {},
     extraResource: ["./bin/MacKeyServer"],
