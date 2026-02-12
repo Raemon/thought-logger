@@ -1,9 +1,7 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import { currentScreenshotFile } from "./paths";
 import { Preferences } from "../types/preferences.d";
 import { desktopCapturer } from "electron";
-import { joinImages } from "join-images";
 
 import fetch from "node-fetch";
 import { loadPreferences } from "../preferences";
@@ -15,6 +13,7 @@ import { getSecret } from "./credentials";
 import { LOG_FILE_ENCRYPTION, OPEN_ROUTER } from "../constants/credentials";
 import { writeFile } from "./files";
 import { ENCRYPTED_FILE_EXT } from "./encryption";
+import path from "node:path";
 
 const ScreenshotText = z.object({
   windows: z
@@ -222,28 +221,19 @@ async function takeScreenshot(quality: number) {
       types: ["screen"],
       thumbnailSize: { width: 1920, height: 1080 },
     });
-    const img = await joinImages(
-      sources.map((s) => s.thumbnail.toJPEG(quality)),
-    )
-      .then((data) =>
-        data.jpeg({
-          quality,
-        }),
-      )
-      .then((data) => data.toBuffer());
-
     const currentApplication = getCurrentApplication();
-    const filePath = currentScreenshotFile();
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, img);
-
-    await parseScreenshot(img, filePath, currentApplication);
-
     const { screenshotTemporary } = loadPreferences();
 
-    if (screenshotTemporary) {
-      // Delete screenshot when we're done extracting.
-      await fs.unlink(`${filePath}${ENCRYPTED_FILE_EXT}`);
+    for (const source of sources) {
+      const data = source.thumbnail.toJPEG(quality);
+      const filePath = currentScreenshotFile(source.display_id);
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, data);
+      await parseScreenshot(data, filePath, currentApplication);
+
+      if (screenshotTemporary) {
+        await fs.unlink(`${filePath}${ENCRYPTED_FILE_EXT}`);
+      }
     }
   } catch (e) {
     logger.error(`Failed to process screenshot: ${e}`);

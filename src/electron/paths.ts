@@ -30,7 +30,7 @@ export function currentKeyLogFile(): string {
  * Get path to current screenshot file.
  * E.g. [userDataPath]/files/screenshots/2025-01/2025-01-12 16.23.43.jpg
  */
-export function currentScreenshotFile(): string {
+export function currentScreenshotFile(display?: string): string {
   const now = new Date();
   const year = now.getFullYear();
 
@@ -58,7 +58,12 @@ export function currentScreenshotFile(): string {
     dateStr,
   );
 
-  return path.join(folderPath, `${dateStr} ${timeStr}.jpg`);
+  return path.join(
+    folderPath,
+    display
+      ? `${dateStr} ${timeStr}.${display}.jpg`
+      : `${dateStr} ${timeStr}.jpg`,
+  );
 }
 
 /**
