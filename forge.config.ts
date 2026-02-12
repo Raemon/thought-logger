@@ -6,15 +6,18 @@ import { MakerRpm } from "@electron-forge/maker-rpm";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
-import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: {
-      unpack: "**/node_modules/{sharp,@img}/**/*",
-    },
+    asar: true,
     osxSign: {},
-    extraResource: ["./bin/MacKeyServer"],
+    extraResource: [
+      "./bin/MacKeyServer",
+      "./node_modules/keytar/build/Release/keytar.node",
+    ],
+  },
+  rebuildConfig: {
+    onlyModules: ["keytar"],
   },
   makers: [
     new MakerSquirrel({}),
@@ -23,7 +26,6 @@ const config: ForgeConfig = {
     new MakerDeb({}),
   ],
   plugins: [
-    new AutoUnpackNativesPlugin({}),
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
       // If you are familiar with Vite configuration, it will look really familiar.

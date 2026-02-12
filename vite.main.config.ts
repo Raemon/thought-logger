@@ -10,7 +10,8 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      external: ["keytar", "sharp"],
+      // Remove keytar from externals - we'll handle it separately
+      external: [],
     },
     sourcemap: true,
   },
