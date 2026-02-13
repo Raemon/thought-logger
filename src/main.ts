@@ -10,7 +10,7 @@ import {
 } from "./keylogger";
 import { checkPermissions } from "./electron/permissions";
 import { savePreferences, loadPreferences } from "./preferences";
-import { Preferences } from "./types/preferences.d";
+import { Preferences } from "./types/preferences";
 import { toggleScheduledScreenshots } from "./electron/screenshots";
 import { startLocalServer } from "./electron/server";
 import {
@@ -18,7 +18,7 @@ import {
   getAvailableModels,
   summarize,
 } from "./electron/summarizer";
-import { Summary } from "./types/files.d";
+import { Summary } from "./types/files";
 import { setDefaultOptions, isEqual } from "date-fns";
 import logger, {
   getLatestError,

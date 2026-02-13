@@ -2,7 +2,7 @@ import path from "node:path";
 import { app } from "electron";
 import { rebuildLogByApp, rebuildChronologicalLog } from "../keylogger";
 import { setDefaultOptions, isSameWeek, isSameDay } from "date-fns";
-import { Keylog, Summary, SummaryScopeTypes } from "../types/files.d";
+import { Keylog, Summary, SummaryScopeTypes } from "../types/files";
 import logger from "../logging";
 import { loadPreferences } from "../preferences";
 import { getRecentSummaries, readFile, writeFile } from "./files";

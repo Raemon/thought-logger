@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import { Preferences } from "./types/preferences.d";
-import { Summary } from "./types/files.d";
+import { Preferences } from "./types/preferences";
+import { Summary } from "./types/files";
 
 contextBridge.exposeInMainWorld("permissions", {
   requestPermissionsStatus: () =>

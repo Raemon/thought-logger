@@ -15,7 +15,7 @@ import {
   Screenshot,
   Summary,
   SummaryScopeTypes,
-} from "../types/files.d";
+} from "../types/files";
 import { Dirent } from "node:fs";
 import logger from "../logging";
 import { isErrnoException } from "./utils";

@@ -8,7 +8,7 @@ import {
 } from "node-global-key-listener";
 import { currentKeyLogFile } from "./electron/paths";
 import { loadPreferences } from "./preferences";
-import { Preferences } from "./types/preferences.d";
+import { Preferences } from "./types/preferences";
 import logger from "./logging";
 import { isErrnoException } from "./electron/utils";
 import { readFile, writeFile } from "./electron/files";

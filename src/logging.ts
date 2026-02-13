@@ -1,6 +1,6 @@
 import * as winston from "winston";
 import Transport from "winston-transport";
-import { DebugPreferences } from "./types/preferences.d";
+import { DebugPreferences } from "./types/preferences";
 import { LogEntry } from "winston";
 
 const KiB = 1024;

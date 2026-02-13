@@ -1,6 +1,6 @@
 import { app } from "electron";
 import path from "node:path";
-import { Summary, SummaryScopeTypes } from "../types/files.d";
+import { Summary, SummaryScopeTypes } from "../types/files";
 import { format } from "date-fns";
 
 const userDataPath = app.getPath("userData");

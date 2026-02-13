@@ -4,7 +4,7 @@ import { format, compareDesc } from "date-fns";
 import SummaryComponent from "./Summary";
 import EndpointLinks from "./EndpointLinks";
 import TableOfContents from "./TableOfContents";
-import { Summary, SummaryScopeTypes } from "../../types/files.d";
+import { Summary, SummaryScopeTypes } from "../../types/files";
 
 export function FileInfo() {
   const [serializedLogs, setSerializedLogs] = useState<Summary[]>([]);
@@ -46,7 +46,10 @@ export function FileInfo() {
               <SummaryComponent key={log.date.toISOString()} log={log} />
             ))}
           {!loadedAll && (
-            <button onClick={loadAll} className="text-blue-600 hover:underline text-sm">
+            <button
+              onClick={loadAll}
+              className="text-blue-600 hover:underline text-sm"
+            >
               Load all
             </button>
           )}

@@ -1,7 +1,7 @@
 import React, { ReactElement } from "react";
 import { format, startOfWeek, endOfWeek, setDefaultOptions } from "date-fns";
 import Markdown from "react-markdown";
-import { Summary, SummaryScopeTypes } from "../../types/files.d";
+import { Summary, SummaryScopeTypes } from "../../types/files";
 import { dynamicEndpoints } from "../../constants/endpoints";
 
 setDefaultOptions({

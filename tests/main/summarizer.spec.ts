@@ -6,7 +6,7 @@ import {
   OpenRouterResponse,
   summarize,
 } from "../../src/electron/summarizer";
-import { Summary, SummaryScopeTypes } from "../../src/types/files.d";
+import { Summary, SummaryScopeTypes } from "../../src/types/files";
 import { initializeMasterKey } from "src/electron/encryption";
 import { readFile } from "src/electron/files";
 

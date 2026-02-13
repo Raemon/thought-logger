@@ -2,8 +2,8 @@ import {
   type PermissionScope,
   PermissionStatus,
 } from "../electron/permissions";
-import { Preferences } from "../preferences";
-import { Summary } from "./files.d";
+import { Preferences } from "./preferences";
+import { Summary } from "./files";
 
 declare global {
   interface UserData {

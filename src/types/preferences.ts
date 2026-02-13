@@ -38,6 +38,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   screenshotModel: "openai/gpt-4o-mini",
   screenshotPrompt: DEFAULT_SCREENSHOT_PROMPT,
   screenshotSummaryWindow: 300,
+  encryptionEnabled: true,
   blockedApps: [
     "Signal",
     "Signal Desktop",

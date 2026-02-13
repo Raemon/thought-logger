@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
 
 import { getRecentSummaries, writeFile } from "../../src/electron/files";
-import { Summary, SummaryScopeTypes } from "../../src/types/files.d";
+import { Summary, SummaryScopeTypes } from "../../src/types/files";
 import { initializeMasterKey } from "../../src/electron/encryption";
 
 // TODO: move common mocks into global config

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import {
   SummaryPreferences,
   DEFAULT_PREFERENCES,
-} from "../../types/preferences.d";
+} from "../../types/preferences";
 import TypeaheadDropdown from "./TypeaheadDropdown";
 
 const SummarySettings = () => {

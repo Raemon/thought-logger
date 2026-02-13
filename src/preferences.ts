@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "path";
 
 import { app } from "electron";
-import { DEFAULT_PREFERENCES, Preferences } from "./types/preferences.d";
+import { DEFAULT_PREFERENCES, Preferences } from "./types/preferences";
 
 const userDataPath = app.getPath("userData");
 const preferencesPath = path.join(userDataPath, "preferences.json");
