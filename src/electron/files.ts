@@ -32,7 +32,7 @@ const userDataPath = app.getPath("userData");
 function groupByWeek<T>(record: Record<string, T>): Map<string, T[]> {
   const groups = new Map<string, T[]>();
 
-  for (const dateString of Object.keys(record)) {
+  for (const dateString in record) {
     const date = parse(dateString, "yyyy-MM-dd", new Date());
     const week = format(startOfWeek(date), "YYYY-'W'ww", {
       useAdditionalWeekYearTokens: true,
