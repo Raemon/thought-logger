@@ -54,7 +54,7 @@ describe("Race Conditions in readFile and writeFile", () => {
       await Promise.all(writePromises);
 
       const finalContent = await readFile(testFile);
-      const lineCount = finalContent.split("\n").length;
+      const lineCount = finalContent.trim().split("\n").length;
 
       expect(lineCount).toBe(100);
     });

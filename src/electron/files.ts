@@ -10,13 +10,10 @@ import {
   startOfWeek,
 } from "date-fns";
 import { app } from "electron";
-import {
-  Keylog,
-  Screenshot,
-  Summary,
-  SummaryScopeTypes,
-} from "../types/files";
+import { Keylog, Screenshot, Summary, SummaryScopeTypes } from "../types/files";
 import { Dirent } from "node:fs";
+import { Mutex } from "async-mutex";
+
 import logger from "../logging";
 import { isErrnoException } from "./utils";
 import {
@@ -410,6 +407,8 @@ export async function getRecentApps(): Promise<string[]> {
   return Array.from(apps);
 }
 
+const fileMutex = new Mutex();
+
 export async function readFile<T extends boolean = false>(
   filePath: string,
   binary?: T,
@@ -440,6 +439,7 @@ export async function writeFile(
   contents: string | Uint8Array,
   append = false,
 ): Promise<void> {
+  const release = await fileMutex.acquire();
   let oldFileData: Uint8Array = new Uint8Array();
   let newFileData: Uint8Array = new Uint8Array();
   const contentData: Uint8Array =
@@ -452,6 +452,7 @@ export async function writeFile(
       oldFileData = (await readFile(filePath, true)) as Uint8Array;
     } catch (error) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
+        release();
         throw error;
       }
     }
@@ -471,6 +472,8 @@ export async function writeFile(
     if (!(isErrnoException(error) && error.code === "ENOENT")) {
       throw error;
     }
+  } finally {
+    release();
   }
 }
 
