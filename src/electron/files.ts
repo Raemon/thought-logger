@@ -47,19 +47,20 @@ function groupByWeek<T>(record: Record<string, T>): Map<string, T[]> {
 }
 
 async function readFilesFromDirectory(path: string): Promise<Dirent[]> {
-  try {
-    await fs.access(path);
-  } catch (error) {
-    logger.error(`Couldn't access ${path}: ${error}`);
-    return [];
-  }
+  let files: Dirent[] = [];
 
-  return fs
-    .readdir(path, {
+  try {
+    files = await fs.readdir(path, {
       recursive: true,
       withFileTypes: true,
-    })
-    .then((files) => files.filter((file) => file.isFile()));
+    });
+  } catch (error: unknown) {
+    if (!(isErrnoException(error) && error.code == "ENOENT")) {
+      throw error;
+    }
+    files = [];
+  }
+  return files.filter((file) => file.isFile());
 }
 
 export async function getKeylogs(): Promise<Record<string, Keylog>> {

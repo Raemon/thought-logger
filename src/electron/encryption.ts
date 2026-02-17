@@ -5,7 +5,7 @@ import sodium, { ready as sodiumReady } from "libsodium-wrappers-sumo";
 import { getSecret, setSecret } from "./credentials";
 import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 import { memoize } from "micro-memoize";
-import logger from "../logging";
+
 import { isErrnoException } from "./utils";
 
 export const ENCRYPTED_FILE_EXT = ".crypt";
@@ -153,69 +153,55 @@ export async function verifyPassword(password: string): Promise<boolean> {
 export async function changePassword(
   newPassword: string,
 ): Promise<{ success: boolean; message: string }> {
-  try {
-    const oldPassword = await getSecret(LOG_FILE_ENCRYPTION);
-    // Verify old password
-    if (oldPassword && !(await verifyPassword(oldPassword))) {
-      return {
-        success: false,
-        message: "Current password is incorrect",
-      };
-    }
-
-    // Validate new password
-    const result = await setSecret(LOG_FILE_ENCRYPTION, newPassword);
-    if (!result.success) {
-      return result;
-    }
-
-    await sodiumReady;
-
-    // Read current master key file
-    let oldMasterKey: Uint8Array<ArrayBufferLike> | null = null;
-
-    try {
-      oldMasterKey = oldPassword ? await getMasterKey(oldPassword) : null;
-    } catch (error) {
-      if (!(isErrnoException(error) && error.code === "ENOENT")) {
-        throw error;
-      }
-    }
-
-    // Generate new salt and derive new key
-    const newSalt = sodium.randombytes_buf(
-      sodium.crypto_pwhash_SALTBYTES,
-      "uint8array",
-    ) as Uint8Array;
-    const newKey = deriveKey(newPassword, newSalt);
-
-    // Re-encrypt master key with new key
-    let newEncryptedMasterKey: Uint8Array<ArrayBufferLike>;
-    if (oldMasterKey === null) {
-      initializeMasterKey(newPassword);
-    } else {
-      newEncryptedMasterKey = encryptWithKey(newKey, oldMasterKey);
-
-      const newFileData = new Uint8Array(
-        newSalt.length + newEncryptedMasterKey.length,
-      );
-      newFileData.set(newSalt);
-      newFileData.set(newEncryptedMasterKey, newSalt.length);
-
-      await fs.writeFile(masterKeyPath, newFileData);
-    }
-
-    getMasterKey.cache.clear();
-
-    return {
-      success: true,
-      message: "Password changed successfully",
-    };
-  } catch (error) {
-    logger.error("Failed to change password:", error);
+  const oldPassword = await getSecret(LOG_FILE_ENCRYPTION);
+  // Verify old password
+  if (oldPassword && !(await verifyPassword(oldPassword))) {
     return {
       success: false,
-      message: `Failed to change password: ${(error as Error).message}`,
+      message: "Current password is incorrect",
     };
   }
+
+  // Validate new password
+  const result = await setSecret(LOG_FILE_ENCRYPTION, newPassword);
+  if (!result.success) {
+    return result;
+  }
+
+  await sodiumReady;
+
+  // Read current master key file
+  let oldMasterKey: Uint8Array<ArrayBufferLike> | null = oldPassword
+    ? await getMasterKey(oldPassword)
+    : null;
+
+  // Generate new salt and derive new key
+  const newSalt = sodium.randombytes_buf(
+    sodium.crypto_pwhash_SALTBYTES,
+    "uint8array",
+  ) as Uint8Array;
+  const newKey = deriveKey(newPassword, newSalt);
+
+  // Re-encrypt master key with new key
+  let newEncryptedMasterKey: Uint8Array<ArrayBufferLike>;
+  if (oldMasterKey === null) {
+    initializeMasterKey(newPassword);
+  } else {
+    newEncryptedMasterKey = encryptWithKey(newKey, oldMasterKey);
+
+    const newFileData = new Uint8Array(
+      newSalt.length + newEncryptedMasterKey.length,
+    );
+    newFileData.set(newSalt);
+    newFileData.set(newEncryptedMasterKey, newSalt.length);
+
+    await fs.writeFile(masterKeyPath, newFileData);
+  }
+
+  getMasterKey.cache.clear();
+
+  return {
+    success: true,
+    message: "Password changed successfully",
+  };
 }

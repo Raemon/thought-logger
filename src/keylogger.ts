@@ -288,71 +288,54 @@ const specialChars = new Set([
 export async function rebuildChronologicalLog(filePath: string) {
   let rawText: string;
 
-  try {
-    rawText = await readFile(filePath);
-  } catch (error) {
-    if (isErrnoException(error) && error.code === "ENOENT") {
-      logger.info(`Skipping chronological log rebuild for ${filePath}`);
-    } else {
-      throw error;
-    }
+  rawText = await readFile(filePath);
 
-    return;
+  const lines = rawText.split("\n");
+  let processedContent = "";
+
+  let currentAppLine = "";
+  let sectionLines: string[] = [];
+
+  // Process line by line
+  forEach(lines, (line) => {
+    // Match lines that start with date/time, like "2023-10-05 13.22.55: AppName"
+    const dateAppSwitch = line.match(
+      /^(\d{4}-\d{2}-\d{2})\s+(\d{2}\.\d{2}\.\d{2}):\s+(.*)$/,
+    );
+
+    if (dateAppSwitch) {
+      // Process the previous section
+      if (currentAppLine) {
+        const sectionText = sectionLines.join("\n");
+        const processedText = processRawText(sectionText, specialChars);
+        // Only add the section if it has content after processing
+        if (processedText.trim()) {
+          processedContent += currentAppLine + "\n" + processedText + "\n\n";
+        }
+      }
+
+      // Set up for new section
+      currentAppLine = line;
+      sectionLines = [];
+    } else {
+      sectionLines.push(line);
+    }
+  });
+
+  // Process the last section
+  if (currentAppLine) {
+    const sectionText = sectionLines.join("\n");
+    const processedText = processRawText(sectionText, specialChars);
+    if (processedText.trim()) {
+      processedContent += currentAppLine + "\n" + processedText + "\n";
+    }
   }
 
-  try {
-    const lines = rawText.split("\n");
-    let processedContent = "";
-
-    let currentAppLine = "";
-    let sectionLines: string[] = [];
-
-    // Process line by line
-    forEach(lines, (line) => {
-      // Match lines that start with date/time, like "2023-10-05 13.22.55: AppName"
-      const dateAppSwitch = line.match(
-        /^(\d{4}-\d{2}-\d{2})\s+(\d{2}\.\d{2}\.\d{2}):\s+(.*)$/,
-      );
-
-      if (dateAppSwitch) {
-        // Process the previous section
-        if (currentAppLine) {
-          const sectionText = sectionLines.join("\n");
-          const processedText = processRawText(sectionText, specialChars);
-          // Only add the section if it has content after processing
-          if (processedText.trim()) {
-            processedContent += currentAppLine + "\n" + processedText + "\n\n";
-          }
-        }
-
-        // Set up for new section
-        currentAppLine = line;
-        sectionLines = [];
-      } else {
-        sectionLines.push(line);
-      }
-    });
-
-    // Process the last section
-    if (currentAppLine) {
-      const sectionText = sectionLines.join("\n");
-      const processedText = processRawText(sectionText, specialChars);
-      if (processedText.trim()) {
-        processedContent += currentAppLine + "\n" + processedText + "\n";
-      }
-    }
-
-    if (processedContent) {
-      const dir = path.dirname(filePath);
-      const basename = path.basename(filePath, "log");
-      const outputPath = path.join(
-        dir,
-        `${basename}processed.chronological.log`,
-      );
-      writeFile(outputPath, processedContent);
-    }
-  } catch (error) {
-    logger.error("Failed to rebuild chronological log:", error);
+  if (processedContent) {
+    const dir = path.dirname(filePath);
+    const basename = path.basename(filePath, "log");
+    const outputPath = path.join(dir, `${basename}processed.chronological.log`);
+    writeFile(outputPath, processedContent);
   }
 }
 
@@ -360,76 +343,62 @@ export async function rebuildChronologicalLog(filePath: string) {
 export async function rebuildLogByApp(filePath: string) {
   let rawText: string;
 
-  try {
-    rawText = await readFile(filePath);
-  } catch (error) {
-    if (isErrnoException(error) && error.code === "ENOENT") {
-      logger.info(`Skipping log by app rebuild for ${filePath}`);
-    } else {
-      throw error;
-    }
+  rawText = await readFile(filePath);
 
-    return;
-  }
+  const lines = rawText.split("\n");
+  const appBuffers = new Map<string, string>();
+  let activeApp = "Unknown";
+  const lastAppTime = new Map<string, Date>();
 
-  try {
-    const lines = rawText.split("\n");
-    const appBuffers = new Map<string, string>();
-    let activeApp = "Unknown";
-    const lastAppTime = new Map<string, Date>();
-
-    forEach(lines, (line) => {
-      // Match lines that start with date/time, like "2023-10-05 13.22.55: AppName"
-      const dateAppSwitch = line.match(
-        /^(\d{4}-\d{2}-\d{2})\s+(\d{2}\.\d{2}\.\d{2}):\s+(.*)$/,
+  forEach(lines, (line) => {
+    // Match lines that start with date/time, like "2023-10-05 13.22.55: AppName"
+    const dateAppSwitch = line.match(
+      /^(\d{4}-\d{2}-\d{2})\s+(\d{2}\.\d{2}\.\d{2}):\s+(.*)$/,
+    );
+    if (dateAppSwitch) {
+      activeApp = dateAppSwitch[3];
+      const currentTime = new Date(
+        `${dateAppSwitch[1]} ${dateAppSwitch[2].replace(/\./g, ":")}`,
       );
-      if (dateAppSwitch) {
-        activeApp = dateAppSwitch[3];
-        const currentTime = new Date(
-          `${dateAppSwitch[1]} ${dateAppSwitch[2].replace(/\./g, ":")}`,
-        );
 
-        // Add extra newline and timestamp if more than 15 minutes since last use
-        const lastTime = lastAppTime.get(activeApp);
-        if (
-          lastTime &&
-          currentTime.getTime() - lastTime.getTime() > 15 * 60 * 1000
-        ) {
-          const timeStr = currentTime.toLocaleTimeString("en-CA", {
-            hour12: false,
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          const existingBuffer = appBuffers.get(activeApp) || "";
-          appBuffers.set(activeApp, existingBuffer + `\n[${timeStr}]\n`);
-        }
-
-        lastAppTime.set(activeApp, currentTime);
-        if (!appBuffers.has(activeApp)) {
-          appBuffers.set(activeApp, "");
-        }
-      } else {
-        let buffer = appBuffers.get(activeApp) || "";
-        buffer = processRawText(line, specialChars);
-        appBuffers.set(activeApp, buffer);
+      // Add extra newline and timestamp if more than 15 minutes since last use
+      const lastTime = lastAppTime.get(activeApp);
+      if (
+        lastTime &&
+        currentTime.getTime() - lastTime.getTime() > 15 * 60 * 1000
+      ) {
+        const timeStr = currentTime.toLocaleTimeString("en-CA", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const existingBuffer = appBuffers.get(activeApp) || "";
+        appBuffers.set(activeApp, existingBuffer + `\n[${timeStr}]\n`);
       }
-    });
 
-    let processedContent = "";
-    appBuffers.forEach((text, app) => {
-      const trimmed = text.trim();
-      if (trimmed) {
-        processedContent += `\n=== ${app} ===\n${trimmed}\n`;
+      lastAppTime.set(activeApp, currentTime);
+      if (!appBuffers.has(activeApp)) {
+        appBuffers.set(activeApp, "");
       }
-    });
-    if (processedContent) {
-      const dir = path.dirname(filePath);
-      const basename = path.basename(filePath, "log");
-      const outputPath = path.join(dir, `${basename}processed.by-app.log`);
-      writeFile(outputPath, processedContent);
+    } else {
+      let buffer = appBuffers.get(activeApp) || "";
+      buffer = processRawText(line, specialChars);
+      appBuffers.set(activeApp, buffer);
     }
-  } catch (error) {
-    logger.error("Failed to rebuild processed log:", error);
+  });
+
+  let processedContent = "";
+  appBuffers.forEach((text, app) => {
+    const trimmed = text.trim();
+    if (trimmed) {
+      processedContent += `\n=== ${app} ===\n${trimmed}\n`;
+    }
+  });
+  if (processedContent) {
+    const dir = path.dirname(filePath);
+    const basename = path.basename(filePath, "log");
+    const outputPath = path.join(dir, `${basename}processed.by-app.log`);
+    writeFile(outputPath, processedContent);
   }
 }
 

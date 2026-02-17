@@ -175,77 +175,66 @@ export function startDailySummaryCheck() {
 
 // Initialize electron app
 app.whenReady().then(async () => {
-  try {
-    await checkAndGenerateSummaries();
-    logger.info("Summary generation completed successfully");
-  } catch (error) {
-    logger.error("Failed to generate summaries:", error);
-  }
+  await checkAndGenerateSummaries();
+  logger.info("Summary generation completed successfully");
 });
 
 export async function summarize(summary: Summary): Promise<void> {
   const summaryPath = getSummaryPath(summary);
   logger.debug(`Generating summary for ${summaryPath}`);
-  try {
-    let logData = "";
-    const {
-      dailySummaryPrompt,
-      weeklySummaryPrompt,
-      summaryModel,
-      screenshotSummaryWindow,
-    } = loadPreferences();
 
-    logData += "Keylogger data:\n";
+  let logData = "";
+  const {
+    dailySummaryPrompt,
+    weeklySummaryPrompt,
+    summaryModel,
+    screenshotSummaryWindow,
+  } = loadPreferences();
 
-    for (const keylog of summary.keylogs) {
-      if (!keylog.rawPath) {
-        logger.error(`Missing keylog data for ${keylog.date}`);
-        continue;
-      }
+  logData += "Keylogger data:\n";
 
-      const text = await readFile(keylog.rawPath);
-      const filename = path.basename(keylog.rawPath);
-      logData += `${filename}:\n${text}\n\n`;
+  for (const keylog of summary.keylogs) {
+    if (!keylog.rawPath) {
+      logger.error(`Missing keylog data for ${keylog.date}`);
+      continue;
     }
 
-    logData += "Screenshot Summaries:\n";
-
-    for (const screenshot of summary.screenshots) {
-      if (!screenshot.summaryPath) {
-        logger.info(`Missing screenshot summary for ${screenshot.imagePath}`);
-        continue;
-      }
-      const text = await readFile(screenshot.summaryPath);
-      let summaryText: string;
-      try {
-        const jsonData = JSON.parse(text);
-        summaryText = jsonData.summary || text;
-      } catch {
-        summaryText = text;
-      }
-      const excerpt = summaryText
-        .split(" ")
-        .slice(0, screenshotSummaryWindow)
-        .join(" ");
-      const filename = path.basename(screenshot.summaryPath, ".json");
-      logData += `Taken on ${filename}:\n${excerpt}\n\n`;
-    }
-
-    const text = await generateAISummary(
-      logData,
-      summary.scope === SummaryScopeTypes.Day
-        ? dailySummaryPrompt
-        : weeklySummaryPrompt,
-      summaryModel,
-    );
-    await writeFile(summaryPath, text);
-    summary.path = summaryPath;
-    summary.contents = text;
-  } catch (error) {
-    logger.error(
-      `Failed to generate summary for ${path.basename(summaryPath)}:`,
-      error,
-    );
-    throw error; // Re-throw to handle in the calling function
+    const text = await readFile(keylog.rawPath);
+    const filename = path.basename(keylog.rawPath);
+    logData += `${filename}:\n${text}\n\n`;
   }
+
+  logData += "Screenshot Summaries:\n";
+
+  for (const screenshot of summary.screenshots) {
+    if (!screenshot.summaryPath) {
+      logger.info(`Missing screenshot summary for ${screenshot.imagePath}`);
+      continue;
+    }
+    const text = await readFile(screenshot.summaryPath);
+    let summaryText: string;
+    try {
+      const jsonData = JSON.parse(text);
+      summaryText = jsonData.summary || text;
+    } catch {
+      summaryText = text;
+    }
+    const excerpt = summaryText
+      .split(" ")
+      .slice(0, screenshotSummaryWindow)
+      .join(" ");
+    const filename = path.basename(screenshot.summaryPath, ".json");
+    logData += `Taken on ${filename}:\n${excerpt}\n\n`;
+  }
+
+  const text = await generateAISummary(
+    logData,
+    summary.scope === SummaryScopeTypes.Day
+      ? dailySummaryPrompt
+      : weeklySummaryPrompt,
+    summaryModel,
+  );
+  await writeFile(summaryPath, text);
+  summary.path = summaryPath;
+  summary.contents = text;
 }

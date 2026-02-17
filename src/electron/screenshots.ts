@@ -59,120 +59,111 @@ async function extractTextFromImage(
   logger.debug("Extracting image text");
   const base64Image = imageBuffer.toString("base64");
   const imageUrl = `data:image/jpeg;base64,${base64Image}`;
-  try {
-    const apiKey = await getSecret(OPEN_ROUTER);
-    if (!apiKey) {
-      logger.error("API key not found in keychain");
-      throw "ERROR: OpenRouter API key is not set. Use setApiKey() to set your API key.";
-    }
 
-    const buildRequest = (useSchema: boolean) => ({
-      model: model,
-      require_parameters: true,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: useSchema
-                ? prompt
-                : `${prompt}\n\nReturn a JSON object with keys: windows (array of {title, applicationName, url, exactText, frames: [{title, exactText}], images: [{description}]}).`,
+  const apiKey = await getSecret(OPEN_ROUTER);
+  if (!apiKey) {
+    logger.error("API key not found in keychain");
+    throw "ERROR: OpenRouter API key is not set. Use setApiKey() to set your API key.";
+  }
+
+  const buildRequest = (useSchema: boolean) => ({
+    model: model,
+    require_parameters: true,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: useSchema
+              ? prompt
+              : `${prompt}\n\nReturn a JSON object with keys: windows (array of {title, applicationName, url, exactText, frames: [{title, exactText}], images: [{description}]}).`,
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: imageUrl,
             },
-            {
-              type: "image_url",
-              image_url: {
-                url: imageUrl,
-              },
+          },
+        ],
+      },
+    ],
+    ...(useSchema
+      ? {
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "screenshot_summary",
+              strict: true,
+              schema: z.toJSONSchema(ScreenshotText),
             },
-          ],
-        },
-      ],
-      ...(useSchema
-        ? {
-            response_format: {
-              type: "json_schema",
-              json_schema: {
-                name: "screenshot_summary",
-                strict: true,
-                schema: z.toJSONSchema(ScreenshotText),
-              },
-            },
-          }
-        : {}),
+          },
+        }
+      : {}),
+  });
+
+  const sendRequest = (useSchema: boolean) =>
+    fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(buildRequest(useSchema)),
     });
 
-    const sendRequest = (useSchema: boolean) =>
-      fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(buildRequest(useSchema)),
-      });
+  let response = await sendRequest(true);
 
-    let response = await sendRequest(true);
-
-    if (!response.ok) {
-      let errorData: unknown = null;
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = await response.text();
-      }
-
-      const errorMessage =
-        (typeof errorData === "object" &&
-        errorData !== null &&
-        "error" in errorData &&
-        typeof errorData.error === "object" &&
-        errorData.error !== null &&
-        "message" in errorData.error
-          ? errorData.error.message
-          : null) || `${errorData}`;
-
-      const structuredOutputUnsupported =
-        typeof errorMessage === "string" &&
-        errorMessage.toLowerCase().includes("json mode is not enabled");
-
-      if (structuredOutputUnsupported) {
-        logger.warn(
-          "Structured outputs not supported for this model; retrying without JSON schema",
-        );
-        response = await sendRequest(false);
-        if (!response.ok) {
-          let retryErrorData: unknown = null;
-          try {
-            retryErrorData = await response.json();
-          } catch {
-            retryErrorData = await response.text();
-          }
-          throw new Error(
-            `API request failed: ${response.status} ${JSON.stringify(retryErrorData)}`,
-          );
-        }
-      } else {
-        throw new Error(
-          `API request failed: ${response.status} ${JSON.stringify(errorData)}`,
-        );
-      }
+  if (!response.ok) {
+    let errorData: unknown = null;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = await response.text();
     }
 
-    const data = (await response.json()) as {
-      choices: { message: { content: string } }[];
-    };
-    const result = JSON.parse(data.choices[0].message.content);
-    return ScreenshotText.parse(result);
-  } catch (error) {
-    logger.error("Failed to extract text from image:", error);
+    const errorMessage =
+      (typeof errorData === "object" &&
+      errorData !== null &&
+      "error" in errorData &&
+      typeof errorData.error === "object" &&
+      errorData.error !== null &&
+      "message" in errorData.error
+        ? errorData.error.message
+        : null) || `${errorData}`;
 
-    if (error instanceof Error) {
-      throw `ERROR: Failed to extract text: ${error.message}`;
+    const structuredOutputUnsupported =
+      typeof errorMessage === "string" &&
+      errorMessage.toLowerCase().includes("json mode is not enabled");
+
+    if (structuredOutputUnsupported) {
+      logger.warn(
+        "Structured outputs not supported for this model; retrying without JSON schema",
+      );
+      response = await sendRequest(false);
+      if (!response.ok) {
+        let retryErrorData: unknown = null;
+        try {
+          retryErrorData = await response.json();
+        } catch {
+          retryErrorData = await response.text();
+        }
+        throw new Error(
+          `API request failed: ${response.status} ${JSON.stringify(retryErrorData)}`,
+        );
+      }
     } else {
-      throw error;
+      throw new Error(
+        `API request failed: ${response.status} ${JSON.stringify(errorData)}`,
+      );
     }
   }
+
+  const data = (await response.json()) as {
+    choices: { message: { content: string } }[];
+  };
+  const result = JSON.parse(data.choices[0].message.content);
+  return ScreenshotText.parse(result);
 }
 
 export async function parseScreenshot(
@@ -185,58 +176,51 @@ export async function parseScreenshot(
   const { screenshotModel, screenshotPrompt, blockedApps } = loadPreferences();
   const prompt = screenshotPrompt;
 
-  try {
-    const extractedText = await extractTextFromImage(
-      img,
-      screenshotModel,
-      prompt,
-    );
-    for (const window of extractedText.windows) {
-      if (isProtectedApp(window.applicationName, blockedApps)) {
-        window.exactText = "skipped";
-        window.frames = [];
-        window.images = [];
-      }
+  const extractedText = await extractTextFromImage(
+    img,
+    screenshotModel,
+    prompt,
+  );
+  for (const window of extractedText.windows) {
+    if (isProtectedApp(window.applicationName, blockedApps)) {
+      window.exactText = "skipped";
+      window.frames = [];
+      window.images = [];
     }
-    extractedText.timestamp = new Date().toLocaleString();
-    const firstWindow = extractedText.windows[0];
-    const encodedApp = encodeURIComponent(currentApplication);
-    const encodedTitle = firstWindow
-      ? encodeURIComponent(firstWindow.title.slice(0, 50))
-      : "unknown";
-    const jsonFilePath = imgPath.replace(
-      ".jpg",
-      `.${encodedApp}.${encodedTitle}.json`,
-    );
-    await writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
-  } catch (error) {
-    logger.error(`Failed to extract text from ${imgPath}:`, error);
   }
+  extractedText.timestamp = new Date().toLocaleString();
+  const firstWindow = extractedText.windows[0];
+  const encodedApp = encodeURIComponent(currentApplication);
+  const encodedTitle = firstWindow
+    ? encodeURIComponent(firstWindow.title.slice(0, 50))
+    : "unknown";
+  const jsonFilePath = imgPath.replace(
+    ".jpg",
+    `.${encodedApp}.${encodedTitle}.json`,
+  );
+  await writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
 }
 
 async function takeScreenshot(quality: number) {
   logger.debug("Taking screenshot");
-  try {
-    const sources = await desktopCapturer.getSources({
-      types: ["screen"],
-      thumbnailSize: { width: 1920, height: 1080 },
-    });
-    const currentApplication = getCurrentApplication();
-    const { screenshotTemporary } = loadPreferences();
 
-    for (const source of sources) {
-      const data = source.thumbnail.toJPEG(quality);
-      const filePath = currentScreenshotFile(source.display_id);
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await writeFile(filePath, data);
-      await parseScreenshot(data, filePath, currentApplication);
+  const sources = await desktopCapturer.getSources({
+    types: ["screen"],
+    thumbnailSize: { width: 1920, height: 1080 },
+  });
+  const currentApplication = getCurrentApplication();
+  const { screenshotTemporary } = loadPreferences();
 
-      if (screenshotTemporary) {
-        await fs.unlink(`${filePath}${ENCRYPTED_FILE_EXT}`);
-      }
+  for (const source of sources) {
+    const data = source.thumbnail.toJPEG(quality);
+    const filePath = currentScreenshotFile(source.display_id);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, data);
+    await parseScreenshot(data, filePath, currentApplication);
+
+    if (screenshotTemporary) {
+      await fs.unlink(`${filePath}${ENCRYPTED_FILE_EXT}`);
     }
-  } catch (e) {
-    logger.error(`Failed to process screenshot: ${e}`);
   }
 }
 
