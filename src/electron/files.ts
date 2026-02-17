@@ -14,7 +14,6 @@ import { Keylog, Screenshot, Summary, SummaryScopeTypes } from "../types/files";
 import { Dirent } from "node:fs";
 import { Mutex } from "async-mutex";
 
-import logger from "../logging";
 import { isErrnoException } from "./utils";
 import {
   decryptUserData,
@@ -47,7 +46,7 @@ function groupByWeek<T>(record: Record<string, T>): Map<string, T[]> {
 }
 
 async function readFilesFromDirectory(path: string): Promise<Dirent[]> {
-  let files: Dirent[] = [];
+  let files: Dirent[];
 
   try {
     files = await fs.readdir(path, {
@@ -369,9 +368,11 @@ export async function getRecentSummaries(
         useAdditionalWeekYearTokens: true,
       });
 
-      weeklySummaries.some(
-        (s) => s.path && path.basename(s.path) === summaryFile.name,
-      ) ||
+      if (
+        !weeklySummaries.some(
+          (s) => s.path && path.basename(s.path) === summaryFile.name,
+        )
+      ) {
         weeklySummaries.push({
           path: path.join(summaryFile.parentPath, summaryFile.name),
           contents: null,
@@ -381,6 +382,7 @@ export async function getRecentSummaries(
           scope: SummaryScopeTypes.Week,
           screenshots: [],
         });
+      }
     }
   }
 
@@ -452,7 +454,7 @@ export async function writeFile(
 ): Promise<void> {
   const release = await fileMutex.acquire();
   let oldFileData: Uint8Array = new Uint8Array();
-  let newFileData: Uint8Array = new Uint8Array();
+  let newFileData: Uint8Array;
   const contentData: Uint8Array =
     contents instanceof Uint8Array
       ? contents

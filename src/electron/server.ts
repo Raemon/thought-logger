@@ -97,7 +97,7 @@ async function getWeekContents({
     filePaths.map(async (filePath) => {
       try {
         return readFile(filePath);
-      } catch (error) {
+      } catch {
         return `Unable to read file: ${filePath}\n`;
       }
     }),
@@ -117,7 +117,7 @@ async function handleLogFileRequest(
     const data = await readFile(filePath);
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end(data);
-  } catch (error) {
+  } catch {
     res.writeHead(500, { "Content-Type": "text/plain" });
     res.end(`Failed to read ${description} log file. ${filePath}`);
   }
@@ -203,7 +203,7 @@ async function handleScreenshotImageRequest(
     const imageData = await readFile(resolvedPath, true);
     res.writeHead(200, { "Content-Type": "image/jpeg" });
     res.end(imageData);
-  } catch (error) {
+  } catch {
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Screenshot not found.");
   }
@@ -370,7 +370,7 @@ export function startLocalServer(port = 8765): http.Server {
         try {
           const dateString = new Date().toLocaleDateString("en-CA");
           await handleScreenshotImageListForDate(res, dateString);
-        } catch (error) {
+        } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to list today's screenshot images.");
         }
@@ -381,7 +381,7 @@ export function startLocalServer(port = 8765): http.Server {
         try {
           const dateString = new Date().toLocaleDateString("en-CA");
           await handleScreenshotImageGalleryForDate(res, dateString);
-        } catch (error) {
+        } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to render today's screenshot gallery.");
         }
@@ -392,7 +392,7 @@ export function startLocalServer(port = 8765): http.Server {
         try {
           const dateString = new Date().toLocaleDateString("en-CA");
           await handleScreenshotSummaryList(res, dateString);
-        } catch (error) {
+        } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to list today's screenshot summaries.");
         }
@@ -421,7 +421,7 @@ export function startLocalServer(port = 8765): http.Server {
           date.setDate(date.getDate() - 1);
           const dateString = date.toLocaleDateString("en-CA");
           await handleScreenshotImageListForDate(res, dateString);
-        } catch (error) {
+        } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to list yesterday's screenshot images.");
         }
@@ -434,7 +434,7 @@ export function startLocalServer(port = 8765): http.Server {
           date.setDate(date.getDate() - 1);
           const dateString = date.toLocaleDateString("en-CA");
           await handleScreenshotImageGalleryForDate(res, dateString);
-        } catch (error) {
+        } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to render yesterday's screenshot gallery.");
         }
@@ -447,7 +447,7 @@ export function startLocalServer(port = 8765): http.Server {
           date.setDate(date.getDate() - 1);
           const dateString = date.toLocaleDateString("en-CA");
           await handleScreenshotSummaryList(res, dateString);
-        } catch (error) {
+        } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to list yesterday's screenshot summaries.");
         }
@@ -459,7 +459,7 @@ export function startLocalServer(port = 8765): http.Server {
           const contents = await getWeekContents({ raw: false });
           res.writeHead(200, { "Content-Type": "text/plain" });
           res.end(contents);
-        } catch (error) {
+        } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to read log files for the past week.");
         }
@@ -479,7 +479,7 @@ export function startLocalServer(port = 8765): http.Server {
           const contents = await getWeekContents({ raw: true });
           res.writeHead(200, { "Content-Type": "text/plain" });
           res.end(contents);
-        } catch (error) {
+        } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to read raw log files for the past week.");
         }
@@ -542,7 +542,7 @@ export function startLocalServer(port = 8765): http.Server {
               );
               await handleLogFileRequest(res, filePath, `log for ${dateStr}`);
             }
-          } catch (error) {
+          } catch {
             res.writeHead(500, { "Content-Type": "text/plain" });
             res.end(
               screenshotSummaryMatch

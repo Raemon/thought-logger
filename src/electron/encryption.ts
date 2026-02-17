@@ -145,7 +145,7 @@ export async function verifyPassword(password: string): Promise<boolean> {
   try {
     await getMasterKey(password);
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -171,7 +171,7 @@ export async function changePassword(
   await sodiumReady;
 
   // Read current master key file
-  let oldMasterKey: Uint8Array<ArrayBufferLike> | null = oldPassword
+  const oldMasterKey: Uint8Array<ArrayBufferLike> | null = oldPassword
     ? await getMasterKey(oldPassword)
     : null;
 

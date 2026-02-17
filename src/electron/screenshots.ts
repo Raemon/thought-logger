@@ -115,7 +115,7 @@ async function extractTextFromImage(
   let response = await sendRequest(true);
 
   if (!response.ok) {
-    let errorData: unknown = null;
+    let errorData: unknown;
     try {
       errorData = await response.json();
     } catch {
@@ -142,7 +142,7 @@ async function extractTextFromImage(
       );
       response = await sendRequest(false);
       if (!response.ok) {
-        let retryErrorData: unknown = null;
+        let retryErrorData: unknown;
         try {
           retryErrorData = await response.json();
         } catch {

@@ -45,7 +45,7 @@ const EncryptionSettings = ({
       } else {
         setMessage({ text: result.message, isError: true });
       }
-    } catch (error) {
+    } catch {
       setMessage({
         text: "An error occurred while saving the password",
         isError: true,

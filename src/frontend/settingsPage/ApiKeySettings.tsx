@@ -38,7 +38,7 @@ const ApiKeySettings = () => {
       } else {
         setMessage({ text: result.message, isError: true });
       }
-    } catch (error) {
+    } catch {
       setMessage({
         text: "An error occurred while saving the API key",
         isError: true,

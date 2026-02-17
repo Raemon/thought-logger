@@ -9,8 +9,6 @@ import {
 import { currentKeyLogFile } from "./electron/paths";
 import { loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences";
-import logger from "./logging";
-import { isErrnoException } from "./electron/utils";
 import { readFile, writeFile } from "./electron/files";
 
 const BINARY_NAME = "MacKeyServer";
@@ -286,9 +284,7 @@ const specialChars = new Set([
 
 /** Rebuild log chronologically, filtering out empty app sections */
 export async function rebuildChronologicalLog(filePath: string) {
-  let rawText: string;
-
-  rawText = await readFile(filePath);
+  const rawText = await readFile(filePath);
 
   const lines = rawText.split("\n");
   let processedContent = "";
@@ -341,9 +337,7 @@ export async function rebuildChronologicalLog(filePath: string) {
 
 // Refactor rebuildLogByApp to use the shared processRawText function
 export async function rebuildLogByApp(filePath: string) {
-  let rawText: string;
-
-  rawText = await readFile(filePath);
+  const rawText = await readFile(filePath);
 
   const lines = rawText.split("\n");
   const appBuffers = new Map<string, string>();
@@ -381,8 +375,7 @@ export async function rebuildLogByApp(filePath: string) {
         appBuffers.set(activeApp, "");
       }
     } else {
-      let buffer = appBuffers.get(activeApp) || "";
-      buffer = processRawText(line, specialChars);
+      const buffer = processRawText(line, specialChars);
       appBuffers.set(activeApp, buffer);
     }
   });

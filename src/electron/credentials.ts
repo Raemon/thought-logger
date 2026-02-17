@@ -6,8 +6,9 @@ import logger from "../logging";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let keytar: any;
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   keytar = require("keytar");
-} catch (error) {
+} catch {
   // If we can't load keytar directly, try to load it from the resources directory
   try {
     const keytarPath = app.isPackaged
@@ -21,6 +22,7 @@ try {
           "keytar.node",
         );
     logger.debug(`Attempting to load keytar from: ${keytarPath}`);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     keytar = require(keytarPath);
   } catch (secondError) {
     logger.error("Failed to load keytar:", secondError);
