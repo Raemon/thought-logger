@@ -410,13 +410,9 @@ export async function getRecentApps(): Promise<string[]> {
 
 const fileMutex = new Mutex();
 
-export async function readFile<T extends boolean = false>(
+async function readFileNoLock(
   filePath: string,
-  binary?: T,
-): Promise<T extends true ? Uint8Array : string>;
-export async function readFile(
-  filePath: string,
-  binary = false,
+  binary: boolean,
 ): Promise<string | Uint8Array> {
   try {
     const rawData = await fs.readFile(filePath);
@@ -435,6 +431,20 @@ export async function readFile(
   return binary ? plaintext : Buffer.from(plaintext).toString("utf8");
 }
 
+export async function readFile<T extends boolean = false>(
+  filePath: string,
+  binary?: T,
+): Promise<T extends true ? Uint8Array : string>;
+export async function readFile(
+  filePath: string,
+  binary = false,
+): Promise<string | Uint8Array> {
+  const release = await fileMutex.acquire();
+  const plaintext = readFileNoLock(filePath, binary);
+  release();
+  return plaintext;
+}
+
 export async function writeFile(
   filePath: string,
   contents: string | Uint8Array,
@@ -450,7 +460,7 @@ export async function writeFile(
 
   if (append) {
     try {
-      oldFileData = (await readFile(filePath, true)) as Uint8Array;
+      oldFileData = (await readFileNoLock(filePath, true)) as Uint8Array;
     } catch (error) {
       if (!(isErrnoException(error) && error.code === "ENOENT")) {
         release();
