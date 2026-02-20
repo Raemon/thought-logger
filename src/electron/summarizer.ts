@@ -113,7 +113,7 @@ async function generateAISummary(
 }
 
 async function needsProcessing(keylog: Keylog): Promise<boolean> {
-  return !(keylog.chronoPath && keylog.appPath);
+  return !(keylog.rawPath && keylog.chronoPath && keylog.appPath);
 }
 
 async function processKeylog(file: Keylog): Promise<void> {

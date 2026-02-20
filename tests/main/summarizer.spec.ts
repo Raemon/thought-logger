@@ -49,12 +49,12 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
-const testModel = "test/test-model";
-const testWeeklyPrompt = "Test weekly summary prompt";
-const testDailyPrompt = "Test daily summary prompt";
-
 vi.mock(import("../../src/preferences"), (importOriginal) => {
   const actual = importOriginal();
+  const testModel = "test/test-model";
+  const testWeeklyPrompt = "Test weekly summary prompt";
+  const testDailyPrompt = "Test daily summary prompt";
+
   return {
     ...actual,
     loadPreferences: () => ({
@@ -171,7 +171,7 @@ describe("#summarize", () => {
     expect(mockFetch).toHaveBeenCalledExactlyOnceWith(
       "https://openrouter.ai/api/v1/chat/completions",
       expect.objectContaining({
-        body: expect.stringContaining(testDailyPrompt),
+        body: expect.stringContaining("Test daily summary prompt"),
       }),
     );
   });
@@ -218,7 +218,7 @@ describe("#summarize", () => {
     expect(mockFetch).toHaveBeenCalledExactlyOnceWith(
       "https://openrouter.ai/api/v1/chat/completions",
       expect.objectContaining({
-        body: expect.stringContaining(testWeeklyPrompt),
+        body: expect.stringContaining("Test weekly summary prompt"),
       }),
     );
   });

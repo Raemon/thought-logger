@@ -4,6 +4,7 @@ import { vol } from "memfs";
 import { getRecentSummaries, writeFile } from "../../src/electron/files";
 import { Summary, SummaryScopeTypes } from "../../src/types/files";
 import { initializeMasterKey } from "../../src/electron/encryption";
+import { isSameDay } from "date-fns";
 
 // TODO: move common mocks into global config
 
@@ -165,9 +166,7 @@ describe("#getRecentSummaries", () => {
     ];
     vol.fromNestedJSON(filesystem, "/");
     const summaries = await getRecentSummaries();
-    expect(
-      summaries.filter((summary) => summary.scope === SummaryScopeTypes.Day),
-    ).toStrictEqual(expectedSummaries);
+    expect(summaries).toEqual(expect.arrayContaining(expectedSummaries));
   });
 
   it("infers weekly summaries", async () => {
@@ -195,6 +194,8 @@ describe("#getRecentSummaries", () => {
       date: new Date(2025, 7, 11),
       path: null,
       contents: null,
+      keylogCharCount: 0,
+      screenshotSummaryCharCount: 0,
       keylogs: [
         {
           appPath: null,
@@ -229,18 +230,17 @@ describe("#getRecentSummaries", () => {
     };
     vol.fromNestedJSON(filesystem, "/");
     const summaries = await getRecentSummaries();
-    expect(
-      summaries.find((summary) => summary.scope === SummaryScopeTypes.Week),
-    ).toStrictEqual(weeklySummary);
+    expect(summaries).toContainEqual(weeklySummary);
   });
 
   it("doesn't fail when directories are missing", async () => {
     const filesystem = {
       files: {},
     };
-
     vol.fromNestedJSON(filesystem, "/");
-    await expect(getRecentSummaries()).resolves.toStrictEqual([]);
+    const getRecentSummariesSpy = vi.fn(getRecentSummaries);
+    await getRecentSummariesSpy();
+    expect(getRecentSummariesSpy).toHaveResolved();
   });
 
   it("loads daily summary contents", async () => {
@@ -257,7 +257,9 @@ describe("#getRecentSummaries", () => {
     vol.fromNestedJSON(filesystem, "/");
     const summaries = await getRecentSummaries();
     const dailySummary = summaries.find(
-      (summary) => summary.scope === SummaryScopeTypes.Day,
+      (summary) =>
+        summary.scope === SummaryScopeTypes.Day &&
+        isSameDay(summary.date, new Date(2025, 7, 20)),
     );
     expect(dailySummary?.contents).toBe("This is a daily summary.");
   });
@@ -276,7 +278,9 @@ describe("#getRecentSummaries", () => {
       },
     };
     vol.fromNestedJSON(filesystem, "/");
-    await expect(getRecentSummaries()).resolves.toStrictEqual([]);
+    const getRecentSummariesSpy = vi.fn(getRecentSummaries);
+    await getRecentSummariesSpy();
+    expect(getRecentSummariesSpy).toHaveResolved();
   });
 
   it("works on encrypted keylogs", async () => {
@@ -297,6 +301,8 @@ describe("#getRecentSummaries", () => {
       loading: false,
       scope: SummaryScopeTypes.Week,
       screenshots: [],
+      keylogCharCount: 0,
+      screenshotSummaryCharCount: 0,
     };
 
     const encryptedDailySummary: Summary = {
@@ -319,9 +325,46 @@ describe("#getRecentSummaries", () => {
     };
 
     const summaries = await getRecentSummaries();
-    expect(summaries).toStrictEqual([
-      encryptedWeeklySummary,
-      encryptedDailySummary,
-    ]);
+    expect(summaries).toEqual(
+      expect.arrayContaining([encryptedWeeklySummary, encryptedDailySummary]),
+    );
+  });
+
+  it("fills gaps with blank summaries", async () => {
+    const filesystem = {
+      files: {
+        keylogs: {
+          "2025-08": {
+            "2025-08-20.log": "",
+            "2025-08-19.processed.chronological.log": "",
+          },
+        },
+        screenshots: {
+          "2025-08": {
+            "2025-08-20": {
+              "2025-08-20 10_30_00.jpg": "",
+              "2025-08-20 10_30_00.json": "",
+              "2025-08-20 11_00_00.jpg": "",
+              "2025-08-20 12_45_00.json": "",
+            },
+            "2025-08-17": {
+              "2025-08-17 10_30_00.jpg": "",
+              "2025-08-17 10_30_00.project.document.json": "",
+              "2025-08-17 11_00_00.jpg": "",
+              "2025-08-17 12_45_00.json": "",
+            },
+          },
+        },
+      },
+    };
+
+    vol.fromNestedJSON(filesystem, "/");
+    const summaries = await getRecentSummaries();
+    const gapSummary = summaries.find(
+      (s) =>
+        isSameDay(s.date, new Date(2025, 7, 18)) &&
+        s.scope === SummaryScopeTypes.Day,
+    );
+    expect(gapSummary).toBeDefined();
   });
 });

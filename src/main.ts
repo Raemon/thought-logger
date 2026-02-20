@@ -33,7 +33,8 @@ import {
   getRecentApps,
   getRecentSummaries,
   readFile,
- countUnencryptedFiles } from "./electron/files";
+  countUnencryptedFiles,
+} from "./electron/files";
 import { getSecret, setSecret } from "./electron/credentials";
 import { LOG_FILE_ENCRYPTION } from "./constants/credentials";
 import { changePassword, initializeMasterKey } from "./electron/encryption";
@@ -223,9 +224,7 @@ ipcMain.handle("GET_RECENT_LOGS", async () => {
 });
 
 ipcMain.handle("GET_ALL_LOGS", async () => {
-  return getRecentSummaries(Infinity).then((summaries) =>
-    summaries.filter((summary) => summary.contents),
-  );
+  return getRecentSummaries();
 });
 
 ipcMain.handle("GET_RECENT_APPS", getRecentApps);

@@ -64,35 +64,33 @@ export default function SummaryComponent({
         <span className="mr-auto">
           {formatDateHeader(date, log.scope === SummaryScopeTypes.Week)}
         </span>
-        {log.path && (
-          <button
-            className={
-              (log.loading
-                ? "text-gray-400 cursor-not-allowed "
-                : "text-gray-600 hover:text-blue-600 ") +
-              "group relative ml-2 p-1"
-            }
-            onClick={() => window.userData.generateAISummary(log)}
-            disabled={log.loading}
+        <button
+          className={
+            (log.loading
+              ? "text-gray-400 cursor-not-allowed "
+              : "text-gray-600 hover:text-blue-600 ") +
+            "group relative ml-2 p-1"
+          }
+          onClick={() => window.userData.generateAISummary(log)}
+          disabled={log.loading}
+        >
+          <span className="absolute right-full mr-1 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs bg-gray-800 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none">
+            Regenerate summary
+          </span>
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <span className="absolute right-full mr-1 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs bg-gray-800 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none">
-              Regenerate summary
-            </span>
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-          </button>
-        )}
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
       </div>
       <div className="flex flex-col gap-1">
         <div
@@ -104,7 +102,7 @@ export default function SummaryComponent({
           {log.loading ? (
             "Generating a summary..."
           ) : (
-            <Markdown>{log.contents}</Markdown>
+            <Markdown>{log.contents ? log.contents : ""}</Markdown>
           )}
         </div>
       </div>
