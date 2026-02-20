@@ -290,6 +290,15 @@
     username "^5.1.0"
     yarn-or-npm "^3.0.1"
 
+"@electron-forge/maker-base@7.10.2":
+  version "7.10.2"
+  resolved "https://registry.yarnpkg.com/@electron-forge/maker-base/-/maker-base-7.10.2.tgz#0ab9352eceace4c7e10dca3dc66edc79aefb3e9a"
+  integrity sha512-1QN4qnPVTjo+qWYG+s0kYv7XcuIowsPVvbl718FgJUcvkxyRjUA6kWHjFxRvdV6g7Sa2PzZBF+/Mrjpws1lehQ==
+  dependencies:
+    "@electron-forge/shared-types" "7.10.2"
+    fs-extra "^10.0.0"
+    which "^2.0.2"
+
 "@electron-forge/maker-base@7.6.0":
   version "7.6.0"
   resolved "https://registry.npmjs.org/@electron-forge/maker-base/-/maker-base-7.6.0.tgz"
@@ -319,13 +328,13 @@
   optionalDependencies:
     electron-installer-redhat "^3.2.0"
 
-"@electron-forge/maker-squirrel@^7.6.0":
-  version "7.6.0"
-  resolved "https://registry.npmjs.org/@electron-forge/maker-squirrel/-/maker-squirrel-7.6.0.tgz"
-  integrity sha512-8tqsJBRAe37YZSKv1fPc1tijQljkSlUQCaeun37ZOM/viurSeydt5nu2M+UDmJHAfD/PRZMjnYvCCWH+08wGVg==
+"@electron-forge/maker-squirrel@^7.10.2":
+  version "7.10.2"
+  resolved "https://registry.yarnpkg.com/@electron-forge/maker-squirrel/-/maker-squirrel-7.10.2.tgz#a5ac3205fd2bddbdd3806a1cd9c3d73793909b4f"
+  integrity sha512-Y5EhNSBXf4a7qcq+BK/x5qVDlQ1Gez5V+arUpDvVxf1zwvsB1aSyAjmoBrOKGYD9A5pJzjkMWMDw95MStl1W4A==
   dependencies:
-    "@electron-forge/maker-base" "7.6.0"
-    "@electron-forge/shared-types" "7.6.0"
+    "@electron-forge/maker-base" "7.10.2"
+    "@electron-forge/shared-types" "7.10.2"
     fs-extra "^10.0.0"
   optionalDependencies:
     electron-winstaller "^5.3.0"
@@ -385,6 +394,16 @@
   dependencies:
     "@electron-forge/shared-types" "7.6.0"
 
+"@electron-forge/shared-types@7.10.2":
+  version "7.10.2"
+  resolved "https://registry.yarnpkg.com/@electron-forge/shared-types/-/shared-types-7.10.2.tgz#86d37f0ac6800e2197d9878c3445a28485d3abea"
+  integrity sha512-e2pd9RsdbKwsNf6UtKoolmJGy92Nc0/XO4SI91doV8cM954hM2XSYz3VHoqXebMFAF1JDfXoEUt6UCRbEDgMgw==
+  dependencies:
+    "@electron-forge/tracer" "7.10.2"
+    "@electron/packager" "^18.3.5"
+    "@electron/rebuild" "^3.7.0"
+    listr2 "^7.0.2"
+
 "@electron-forge/shared-types@7.6.0":
   version "7.6.0"
   resolved "https://registry.npmjs.org/@electron-forge/shared-types/-/shared-types-7.6.0.tgz"
@@ -441,6 +460,13 @@
     "@electron-forge/shared-types" "7.6.0"
     "@electron-forge/template-base" "7.6.0"
     fs-extra "^10.0.0"
+
+"@electron-forge/tracer@7.10.2":
+  version "7.10.2"
+  resolved "https://registry.yarnpkg.com/@electron-forge/tracer/-/tracer-7.10.2.tgz#ef6b274127e71c3a09271ba2762345fc1e89c377"
+  integrity sha512-jhLLQbttfZViSOYn/3SJc8HML+jNZAytPVJwgGGd3coUiFysWJ2Xald99iqOiouPAhIigBfNPxQb/q/EbcDu4g==
+  dependencies:
+    chrome-trace-event "^1.0.3"
 
 "@electron-forge/tracer@7.6.0":
   version "7.6.0"
