@@ -269,7 +269,8 @@ export async function getRecentSummaries(
     .toSorted(compareAsc)[0];
   const end = new Date();
   const lowerBound = subSeconds(end, ageInSeconds);
-  const start = max([lowerBound, earlistDate]);
+  const start =
+    ageInSeconds === Infinity ? earlistDate : max([lowerBound, earlistDate]);
 
   for (const date of eachDayOfInterval({
     start,
