@@ -129,8 +129,10 @@ async function processKeylog(file: Keylog): Promise<void> {
 
 export async function needsSummary(summary: Summary): Promise<boolean> {
   const today = new Date();
+  const hasData = summary.keylogs.length > 0 || summary.screenshots.length > 0;
 
   return (
+    hasData &&
     summary.path === null &&
     ((summary.scope === SummaryScopeTypes.Day &&
       !isSameDay(today, summary.date)) ||
