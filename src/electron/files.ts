@@ -2,11 +2,13 @@ import path from "path";
 import fs from "node:fs/promises";
 import sumBy from "lodash/sumBy";
 import {
+  compareAsc,
   differenceInHours,
   eachDayOfInterval,
   eachWeekOfInterval,
   isSameDay,
   isSameWeek,
+  max,
   parse,
   setDefaultOptions,
   subSeconds,
@@ -258,11 +260,16 @@ export async function getRecentSummaries(
   ageInSeconds: number = MONTH_IN_SECONDS,
 ): Promise<Summary[]> {
   const summaries: Summary[] = [];
-  const end = new Date();
-  const start = subSeconds(end, ageInSeconds);
   const existingSummaries = await getSummaries();
   const keylogs: Keylog[] = await getKeylogs();
   const screenshots: Screenshot[] = await getScreenshots();
+
+  const earlistDate = [...existingSummaries, ...keylogs, ...screenshots]
+    .map((o) => o.date)
+    .toSorted(compareAsc)[0];
+  const end = new Date();
+  const lowerBound = subSeconds(end, ageInSeconds);
+  const start = max([lowerBound, earlistDate]);
 
   for (const date of eachDayOfInterval({
     start,
