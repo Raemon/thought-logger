@@ -7,7 +7,7 @@ import logger from "../logging";
 import { loadPreferences } from "../preferences";
 import { getRecentSummaries, readFile, writeFile } from "./files";
 import { getSecret } from "./credentials";
-import { OPEN_ROUTER } from "../constants/credentials";
+import { LOG_FILE_ENCRYPTION, OPEN_ROUTER } from "../constants/credentials";
 import { SUMMARIZER_SYSTEM_PROMPT } from "../constants/prompts";
 import { getSummaryPath } from "./paths";
 
@@ -142,6 +142,16 @@ export async function needsSummary(summary: Summary): Promise<boolean> {
 }
 
 async function checkAndGenerateSummaries() {
+  const password = await getSecret(LOG_FILE_ENCRYPTION);
+
+  if (!password) {
+    logger.info("No password, postponing summary generation");
+    setTimeout(() => {
+      checkAndGenerateSummaries();
+    }, 20000);
+    return;
+  }
+
   const summaries = await getRecentSummaries();
 
   for (const summary of summaries) {
