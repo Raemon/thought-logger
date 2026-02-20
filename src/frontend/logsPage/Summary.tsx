@@ -42,8 +42,10 @@ function formatDateHeader(date: Date, weekly = false) {
 
 export default function SummaryComponent({
   log,
+  loadedAll = false,
 }: {
   log: Summary;
+  loadedAll?: boolean;
 }): ReactElement {
   const date = log.date;
   const dateStr = format(date, "yyyy-MM-dd");
@@ -71,7 +73,7 @@ export default function SummaryComponent({
               : "text-gray-600 hover:text-blue-600 ") +
             "group relative ml-2 p-1"
           }
-          onClick={() => window.userData.generateAISummary(log)}
+          onClick={() => window.userData.generateAISummary(log, loadedAll)}
           disabled={log.loading}
         >
           <span className="absolute right-full mr-1 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs bg-gray-800 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none">

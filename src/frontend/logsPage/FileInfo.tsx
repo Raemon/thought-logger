@@ -43,7 +43,7 @@ export function FileInfo() {
           {serializedLogs
             .sort((a, b) => compareDesc(a.date, b.date))
             .map((log) => (
-              <SummaryComponent key={log.date.toISOString()} log={log} />
+              <SummaryComponent key={log.date.toISOString()} log={log} loadedAll={loadedAll} />
             ))}
           {!loadedAll && (
             <button

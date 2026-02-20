@@ -188,7 +188,7 @@ export async function getScreenshotImagePaths(): Promise<string[]> {
   return availableImagePaths;
 }
 
-const MONTH_IN_SECONDS = 60 * 60 * 24 * 30;
+export const MONTH_IN_SECONDS = 60 * 60 * 24 * 30;
 
 async function getCharCount<T>(
   items: T[],

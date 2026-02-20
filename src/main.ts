@@ -34,6 +34,7 @@ import {
   getRecentSummaries,
   readFile,
   countUnencryptedFiles,
+  MONTH_IN_SECONDS,
 } from "./electron/files";
 import { getSecret, setSecret } from "./electron/credentials";
 import { LOG_FILE_ENCRYPTION } from "./constants/credentials";
@@ -197,8 +198,9 @@ ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
   }
 });
 
-ipcMain.handle("GENERATE_AI_SUMMARY", async (_event, summary: Summary) => {
-  const oldLogs = await getRecentSummaries();
+ipcMain.handle("GENERATE_AI_SUMMARY", async (_event, summary: Summary, loadAll: boolean) => {
+  const ageInSeconds = loadAll ? Infinity : MONTH_IN_SECONDS;
+  const oldLogs = await getRecentSummaries(ageInSeconds);
   for (const log of oldLogs) {
     const { date, scope } = log;
     if (isEqual(date, summary.date) && scope === summary.scope) {
@@ -207,7 +209,7 @@ ipcMain.handle("GENERATE_AI_SUMMARY", async (_event, summary: Summary) => {
   }
   updateSummaries(oldLogs);
   await summarize(summary);
-  const newLogs = await getRecentSummaries();
+  const newLogs = await getRecentSummaries(ageInSeconds);
   updateSummaries(newLogs);
 });
 
