@@ -464,6 +464,7 @@ export async function writeFile(
 }
 
 async function unencryptedFiles(): Promise<string[]> {
+  const summaries = await getSummaries();
   const keylogs = await getKeylogs();
   const screenshots = await getScreenshots();
 
@@ -476,6 +477,8 @@ async function unencryptedFiles(): Promise<string[]> {
       .flatMap((screenshot) => [screenshot.imagePath, screenshot.summaryPath])
       .filter((file) => file !== null),
   );
+
+  files = files.concat(summaries.map((s) => s.path).filter((f) => f !== null));
 
   const unencryptedFiles = [];
   for (const file of files) {
