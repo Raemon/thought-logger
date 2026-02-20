@@ -410,8 +410,13 @@ export async function readFile(
   binary = false,
 ): Promise<string | Uint8Array> {
   const release = await fileMutex.acquire();
-  const plaintext = await readFileNoLock(filePath, binary);
-  release();
+  let plaintext: string | Uint8Array<ArrayBufferLike>;
+  try {
+    plaintext = await readFileNoLock(filePath, binary);
+  } finally {
+    release();
+  }
+
   return plaintext;
 }
 
