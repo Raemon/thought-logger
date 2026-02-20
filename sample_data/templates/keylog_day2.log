@@ -1,0 +1,97 @@
+{{DATE}} 09.15.32: Slack
+Hey team, just pushed the latest changes to the feature branch.⏎
+Please take a look when you get a chance.⏎
+
+{{DATE}} 09.22.18: Google Chrome
+thought-logger app documentation⌫⌫⌫⌫⌫⌫⌫⌫⌫⌫⌫⌫⌫electron keyboard monitoring typescript⏎
+
+{{DATE}} 09.35.41: Code - Insiders
+import { app } from 'electron';⏎
+import { Keylogger } from './keylogger';⏎
+⏎
+export function initialize() {⏎
+  app.whenReady().then(() => {⏎
+    Keylogger.start();⏎
+  });⏎
+}⏎
+⌃⌘s
+
+{{DATE}} 09.48.12: Terminal
+cd ~/projects/thought-logger⏎
+yarn install⏎
+yarn dev⏎
+
+{{DATE}} 09.52.33: Code - Insiders
+// TODO: Fix the backspace handling in processRawText⏎
+// The buffer needs to properly track deletions⏎
+⌃⌘s
+
+{{DATE}} 10.05.47: Slack
+@john I think I found the issue with the keylogger. It's related to how we handle backspace in the buffer.⏎
+
+{{DATE}} 10.12.29: Code - Insiders
+function processRawText(text: string): string {⏎
+  let buffer = '';⏎
+  for (const char of text) {⏎
+    if (char === '⌫') {⏎
+      buffer = buffer.slice(0, -1);⏎
+    } else {⏎
+      buffer += char;⏎
+    }⏎
+  }⏎
+  return buffer;⏎
+}⏎
+⌃⌘s
+
+{{DATE}} 10.28.55: Terminal
+git status⏎
+git add .⏎
+git commit -m "Fix backspace handling in processRawText"⏎
+git push origin feature/keylogger-fix⏎
+
+{{DATE}} 10.45.18: Google Chrome
+github.com pull request create⏎
+
+{{DATE}} 11:02.33: Notion
+## Weekly Goals⏎
+- [ ] Complete keylogger refactor⏎
+- [ ] Write unit tests⏎
+- [ ] Update documentation⏎
+
+{{DATE}} 11.18.44: Code - Insiders
+describe('processRawText', () => {⏎
+  it('should handle backspaces correctly', () => {⏎
+    const result = processRawText('hello⌫⌫⌣p');⏎
+    expect(result).toBe('help');⏎
+  });⏎
+});⏎
+⌃⌘s
+
+{{DATE}} 11.32.21: Terminal
+yarn test⏎
+⏎
+PASS  src/keylogger.test.ts⏎
+
+{{DATE}} 14.15.08: Slack
+The PR is ready for review! 🎉⏎
+
+{{DATE}} 14.22.55: Spotify
+
+{{DATE}} 14.35.12: Code - Insiders
+// Next: implement screenshot capture⏎
+async function captureScreen(): Promise<Buffer> {⏎
+  const sources = await desktopCapturer.getSources({⏎
+    types: ['screen']⏎
+  });⏎
+  return sources[0].thumbnail.toPNG();⏎
+}⏎
+⌃⌘s
+
+{{DATE}} 15.48.33: Google Chrome
+electron desktopCapturer documentation⏎
+
+{{DATE}} 16.05.27: Terminal
+git add . && git commit -m "Add screenshot capture functionality"⏎
+
+{{DATE}} 16.22.41: Slack
+Heads up - I'm starting on the screenshot feature now. Should have something to show tomorrow.⏎

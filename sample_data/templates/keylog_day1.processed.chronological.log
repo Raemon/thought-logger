@@ -1,0 +1,82 @@
+{{DATE}} 08.32.15: Slack
+Good morning! Starting the week with some planning.
+
+{{DATE}} 08.45.22: Notion
+## Week Goals
+- [ ] Finish keylogger refactor
+- [ ] Add unit tests
+- [ ] Start on screenshot feature
+
+{{DATE}} 09.05.38: Code - Insiders
+// Refactor keylogger to handle special keys better
+const KEY_MAP = new Map([
+  ['SPACE', [' ', ' ']],
+  ['BACKSPACE', ['⌫', '⌫']],
+  ['RETURN', ['⏎', '⏎']],
+]);
+
+{{DATE}} 09.28.45: Terminal
+cd ~/projects/thought-logger
+yarn install
+yarn dev
+
+{{DATE}} 09.55.12: Google Chrome
+typescript map initialization syntax
+
+{{DATE}} 10.18.33: Code - Insiders
+interface ParsedKey {
+  raw: string;
+  processed: string;
+  isAppSwitch: boolean;
+}
+
+{{DATE}} 10.45.28: Slack
+@team Quick question - should we log modifier-only keypresses? I'm thinking no for privacy reasons.
+
+{{DATE}} 11.02.55: Terminal
+git status
+git checkout -b feature/keylogger-refactor
+
+{{DATE}} 11.28.12: Code - Insiders
+// Handle modifier-only keypresses
+if (event.name?.includes('CTRL') || event.name?.includes('META')) {
+  skipNext = true;
+  return { raw: key, processed: '', isAppSwitch: false };
+}
+
+{{DATE}} 11.52.38: Google Chrome
+electron global key listener documentation
+
+{{DATE}} 12:15.22: Slack
+Thanks for the input! I'll skip logging modifier-only presses.
+
+{{DATE}} 13.28.45: Code - Insiders
+function processKeyPress(
+  event: IGlobalKeyEvent,
+  down: IGlobalKeyDownMap
+): ParsedKey {
+  const isShift = down['LEFT SHIFT'] || down['RIGHT SHIFT'];
+  const key = getModifierString(down);
+  // ... rest of implementation
+}
+
+{{DATE}} 14.05.18: Terminal
+yarn test
+
+{{DATE}} 14.32.55: Notion
+### Progress Update
+Keylogger refactor going well. Should have PR up tomorrow.
+
+{{DATE}} 15.18.22: Code - Insiders
+// Need to handle app switches
+if (event._raw.includes('Application activated')) {
+  const match = event._raw.match(/\{\{(.*)\}\}/);
+  if (!match) return { raw: '', processed: '', isAppSwitch: false };
+  return handleAppSwitch(match[1]);
+}
+
+{{DATE}} 16.05.47: Slack
+Heads up - I'll have the keylogger refactor ready for review tomorrow morning.
+
+{{DATE}} 16.28.33: Terminal
+git add . && git commit -m "WIP: Keylogger refactor"

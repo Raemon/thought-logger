@@ -1,0 +1,71 @@
+
+=== Slack ===
+Good morning! Starting the week with some planning.
+[10:45]
+@team Quick question - should we log modifier-only keypresses? I'm thinking no for privacy reasons.
+[12:15]
+Thanks for the input! I'll skip logging modifier-only presses.
+[16:05]
+Heads up - I'll have the keylogger refactor ready for review tomorrow morning.
+
+=== Notion ===
+## Week Goals
+- [ ] Finish keylogger refactor
+- [ ] Add unit tests
+- [ ] Start on screenshot feature
+[14:32]
+### Progress Update
+Keylogger refactor going well. Should have PR up tomorrow.
+
+=== Code - Insiders ===
+// Refactor keylogger to handle special keys better
+const KEY_MAP = new Map([
+  ['SPACE', [' ', ' ']],
+  ['BACKSPACE', ['⌫', '⌫']],
+  ['RETURN', ['⏎', '⏎']],
+]);
+[10:18]
+interface ParsedKey {
+  raw: string;
+  processed: string;
+  isAppSwitch: boolean;
+}
+[11:28]
+// Handle modifier-only keypresses
+if (event.name?.includes('CTRL') || event.name?.includes('META')) {
+  skipNext = true;
+  return { raw: key, processed: '', isAppSwitch: false };
+}
+[13:28]
+function processKeyPress(
+  event: IGlobalKeyEvent,
+  down: IGlobalKeyDownMap
+): ParsedKey {
+  const isShift = down['LEFT SHIFT'] || down['RIGHT SHIFT'];
+  const key = getModifierString(down);
+  // ... rest of implementation
+}
+[15:18]
+// Need to handle app switches
+if (event._raw.includes('Application activated')) {
+  const match = event._raw.match(/\{\{(.*)\}\}/);
+  if (!match) return { raw: '', processed: '', isAppSwitch: false };
+  return handleAppSwitch(match[1]);
+}
+
+=== Terminal ===
+cd ~/projects/thought-logger
+yarn install
+yarn dev
+[11:02]
+git status
+git checkout -b feature/keylogger-refactor
+[14:05]
+yarn test
+[16:28]
+git add . && git commit -m "WIP: Keylogger refactor"
+
+=== Google Chrome ===
+typescript map initialization syntax
+[11:52]
+electron global key listener documentation
