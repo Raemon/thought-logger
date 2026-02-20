@@ -264,13 +264,13 @@ export async function getRecentSummaries(
   const keylogs: Keylog[] = await getKeylogs();
   const screenshots: Screenshot[] = await getScreenshots();
 
-  const earlistDate = [...existingSummaries, ...keylogs, ...screenshots]
+  const earliestDate = [...existingSummaries, ...keylogs, ...screenshots]
     .map((o) => o.date)
     .toSorted(compareAsc)[0];
   const end = new Date();
   const lowerBound = subSeconds(end, ageInSeconds);
   const start =
-    ageInSeconds === Infinity ? earlistDate : max([lowerBound, earlistDate]);
+    ageInSeconds === Infinity ? earliestDate : max([lowerBound, earliestDate]);
 
   for (const date of eachDayOfInterval({
     start,
