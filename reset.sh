@@ -2,6 +2,29 @@
 
 set -e
 
+# Warning and confirmation
+RED='\033[0;31m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+echo ""
+echo -e "${RED}${BOLD}⚠️  WARNING: This will DELETE ALL your ThoughtLogger data!  ⚠️${RESET}"
+echo ""
+echo "This script will remove:"
+echo "  - All keylogs"
+echo "  - All screenshots"
+echo "  - All summaries"
+echo "  - Your encryption password"
+echo ""
+echo -e "${RED}${BOLD}This action cannot be undone!${RESET}"
+echo ""
+read -p 'Type "blow away my data" to continue: ' confirmation
+
+if [ "$confirmation" != "blow away my data" ]; then
+	echo "Aborted."
+	exit 1
+fi
+
 TARGET_DIR=~/Library/Application\ Support/thought-logger/files
 TEMPLATES_DIR=sample_data/templates
 
