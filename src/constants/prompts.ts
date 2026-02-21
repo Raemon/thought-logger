@@ -9,9 +9,7 @@ For each window visible:
 - frames: any distinct sections/frames within the window (e.g. sidebar, chat panels) with their title and text
 - images: descriptions of any images visible
 
-IMPORTANT: If any browser window appears to be in incognito/private mode, set exactText to "skipped", frames to [], and images to [].
-
-Do not summarize nsfw things.
+IMPORTANT: If any browser window appears to be in incognito/private mode, or looking at nsfw things, or looking at passwords, api keys or credit card numbers, set title, url and exactText to "skipped", frames to [], and images to [], and 
 `
 
 export const DEFAULT_DAILY_SUMMARY_PROMPT =`
