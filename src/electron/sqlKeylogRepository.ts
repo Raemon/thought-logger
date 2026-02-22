@@ -16,7 +16,6 @@ let sqlJsPromise: Promise<SqlJsStatic> | null = null;
 async function getSqlJs(): Promise<SqlJsStatic> {
   if (sqlJsPromise) return sqlJsPromise;
   sqlJsPromise = import("sql.js/dist/sql-asm.js").then((mod) =>
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
     (mod.default as (config?: unknown) => Promise<SqlJsStatic>)().then((sql) => sql),
   );
   return sqlJsPromise;
