@@ -11,6 +11,8 @@ export const endpointList = [
   { path: "/yesterday/screenshots/summaries", label: "yesterday/summaries", description: "Yesterday's screenshot summaries" },
   { path: "/week", label: "week", description: "Past week processed keylogs" },
   { path: "/week/raw", label: "week/raw", description: "Past week raw keylogs" },
+  { path: "/sql", label: "sql", description: "Processed SQL logitems (newest to oldest)" },
+  { path: "/sql/raw", label: "sql/raw", description: "Raw SQL logitems past 24h (JSON)" },
 ];
 
 // These endpoints have dynamic paths and are not directly linkable from the UI

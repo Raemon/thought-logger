@@ -13,6 +13,7 @@ import {
   getScreenshotImagePathsForDate,
   readFile,
 } from "./files";
+import { getSqlLogitemsAll, getSqlLogitemsPast24Hours, renderSqlLogitemsProcessed } from "./sqlKeylogPipeline";
 import { allEndpoints } from "../constants/endpoints";
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
@@ -482,6 +483,28 @@ export function startLocalServer(port = 8765): http.Server {
         } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to read raw log files for the past week.");
+        }
+        break;
+
+      case "/sql/raw":
+        try {
+          const logitems = getSqlLogitemsPast24Hours();
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(logitems));
+        } catch {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to read SQL keylog data.");
+        }
+        break;
+
+      case "/sql":
+        try {
+          const logitems = getSqlLogitemsAll();
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end(renderSqlLogitemsProcessed(logitems));
+        } catch {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to render SQL keylog data.");
         }
         break;
 
