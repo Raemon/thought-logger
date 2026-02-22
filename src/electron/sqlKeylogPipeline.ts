@@ -1,5 +1,7 @@
 import { app } from "electron";
 import path from "node:path";
+import fs from "node:fs/promises";
+import type { FileHandle } from "node:fs/promises";
 import { spawn, ChildProcessWithoutNullStreams } from "node:child_process";
 import readline from "node:readline";
 
@@ -10,13 +12,16 @@ import { SqlKeylogRepository } from "./sqlKeylogRepository";
 import type { SqlLogitem } from "./sqlKeylogTypes";
 import {
   getSqlKeylogDbPath,
+  quarantineEncryptedSqlKeylogDb,
   readEncryptedSqlKeylogDbBytes,
   writeEncryptedSqlKeylogDbBytesAtomic,
 } from "./sqlKeylogStorage";
+import { isErrnoException } from "./utils";
 
 let repository: SqlKeylogRepository | null = null;
 let blockedApps: string[] = [];
 let initialized = false;
+let initializing = false;
 let persistTimer: NodeJS.Timeout | null = null;
 let persistInFlight = false;
 let dbDirty = false;
@@ -25,6 +30,8 @@ let nativeReadline: readline.Interface | null = null;
 let nativeRestartTimer: NodeJS.Timeout | null = null;
 let nativeRestartAttempts = 0;
 let shuttingDown = false;
+let lockHandle: FileHandle | null = null;
+let lockFilePath: string | null = null;
 
 const BINARY_NAME = "MacKeyServerSql";
 
@@ -40,6 +47,79 @@ function getBinaryPath(): string {
     : path.join(app.getAppPath(), "bin", BINARY_NAME);
 }
 
+function looksLikeSqliteDb(bytes: Uint8Array): boolean {
+  if (bytes.length < 16) return false;
+  const header = Buffer.from(bytes.slice(0, 16)).toString("utf8");
+  return header === "SQLite format 3\u0000";
+}
+
+async function acquireSqlKeylogWriterLock(): Promise<boolean> {
+  if (process.platform !== "darwin") return true;
+  if (lockHandle) return true;
+  const dbPath = getSqlKeylogDbPath();
+  const dir = path.dirname(dbPath);
+  const lockPath = path.join(dir, "logitems.lock");
+  await fs.mkdir(dir, { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      lockHandle = await fs.open(lockPath, "wx");
+      lockFilePath = lockPath;
+      await lockHandle.writeFile(JSON.stringify({ pid: process.pid, startedAtMs: Date.now() }), "utf8");
+      return true;
+    } catch (error: unknown) {
+      if (!(isErrnoException(error) && error.code === "EEXIST")) {
+        throw error;
+      }
+      try {
+        const raw = await fs.readFile(lockPath, "utf8");
+        const parsed = JSON.parse(raw) as { pid?: number };
+        const otherPid = typeof parsed.pid === "number" ? parsed.pid : null;
+        if (otherPid) {
+          try {
+            process.kill(otherPid, 0);
+            return false;
+          } catch (killError: unknown) {
+            if (!(isErrnoException(killError) && killError.code === "ESRCH")) {
+              return false;
+            }
+          }
+        }
+        await fs.unlink(lockPath);
+      } catch (readError: unknown) {
+        if (!(isErrnoException(readError) && readError.code === "ENOENT")) {
+          try {
+            await fs.unlink(lockPath);
+          } catch (unlinkError: unknown) {
+            if (!(isErrnoException(unlinkError) && unlinkError.code === "ENOENT")) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+async function releaseSqlKeylogWriterLock(): Promise<void> {
+  const handle = lockHandle;
+  const filePath = lockFilePath;
+  lockHandle = null;
+  lockFilePath = null;
+  try {
+    await handle?.close();
+  } catch (error: unknown) {
+    void error;
+  }
+  try {
+    if (filePath) await fs.unlink(filePath);
+  } catch (error: unknown) {
+    if (!(isErrnoException(error) && error.code === "ENOENT")) {
+      throw error;
+    }
+  }
+}
+
 function schedulePersist(): void {
   if (!repository) return;
   if (persistTimer || persistInFlight) return;
@@ -50,6 +130,7 @@ function schedulePersist(): void {
     dbDirty = false;
     persistSqlKeylogDb()
       .catch((error) => {
+        dbDirty = true;
         logger.error(`Failed to persist SQL keylog DB: ${error instanceof Error ? error.message : `${error}`}`);
       })
       .finally(() => {
@@ -81,28 +162,47 @@ function formatTimestampForHeader(timestampMs: number): string {
 }
 
 export async function initializeSqlKeylogPipeline(): Promise<void> {
-  if (initialized) return;
-  initialized = true;
+  if (initialized || initializing) return;
+  initializing = true;
   shuttingDown = false;
 
-  const prefs = loadPreferences();
-  blockedApps = prefs.blockedApps || [];
-
-  const dbPath = getSqlKeylogDbPath();
-  let existingBytes: Uint8Array | null = null;
   try {
-    existingBytes = await readEncryptedSqlKeylogDbBytes(dbPath);
+    const prefs = loadPreferences();
+    blockedApps = prefs.blockedApps || [];
+
+    const acquiredLock = await acquireSqlKeylogWriterLock();
+    if (!acquiredLock) {
+      logger.error("Refusing to start SQL keylog pipeline: another instance is running");
+      return;
+    }
+
+    const dbPath = getSqlKeylogDbPath();
+    const existingBytes = await readEncryptedSqlKeylogDbBytes(dbPath);
+    if (existingBytes && !looksLikeSqliteDb(existingBytes)) {
+      await quarantineEncryptedSqlKeylogDb(dbPath, "not-sqlite-header");
+      logger.error("Refusing to start SQL keylog pipeline: existing DB bytes are not a valid SQLite database");
+      await releaseSqlKeylogWriterLock();
+      return;
+    }
+    repository = await SqlKeylogRepository.initialize(existingBytes);
+    initialized = true;
+
+    if (process.platform !== "darwin") {
+      logger.info("SQL keylog pipeline is disabled on non-darwin platforms");
+      return;
+    }
+
+    startNativeHelper();
   } catch (error) {
-    logger.error(`Failed to read SQL keylog DB: ${error instanceof Error ? error.message : `${error}`}`);
-  }
-  repository = await SqlKeylogRepository.initialize(existingBytes);
-
-  if (process.platform !== "darwin") {
-    logger.info("SQL keylog pipeline is disabled on non-darwin platforms");
+    logger.error(`Failed to initialize SQL keylog pipeline: ${error instanceof Error ? error.message : `${error}`}`);
+    initialized = false;
+    repository?.close();
+    repository = null;
+    await releaseSqlKeylogWriterLock();
     return;
+  } finally {
+    initializing = false;
   }
-
-  startNativeHelper();
 }
 
 export function updateSqlKeylogPreferences(): void {
@@ -248,17 +348,17 @@ export function shutdownSqlKeylogPipeline(): Promise<void> {
   cleanupNativeHelper();
 
   const persistPromise = persistSqlKeylogDb();
-  return persistPromise.finally(() => {
+  return persistPromise.finally(async () => {
     repository?.close();
     repository = null;
     initialized = false;
     persistInFlight = false;
     dbDirty = false;
     nativeRestartAttempts = 0;
+    await releaseSqlKeylogWriterLock();
   });
 }
 
 export function __setSqlKeylogRepositoryForTesting(repo: SqlKeylogRepository | null): void {
   repository = repo;
 }
-

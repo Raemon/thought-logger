@@ -9,6 +9,7 @@ export const endpointList = [
   { path: "/yesterday/screenshots", label: "yesterday/screenshots", description: "Yesterday's screenshot image paths" },
   { path: "/yesterday/screenshots/all", label: "yesterday/screenshots/all", description: "Yesterday's screenshot images gallery" },
   { path: "/yesterday/screenshots/summaries", label: "yesterday/summaries", description: "Yesterday's screenshot summaries" },
+  { path: "/health", label: "health", description: "Past week per-minute activity overview" },
   { path: "/week", label: "week", description: "Past week processed keylogs" },
   { path: "/week/raw", label: "week/raw", description: "Past week raw keylogs" },
   { path: "/sql", label: "sql", description: "Processed SQL logitems past 24h (newest to oldest)" },
