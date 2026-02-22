@@ -21,6 +21,10 @@ let persistTimer: NodeJS.Timeout | null = null;
 let persistInFlight = false;
 let dbDirty = false;
 let nativeProcess: ChildProcessWithoutNullStreams | null = null;
+let nativeReadline: readline.Interface | null = null;
+let nativeRestartTimer: NodeJS.Timeout | null = null;
+let nativeRestartAttempts = 0;
+let shuttingDown = false;
 
 const BINARY_NAME = "MacKeyServerSql";
 
@@ -79,6 +83,7 @@ function formatTimestampForHeader(timestampMs: number): string {
 export async function initializeSqlKeylogPipeline(): Promise<void> {
   if (initialized) return;
   initialized = true;
+  shuttingDown = false;
 
   const prefs = loadPreferences();
   blockedApps = prefs.blockedApps || [];
@@ -97,12 +102,61 @@ export async function initializeSqlKeylogPipeline(): Promise<void> {
     return;
   }
 
+  startNativeHelper();
+}
+
+export function updateSqlKeylogPreferences(): void {
+  const prefs = loadPreferences();
+  blockedApps = prefs.blockedApps || [];
+}
+
+function cleanupNativeHelper(): void {
+  if (nativeRestartTimer) {
+    clearTimeout(nativeRestartTimer);
+    nativeRestartTimer = null;
+  }
+
+  if (nativeReadline) {
+    nativeReadline.close();
+    nativeReadline = null;
+  }
+
+  if (nativeProcess) {
+    nativeProcess.kill();
+    nativeProcess = null;
+  }
+}
+
+function scheduleNativeRestart(reason: string): void {
+  if (shuttingDown) return;
+  if (process.platform !== "darwin") return;
+  if (nativeRestartTimer) return;
+
+  nativeRestartAttempts += 1;
+  const delayMs = Math.min(30000, 1000 * Math.pow(2, Math.min(nativeRestartAttempts, 5)));
+  logger.error(`Scheduling MacKeyServerSql restart in ${delayMs}ms (${reason})`);
+  nativeRestartTimer = setTimeout(() => {
+    nativeRestartTimer = null;
+    startNativeHelper();
+  }, delayMs);
+}
+
+function startNativeHelper(): void {
+  if (shuttingDown) return;
+  if (nativeProcess) return;
+
   const binaryPath = getBinaryPath();
   const proc = spawn(binaryPath, [], { stdio: ["pipe", "pipe", "pipe"] });
   nativeProcess = proc;
 
+  proc.on("spawn", () => {
+    nativeRestartAttempts = 0;
+  });
+
   proc.on("error", (error) => {
     logger.error(`Failed to start MacKeyServerSql: ${error instanceof Error ? error.message : `${error}`}`);
+    nativeProcess = null;
+    scheduleNativeRestart("spawn error");
   });
 
   proc.stderr.on("data", (chunk) => {
@@ -110,6 +164,7 @@ export async function initializeSqlKeylogPipeline(): Promise<void> {
   });
 
   const rl = readline.createInterface({ input: proc.stdout });
+  nativeReadline = rl;
   rl.on("line", (line) => {
     try {
       const event = JSON.parse(line) as {
@@ -135,12 +190,10 @@ export async function initializeSqlKeylogPipeline(): Promise<void> {
   proc.on("exit", (code) => {
     logger.error(`MacKeyServerSql exited with code ${code}`);
     nativeProcess = null;
+    nativeReadline?.close();
+    nativeReadline = null;
+    scheduleNativeRestart("process exit");
   });
-}
-
-export function updateSqlKeylogPreferences(): void {
-  const prefs = loadPreferences();
-  blockedApps = prefs.blockedApps || [];
 }
 
 export function ingestSqlKeystroke({
@@ -188,13 +241,11 @@ export function renderSqlLogitemsProcessed(logitems: SqlLogitem[]): string {
 }
 
 export function shutdownSqlKeylogPipeline(): Promise<void> {
+  shuttingDown = true;
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = null;
 
-  if (nativeProcess) {
-    nativeProcess.kill();
-    nativeProcess = null;
-  }
+  cleanupNativeHelper();
 
   const persistPromise = persistSqlKeylogDb();
   return persistPromise.finally(() => {
@@ -203,6 +254,7 @@ export function shutdownSqlKeylogPipeline(): Promise<void> {
     initialized = false;
     persistInFlight = false;
     dbDirty = false;
+    nativeRestartAttempts = 0;
   });
 }
 
