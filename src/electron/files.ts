@@ -24,6 +24,7 @@ import {
   ENCRYPTED_FILE_EXT,
   encryptUserData,
 } from "./encryption";
+import logger from "../logging";
 
 setDefaultOptions({ weekStartsOn: 1 });
 
@@ -384,19 +385,41 @@ async function readFileNoLock(
   filePath: string,
   binary: boolean,
 ): Promise<string | Uint8Array> {
+  logger.debug(`files.read.start path=${filePath} binary=${binary}`);
   try {
     const rawData = await fs.readFile(filePath);
+    logger.debug(
+      `files.read.plain.success path=${filePath} bytes=${rawData.length}`,
+    );
 
     return binary ? rawData : Buffer.from(rawData).toString("utf8");
   } catch (error: unknown) {
     if (!(isErrnoException(error) && error.code === "ENOENT")) {
+      logger.error(`files.read.plain.error path=${filePath} error=${error}`);
       throw error;
     }
+    logger.debug(`files.read.plain.missing path=${filePath}`);
   }
 
   const fileData = await fs.readFile(`${filePath}.crypt`);
+  logger.debug(
+    `files.read.crypt.loaded path=${filePath}.crypt bytes=${fileData.length}`,
+  );
+  if (fileData.length === 0) {
+    logger.info(`files.read.crypt.empty path=${filePath}.crypt`);
+    return binary ? new Uint8Array() : "";
+  }
 
-  const plaintext = await decryptUserData(fileData);
+  let plaintext: Uint8Array;
+  try {
+    plaintext = await decryptUserData(fileData);
+  } catch (error) {
+    logger.error(`files.read.crypt.decrypt.error path=${filePath} error=${error}`);
+    throw error;
+  }
+  logger.debug(
+    `files.read.crypt.decrypt.success path=${filePath} bytes=${plaintext.length}`,
+  );
 
   return binary ? plaintext : Buffer.from(plaintext).toString("utf8");
 }
@@ -409,12 +432,14 @@ export async function readFile(
   filePath: string,
   binary = false,
 ): Promise<string | Uint8Array> {
+  logger.debug(`files.read.lock.acquire path=${filePath} binary=${binary}`);
   const release = await fileMutex.acquire();
   let plaintext: string | Uint8Array<ArrayBufferLike>;
   try {
     plaintext = await readFileNoLock(filePath, binary);
   } finally {
     release();
+    logger.debug(`files.read.lock.release path=${filePath}`);
   }
 
   return plaintext;
@@ -425,6 +450,9 @@ export async function writeFile(
   contents: string | Uint8Array,
   append = false,
 ): Promise<void> {
+  logger.debug(
+    `files.write.start path=${filePath} append=${append} contentBytes=${contents instanceof Uint8Array ? contents.length : contents.length}`,
+  );
   const release = await fileMutex.acquire();
   let oldFileData: Uint8Array = new Uint8Array();
   let newFileData: Uint8Array;
@@ -436,8 +464,18 @@ export async function writeFile(
   if (append) {
     try {
       oldFileData = (await readFileNoLock(filePath, true)) as Uint8Array;
+      logger.debug(
+        `files.write.append.base.success path=${filePath} bytes=${oldFileData.length}`,
+      );
     } catch (error) {
-      if (!(isErrnoException(error) && error.code === "ENOENT")) {
+      if (isErrnoException(error) && error.code === "ENOENT") {
+        logger.debug(`files.write.append.base.missing path=${filePath}`);
+      } else if (error instanceof TypeError) {
+        logger.info(
+          `files.write.append.base.invalid-crypt path=${filePath} error=${error.message}`,
+        );
+      } else {
+        logger.error(`files.write.append.base.error path=${filePath} error=${error}`);
         release();
         throw error;
       }
@@ -451,6 +489,9 @@ export async function writeFile(
 
   newFileData = await encryptUserData(newFileData);
   await fs.writeFile(`${filePath}${ENCRYPTED_FILE_EXT}`, newFileData);
+  logger.debug(
+    `files.write.crypt.success path=${filePath}${ENCRYPTED_FILE_EXT} bytes=${newFileData.length}`,
+  );
 
   try {
     await fs.unlink(filePath);
@@ -460,6 +501,7 @@ export async function writeFile(
     }
   } finally {
     release();
+    logger.debug(`files.write.lock.release path=${filePath}`);
   }
 }
 

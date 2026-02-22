@@ -10,6 +10,7 @@ import { currentKeyLogFile } from "./electron/paths";
 import { loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences";
 import { readFile, writeFile } from "./electron/files";
+import logger from "./logging";
 
 const BINARY_NAME = "MacKeyServer";
 
@@ -284,6 +285,7 @@ const specialChars = new Set([
 
 /** Rebuild log chronologically, filtering out empty app sections */
 export async function rebuildChronologicalLog(filePath: string) {
+  logger.debug(`keylogger.rebuildChronological.start path=${filePath}`);
   const rawText = await readFile(filePath);
 
   const lines = rawText.split("\n");
@@ -331,12 +333,16 @@ export async function rebuildChronologicalLog(filePath: string) {
     const dir = path.dirname(filePath);
     const basename = path.basename(filePath, "log");
     const outputPath = path.join(dir, `${basename}processed.chronological.log`);
-    writeFile(outputPath, processedContent);
+    await writeFile(outputPath, processedContent);
+    logger.debug(`keylogger.rebuildChronological.success outputPath=${outputPath}`);
+  } else {
+    logger.debug(`keylogger.rebuildChronological.empty path=${filePath}`);
   }
 }
 
 // Refactor rebuildLogByApp to use the shared processRawText function
 export async function rebuildLogByApp(filePath: string) {
+  logger.debug(`keylogger.rebuildByApp.start path=${filePath}`);
   const rawText = await readFile(filePath);
 
   const lines = rawText.split("\n");
@@ -391,7 +397,10 @@ export async function rebuildLogByApp(filePath: string) {
     const dir = path.dirname(filePath);
     const basename = path.basename(filePath, "log");
     const outputPath = path.join(dir, `${basename}processed.by-app.log`);
-    writeFile(outputPath, processedContent);
+    await writeFile(outputPath, processedContent);
+    logger.debug(`keylogger.rebuildByApp.success outputPath=${outputPath}`);
+  } else {
+    logger.debug(`keylogger.rebuildByApp.empty path=${filePath}`);
   }
 }
 
@@ -402,13 +411,20 @@ let initialized = false;
 export async function initializeKeylogger() {
   if (initialized) return;
   initialized = true;
+  logger.info("keylogger.initialize.start");
   // Load initial preferences
   preferences = loadPreferences();
 
   // Set up periodic re-processing of logs
-  setInterval(async () => {
-    await rebuildLogByApp(currentKeyLogFile());
-    await rebuildChronologicalLog(currentKeyLogFile());
+  setInterval(() => {
+    void (async () => {
+      const rawPath = currentKeyLogFile();
+      logger.debug(`keylogger.rebuild.tick rawPath=${rawPath}`);
+      await rebuildLogByApp(rawPath);
+      await rebuildChronologicalLog(rawPath);
+    })().catch((error) => {
+      logger.error(`keylogger.rebuild.tick.error error=${error}`);
+    });
   }, 5 * 1000);
 
   keylogger.addListener((event, down) => {
@@ -419,7 +435,16 @@ export async function initializeKeylogger() {
       bufferedText += raw;
       clearInterval(timer);
       timer = setTimeout(() => {
-        writeFile(currentKeyLogFile(), bufferedText, true);
+        const path = currentKeyLogFile();
+        const bytes = bufferedText.length;
+        logger.debug(`keylogger.flush.start path=${path} bufferedBytes=${bytes}`);
+        void writeFile(path, bufferedText, true)
+          .then(() => {
+            logger.debug(`keylogger.flush.success path=${path} bufferedBytes=${bytes}`);
+          })
+          .catch((error) => {
+            logger.error(`keylogger.flush.error path=${path} error=${error}`);
+          });
         bufferedText = "";
       }, 500);
     }
@@ -432,7 +457,12 @@ export function cleanupKeylogger() {
     clearTimeout(timer);
   }
   if (bufferedText) {
-    writeFile(currentKeyLogFile(), bufferedText, true);
+    const path = currentKeyLogFile();
+    const bytes = bufferedText.length;
+    logger.info(`keylogger.cleanup.flush path=${path} bufferedBytes=${bytes}`);
+    void writeFile(path, bufferedText, true).catch((error) => {
+      logger.error(`keylogger.cleanup.flush.error path=${path} error=${error}`);
+    });
     bufferedText = "";
   }
 }

@@ -220,13 +220,18 @@ function updateSummaries(summaries: Summary[]): void {
 }
 
 ipcMain.handle("GET_RECENT_LOGS", async () => {
-  return getRecentSummaries().then((summaries) =>
-    summaries.filter((summary) => summary.contents),
+  const summaries = await getRecentSummaries();
+  const summariesWithContents = summaries.filter((summary) => summary.contents);
+  logger.debug(
+    `ipc.GET_RECENT_LOGS total=${summaries.length} withContents=${summariesWithContents.length}`,
   );
+  return summariesWithContents;
 });
 
 ipcMain.handle("GET_ALL_LOGS", async () => {
-  return getRecentSummaries(Infinity);
+  const summaries = await getRecentSummaries(Infinity);
+  logger.debug(`ipc.GET_ALL_LOGS total=${summaries.length}`);
+  return summaries;
 });
 
 ipcMain.handle("GET_RECENT_APPS", getRecentApps);

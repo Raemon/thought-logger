@@ -114,10 +114,15 @@ async function handleLogFileRequest(
   description: string,
 ) {
   try {
+    logger.debug(`server.log.read.start description=${description} path=${filePath}`);
     const data = await readFile(filePath);
+    logger.debug(`server.log.read.success description=${description} path=${filePath}`);
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end(data);
-  } catch {
+  } catch (error) {
+    logger.error(
+      `server.log.read.error description=${description} path=${filePath} error=${error}`,
+    );
     res.writeHead(500, { "Content-Type": "text/plain" });
     res.end(`Failed to read ${description} log file. ${filePath}`);
   }
@@ -127,7 +132,11 @@ async function handleScreenshotSummaryList(
   res: http.ServerResponse,
   dateString: string,
 ) {
+  logger.debug(`server.screenshots.summaries.start date=${dateString}`);
   const summaries = await getScreenshotSummariesForDate(dateString);
+  logger.debug(
+    `server.screenshots.summaries.loaded date=${dateString} count=${summaries.length}`,
+  );
   res.writeHead(200, { "Content-Type": "text/plain" });
   if (summaries.length === 0) {
     res.end(`No screenshot summaries for ${dateString}.`);
@@ -150,7 +159,11 @@ async function handleScreenshotImageListForDate(
   res: http.ServerResponse,
   dateString: string,
 ) {
+  logger.debug(`server.screenshots.list.start date=${dateString}`);
   const imagePaths = await getScreenshotImagePathsForDate(dateString);
+  logger.debug(
+    `server.screenshots.list.loaded date=${dateString} count=${imagePaths.length}`,
+  );
   res.writeHead(200, { "Content-Type": "text/html" });
   if (imagePaths.length === 0) {
     res.end(`No screenshot images for ${dateString}.`);
@@ -171,7 +184,11 @@ async function handleScreenshotImageGalleryForDate(
   res: http.ServerResponse,
   dateString: string,
 ) {
+  logger.debug(`server.screenshots.gallery.start date=${dateString}`);
   const imagePaths = await getScreenshotImagePathsForDate(dateString);
+  logger.debug(
+    `server.screenshots.gallery.loaded date=${dateString} count=${imagePaths.length}`,
+  );
   res.writeHead(200, { "Content-Type": "text/html" });
   if (imagePaths.length === 0) {
     res.end(`No screenshot images for ${dateString}.`);
@@ -200,10 +217,12 @@ async function handleScreenshotImageRequest(
       res.end("Invalid screenshot path.");
       return;
     }
+    logger.debug(`server.screenshot.fetch path=${resolvedPath}`);
     const imageData = await readFile(resolvedPath, true);
     res.writeHead(200, { "Content-Type": "image/jpeg" });
     res.end(imageData);
-  } catch {
+  } catch (error) {
+    logger.info(`server.screenshot.fetch.error encodedPath=${encodedPath} error=${error}`);
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Screenshot not found.");
   }
@@ -346,6 +365,9 @@ function handleIndexRequest(res: http.ServerResponse) {
  */
 export function startLocalServer(port = 8765): http.Server {
   const server = http.createServer(async (req, res) => {
+    logger.debug(
+      `server.request method=${req.method ?? "UNKNOWN"} url=${req.url ?? ""}`,
+    );
     switch (req.url) {
       case "/":
         handleIndexRequest(res);
@@ -370,7 +392,8 @@ export function startLocalServer(port = 8765): http.Server {
         try {
           const dateString = new Date().toLocaleDateString("en-CA");
           await handleScreenshotImageListForDate(res, dateString);
-        } catch {
+        } catch (error) {
+          logger.error(`server.today.screenshots.error error=${error}`);
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to list today's screenshot images.");
         }
@@ -381,7 +404,8 @@ export function startLocalServer(port = 8765): http.Server {
         try {
           const dateString = new Date().toLocaleDateString("en-CA");
           await handleScreenshotImageGalleryForDate(res, dateString);
-        } catch {
+        } catch (error) {
+          logger.error(`server.today.screenshots.gallery.error error=${error}`);
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to render today's screenshot gallery.");
         }
@@ -392,7 +416,8 @@ export function startLocalServer(port = 8765): http.Server {
         try {
           const dateString = new Date().toLocaleDateString("en-CA");
           await handleScreenshotSummaryList(res, dateString);
-        } catch {
+        } catch (error) {
+          logger.error(`server.today.screenshots.summaries.error error=${error}`);
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to list today's screenshot summaries.");
         }
@@ -421,7 +446,8 @@ export function startLocalServer(port = 8765): http.Server {
           date.setDate(date.getDate() - 1);
           const dateString = date.toLocaleDateString("en-CA");
           await handleScreenshotImageListForDate(res, dateString);
-        } catch {
+        } catch (error) {
+          logger.error(`server.yesterday.screenshots.error error=${error}`);
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to list yesterday's screenshot images.");
         }
@@ -434,7 +460,8 @@ export function startLocalServer(port = 8765): http.Server {
           date.setDate(date.getDate() - 1);
           const dateString = date.toLocaleDateString("en-CA");
           await handleScreenshotImageGalleryForDate(res, dateString);
-        } catch {
+        } catch (error) {
+          logger.error(`server.yesterday.screenshots.gallery.error error=${error}`);
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to render yesterday's screenshot gallery.");
         }
@@ -447,7 +474,8 @@ export function startLocalServer(port = 8765): http.Server {
           date.setDate(date.getDate() - 1);
           const dateString = date.toLocaleDateString("en-CA");
           await handleScreenshotSummaryList(res, dateString);
-        } catch {
+        } catch (error) {
+          logger.error(`server.yesterday.screenshots.summaries.error error=${error}`);
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to list yesterday's screenshot summaries.");
         }
@@ -459,7 +487,8 @@ export function startLocalServer(port = 8765): http.Server {
           const contents = await getWeekContents({ raw: false });
           res.writeHead(200, { "Content-Type": "text/plain" });
           res.end(contents);
-        } catch {
+        } catch (error) {
+          logger.error(`server.week.error error=${error}`);
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to read log files for the past week.");
         }
@@ -479,7 +508,8 @@ export function startLocalServer(port = 8765): http.Server {
           const contents = await getWeekContents({ raw: true });
           res.writeHead(200, { "Content-Type": "text/plain" });
           res.end(contents);
-        } catch {
+        } catch (error) {
+          logger.error(`server.week.raw.error error=${error}`);
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to read raw log files for the past week.");
         }
@@ -542,7 +572,10 @@ export function startLocalServer(port = 8765): http.Server {
               );
               await handleLogFileRequest(res, filePath, `log for ${dateStr}`);
             }
-          } catch {
+          } catch (error) {
+            logger.error(
+              `server.dateRoute.error date=${dateStr} url=${req.url ?? ""} error=${error}`,
+            );
             res.writeHead(500, { "Content-Type": "text/plain" });
             res.end(
               screenshotSummaryMatch

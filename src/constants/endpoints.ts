@@ -18,6 +18,7 @@ export const dynamicEndpoints = [
   { path: "/screenshot/[filepath]", label: "Screenshot", description: "Serve a screenshot image" },
   { path: "/mcp", label: "MCP", description: "MCP server endpoint" },
   { path: "/YYYY-MM-DD", label: "Keylog", description: "Processed keylog for date" },
+  { path: "/YYYY-MM-DD/raw", label: "Raw keylog", description: "Raw keylog for date" },
   { path: "/YYYY-MM-DD/screenshots", label: "Screenshots", description: "Screenshot images for date" },
   { path: "/YYYY-MM-DD/screenshots/summaries", label: "Summaries", description: "Screenshot summaries for date" },
 ];

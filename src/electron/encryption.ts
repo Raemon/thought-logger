@@ -7,6 +7,7 @@ import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 import { memoize } from "micro-memoize";
 
 import { isErrnoException } from "./utils";
+import logger from "../logging";
 
 export const ENCRYPTED_FILE_EXT = ".crypt";
 const ENCRYPTION_CPULIMIT = 3;
@@ -31,29 +32,39 @@ function deriveKey(password: string, salt: Uint8Array): Uint8Array {
 export async function encryptUserData(
   plaintext: string | Uint8Array<ArrayBufferLike>,
 ): Promise<Uint8Array> {
+  logger.debug(
+    `encryption.encrypt.start plaintextBytes=${typeof plaintext === "string" ? plaintext.length : plaintext.length}`,
+  );
   await sodiumReady;
   const password = await getSecret(LOG_FILE_ENCRYPTION);
 
   if (!password) {
+    logger.error("encryption.encrypt.no-password");
     throw new Error("Tried to encrypt data with no password");
   }
 
   const masterKey = await getMasterKey(password);
-  return encryptWithKey(masterKey, plaintext);
+  const encrypted = encryptWithKey(masterKey, plaintext);
+  logger.debug(`encryption.encrypt.success ciphertextBytes=${encrypted.length}`);
+  return encrypted;
 }
 
 export async function decryptUserData(
   ciphertext: Uint8Array<ArrayBufferLike>,
 ): Promise<Uint8Array> {
+  logger.debug(`encryption.decrypt.start ciphertextBytes=${ciphertext.length}`);
   await sodiumReady;
   const password = await getSecret(LOG_FILE_ENCRYPTION);
 
   if (!password) {
+    logger.error("encryption.decrypt.no-password");
     throw new Error("Tried to decrypt data with no password");
   }
 
   const masterKey = await getMasterKey(password);
-  return decryptWithKey(masterKey, ciphertext);
+  const plaintext = decryptWithKey(masterKey, ciphertext);
+  logger.debug(`encryption.decrypt.success plaintextBytes=${plaintext.length}`);
+  return plaintext;
 }
 
 function encryptWithKey(
@@ -103,12 +114,15 @@ function decryptWithKey(
 
 export async function initializeMasterKey(password: string): Promise<void> {
   await sodiumReady;
+  logger.debug("encryption.masterKey.initialize.start");
 
   try {
     getMasterKey.cache.clear();
     await getMasterKey(password);
+    logger.debug("encryption.masterKey.initialize.exists");
   } catch (error) {
     if (isErrnoException(error) && error.code === "ENOENT") {
+      logger.info("encryption.masterKey.initialize.creating");
       const salt = sodium.randombytes_buf(
         sodium.crypto_pwhash_SALTBYTES,
         "uint8array",
@@ -123,7 +137,9 @@ export async function initializeMasterKey(password: string): Promise<void> {
       fileData.set(encryptedMasterKey, salt.length);
       await fs.mkdir(path.dirname(masterKeyPath), { recursive: true });
       await fs.writeFile(masterKeyPath, fileData);
+      logger.info("encryption.masterKey.initialize.created");
     } else {
+      logger.error(`encryption.masterKey.initialize.error error=${error}`);
       throw error;
     }
   }
@@ -131,12 +147,14 @@ export async function initializeMasterKey(password: string): Promise<void> {
 
 const getMasterKey = memoize(
   async (password: string): Promise<Uint8Array> => {
+    logger.debug("encryption.masterKey.read.start");
     const fileData = await fs.readFile(masterKeyPath);
     const salt = fileData.subarray(0, sodium.crypto_pwhash_SALTBYTES);
     const masterKey = fileData.subarray(sodium.crypto_pwhash_SALTBYTES);
     const key = deriveKey(password, salt);
-
-    return decryptWithKey(key, masterKey);
+    const decryptedMasterKey = decryptWithKey(key, masterKey);
+    logger.debug("encryption.masterKey.read.success");
+    return decryptedMasterKey;
   },
   { async: true },
 );
@@ -144,8 +162,10 @@ const getMasterKey = memoize(
 export async function verifyPassword(password: string): Promise<boolean> {
   try {
     await getMasterKey(password);
+    logger.debug("encryption.verifyPassword.success");
     return true;
   } catch {
+    logger.info("encryption.verifyPassword.failure");
     return false;
   }
 }
@@ -153,9 +173,11 @@ export async function verifyPassword(password: string): Promise<boolean> {
 export async function changePassword(
   newPassword: string,
 ): Promise<{ success: boolean; message: string }> {
+  logger.info("encryption.changePassword.start");
   const oldPassword = await getSecret(LOG_FILE_ENCRYPTION);
   // Verify old password
   if (oldPassword && !(await verifyPassword(oldPassword))) {
+    logger.info("encryption.changePassword.invalid-old-password");
     return {
       success: false,
       message: "Current password is incorrect",
@@ -165,6 +187,7 @@ export async function changePassword(
   // Validate new password
   const result = await setSecret(LOG_FILE_ENCRYPTION, newPassword);
   if (!result.success) {
+    logger.info(`encryption.changePassword.setSecret.failure message=${result.message}`);
     return result;
   }
 
@@ -199,6 +222,7 @@ export async function changePassword(
   }
 
   getMasterKey.cache.clear();
+  logger.info("encryption.changePassword.success");
 
   return {
     success: true,

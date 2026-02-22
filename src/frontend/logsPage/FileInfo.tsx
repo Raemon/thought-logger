@@ -11,16 +11,24 @@ export function FileInfo() {
   const [loadedAll, setLoadedAll] = useState(false);
 
   useEffect(() => {
+    console.log("useEffect");
     window.userData.getRecentLogs().then(setSerializedLogs);
     window.userData.onUpdateRecentLogs((logs) => setSerializedLogs(logs));
   }, []);
 
   const loadAll = () => {
     window.userData.getAllLogs().then((logs) => {
+      // console.log("logs", logs.length);
+      // console.log("logs 2", logs.map(({ date }) => date));
+      // console.log("logs 3", logs.map(({ path }) => path));
       setSerializedLogs(logs);
       setLoadedAll(true);
     });
   };
+
+  // console.log("serializedLogs", serializedLogs.length);
+  // console.log("serializedLogs 2", serializedLogs.map(({ date }) => date));
+  // console.log("serializedLogs 3", serializedLogs.map(({ path }) => path));
 
   // FIXME Probably doesn't need to happen every render
   const tocByMonth: Record<string, Record<string, Date[]>> = {};
