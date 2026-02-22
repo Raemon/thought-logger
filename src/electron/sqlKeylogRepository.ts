@@ -120,8 +120,8 @@ export class SqlKeylogRepository {
     }
 
     this.db.run(
-      "UPDATE logitem SET keylogs = keylogs || ? WHERE rowid = ?",
-      [keystroke, latest.rowid],
+      "UPDATE logitem SET keylogs = keylogs || ?, timestamp = ? WHERE rowid = ?",
+      [keystroke, nowTimestampMs, latest.rowid],
     );
   }
 }
