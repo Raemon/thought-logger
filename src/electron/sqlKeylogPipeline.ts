@@ -18,6 +18,8 @@ let repository: SqlKeylogRepository | null = null;
 let blockedApps: string[] = [];
 let initialized = false;
 let persistTimer: NodeJS.Timeout | null = null;
+let persistInFlight = false;
+let dbDirty = false;
 let nativeProcess: ChildProcessWithoutNullStreams | null = null;
 
 const BINARY_NAME = "MacKeyServerSql";
@@ -36,11 +38,20 @@ function getBinaryPath(): string {
 
 function schedulePersist(): void {
   if (!repository) return;
-  if (persistTimer) clearTimeout(persistTimer);
+  if (persistTimer || persistInFlight) return;
   persistTimer = setTimeout(() => {
-    persistSqlKeylogDb().catch((error) => {
-      logger.error(`Failed to persist SQL keylog DB: ${error instanceof Error ? error.message : `${error}`}`);
-    });
+    persistTimer = null;
+    if (persistInFlight) return;
+    persistInFlight = true;
+    dbDirty = false;
+    persistSqlKeylogDb()
+      .catch((error) => {
+        logger.error(`Failed to persist SQL keylog DB: ${error instanceof Error ? error.message : `${error}`}`);
+      })
+      .finally(() => {
+        persistInFlight = false;
+        if (dbDirty) schedulePersist();
+      });
   }, 500);
 }
 
@@ -73,7 +84,12 @@ export async function initializeSqlKeylogPipeline(): Promise<void> {
   blockedApps = prefs.blockedApps || [];
 
   const dbPath = getSqlKeylogDbPath();
-  const existingBytes = await readEncryptedSqlKeylogDbBytes(dbPath);
+  let existingBytes: Uint8Array | null = null;
+  try {
+    existingBytes = await readEncryptedSqlKeylogDbBytes(dbPath);
+  } catch (error) {
+    logger.error(`Failed to read SQL keylog DB: ${error instanceof Error ? error.message : `${error}`}`);
+  }
   repository = await SqlKeylogRepository.initialize(existingBytes);
 
   if (process.platform !== "darwin") {
@@ -146,6 +162,7 @@ export function ingestSqlKeystroke({
     windowTitle,
     keystroke: rawKey,
   });
+  dbDirty = true;
   schedulePersist();
 }
 
@@ -184,6 +201,8 @@ export function shutdownSqlKeylogPipeline(): Promise<void> {
     repository?.close();
     repository = null;
     initialized = false;
+    persistInFlight = false;
+    dbDirty = false;
   });
 }
 
