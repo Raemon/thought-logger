@@ -102,6 +102,24 @@ exports[`Renders the logs 1`] = `
           week/raw
         </a>
       </div>
+      <div
+        class="flex flex-wrap gap-2.5"
+      >
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/sql"
+          title="Processed SQL logitems (newest to oldest)"
+        >
+          sql
+        </a>
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/sql/raw"
+          title="Raw SQL logitems past 24h (JSON)"
+        >
+          sql/raw
+        </a>
+      </div>
     </div>
     <div
       class="flex gap-5"
