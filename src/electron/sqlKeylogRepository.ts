@@ -78,18 +78,19 @@ export class SqlKeylogRepository {
     }));
   }
 
-  private getLatestLogitem(): SqlLogitem | null {
+  private getLatestLogitem(): (SqlLogitem & { rowid: number }) | null {
     const results = this.db.exec(
-      "SELECT timestamp, applicationName, windowTitle, keylogs FROM logitem ORDER BY timestamp DESC LIMIT 1",
+      "SELECT rowid, timestamp, applicationName, windowTitle, keylogs FROM logitem ORDER BY timestamp DESC LIMIT 1",
     );
     if (results.length === 0) return null;
     if (results[0].values.length === 0) return null;
     const row = results[0].values[0];
     return {
-      timestamp: row[0] as number,
-      applicationName: row[1] as string,
-      windowTitle: row[2] as string,
-      keylogs: row[3] as string,
+      rowid: row[0] as number,
+      timestamp: row[1] as number,
+      applicationName: row[2] as string,
+      windowTitle: row[3] as string,
+      keylogs: row[4] as string,
     };
   }
 
@@ -120,8 +121,8 @@ export class SqlKeylogRepository {
     }
 
     this.db.run(
-      "UPDATE logitem SET keylogs = keylogs || ? WHERE timestamp = ? AND applicationName = ? AND windowTitle = ?",
-      [keystroke, latest.timestamp, latest.applicationName, latest.windowTitle],
+      "UPDATE logitem SET keylogs = keylogs || ? WHERE rowid = ?",
+      [keystroke, latest.rowid],
     );
   }
 }
