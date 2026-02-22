@@ -6,6 +6,7 @@ import type { SqlLogitem } from "../../src/electron/sqlKeylogTypes";
 import {
   buildMinuteSlotsPastWeek,
   extractKeylogAppSwitchMinuteSet,
+  formatMinutePt,
   minuteBucketFromTimestampMs,
   renderHealthHtml,
   scanScreenshotSummaryMinuteSet,
@@ -121,6 +122,12 @@ describe("/health helpers", () => {
     });
     const rowCount = html.split('class="healthRow"').length - 1;
     expect(rowCount).toBe(7 * 24 * 60);
+  });
+
+  it("formatMinutePt uses AM/PM time for hover tooltip", () => {
+    const timestampMs = Date.UTC(2025, 7, 21, 20, 5, 0); // 2025-08-21 1:05 PM in PT (DST)
+    const minuteBucket = minuteBucketFromTimestampMs(timestampMs);
+    expect(formatMinutePt(minuteBucket)).toBe("2025-08-21 1:05 PM");
   });
 
   it("/health returns HTML and / index lists /health", async () => {

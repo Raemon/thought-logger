@@ -1,4 +1,7 @@
 import type { SqlLogitem } from "./sqlKeylogTypes";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { app } from "electron";
 
 type SqlJsDatabase = {
   run: (sql: string, params?: unknown[]) => void;
@@ -13,11 +16,23 @@ type SqlJsStatic = {
 
 let sqlJsPromise: Promise<SqlJsStatic> | null = null;
 
+const require2 = createRequire(__filename);
+
+function getSqlJsEntryPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "sql.js", "dist", "sql-asm.js");
+  }
+  return require2.resolve("sql.js/dist/sql-asm.js");
+}
+
 async function getSqlJs(): Promise<SqlJsStatic> {
   if (sqlJsPromise) return sqlJsPromise;
-  sqlJsPromise = import("sql.js/dist/sql-asm.js").then((mod) =>
-    (mod.default as (config?: unknown) => Promise<SqlJsStatic>)().then((sql) => sql),
-  );
+  sqlJsPromise = Promise.resolve().then(() => {
+    const entryPath = getSqlJsEntryPath();
+    const loaded = require2(entryPath) as unknown;
+    const initSqlJs = (loaded && (loaded as { default?: unknown }).default) || loaded;
+    return (initSqlJs as (config?: unknown) => Promise<SqlJsStatic>)().then((sql) => sql);
+  });
   return sqlJsPromise;
 }
 

@@ -15,6 +15,7 @@ const config: ForgeConfig = {
       "./bin/MacKeyServer",
       "./bin/MacKeyServerSql",
       "./node_modules/keytar/build/Release/keytar.node",
+      "./node_modules/sql.js",
     ],
   },
   rebuildConfig: {

@@ -23,10 +23,10 @@ export function formatMinutePt(minuteBucket: number): string {
   const date = new Date(minuteBucket * MINUTE_MS);
   const dateStr = date.toLocaleDateString("en-CA", { timeZone: PT_TIME_ZONE });
   const timeStr = date
-    .toLocaleTimeString("en-CA", {
+    .toLocaleTimeString("en-US", {
       timeZone: PT_TIME_ZONE,
-      hour12: false,
-      hour: "2-digit",
+      hour12: true,
+      hour: "numeric",
       minute: "2-digit",
     });
   return `${dateStr} ${timeStr}`;
