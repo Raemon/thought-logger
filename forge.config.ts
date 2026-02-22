@@ -13,6 +13,7 @@ const config: ForgeConfig = {
     osxSign: {},
     extraResource: [
       "./bin/MacKeyServer",
+      "./bin/MacKeyServerSql",
       "./node_modules/keytar/build/Release/keytar.node",
     ],
   },
