@@ -13,6 +13,7 @@ import {
   getScreenshotImagePathsForDate,
   readFile,
 } from "./files";
+import { buildHealthPastWeekHtml } from "./health";
 import { allEndpoints } from "../constants/endpoints";
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
@@ -450,6 +451,22 @@ export function startLocalServer(port = 8765): http.Server {
         } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to list yesterday's screenshot summaries.");
+        }
+        break;
+      }
+
+      case "/health": {
+        try {
+          const html = await buildHealthPastWeekHtml({
+            userDataPath,
+            readFile,
+            getKeyLogFileForDate,
+          });
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(html);
+        } catch {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to render /health.");
         }
         break;
       }

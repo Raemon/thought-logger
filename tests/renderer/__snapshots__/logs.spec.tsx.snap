@@ -89,6 +89,17 @@ exports[`Renders the logs 1`] = `
       >
         <a
           class="text-blue-600 no-underline cursor-pointer text-xs"
+          href="http://localhost:8765/health"
+          title="Past week per-minute activity overview"
+        >
+          health
+        </a>
+      </div>
+      <div
+        class="flex flex-wrap gap-2.5"
+      >
+        <a
+          class="text-blue-600 no-underline cursor-pointer text-xs"
           href="http://localhost:8765/week"
           title="Past week processed keylogs"
         >
