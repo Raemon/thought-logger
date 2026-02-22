@@ -160,6 +160,103 @@ export async function scanScreenshotSummaryMinuteSet({
   return minutes;
 }
 
+export function buildKeylogDatesPastWeek(nowTimestampMs: number): Date[] {
+  const keylogDates: Date[] = [];
+  const today = new Date(nowTimestampMs);
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(nowTimestampMs);
+    date.setDate(today.getDate() - i);
+    keylogDates.push(date);
+  }
+  return keylogDates;
+}
+
+export async function scanKeylogAppSwitchMinuteSetsPastWeek({
+  readFile,
+  getKeyLogFileForDate,
+  sinceTimestampMs,
+  nowTimestampMs,
+}: {
+  readFile: (filePath: string) => Promise<string>;
+  getKeyLogFileForDate: (date: Date, suffix: string) => string;
+  sinceTimestampMs: number;
+  nowTimestampMs: number;
+}): Promise<{
+  keylogRawMinutes: Set<number>;
+  keylogProcessedMinutes: Set<number>;
+}> {
+  const keylogDates = buildKeylogDatesPastWeek(nowTimestampMs);
+  const keylogRawMinutes = new Set<number>();
+  const keylogProcessedMinutes = new Set<number>();
+  for (const keylogDate of keylogDates) {
+    try {
+      const rawPath = getKeyLogFileForDate(keylogDate, "");
+      const rawText = await readFile(rawPath);
+      const rawMinutesForFile = extractKeylogAppSwitchMinuteSet(
+        rawText,
+        sinceTimestampMs,
+        nowTimestampMs,
+      );
+      for (const minuteBucket of rawMinutesForFile) {
+        keylogRawMinutes.add(minuteBucket);
+      }
+    } catch {
+      void 0;
+    }
+    try {
+      const processedPath = getKeyLogFileForDate(
+        keylogDate,
+        "processed.chronological.",
+      );
+      const processedText = await readFile(processedPath);
+      const processedMinutesForFile = extractKeylogAppSwitchMinuteSet(
+        processedText,
+        sinceTimestampMs,
+        nowTimestampMs,
+      );
+      for (const minuteBucket of processedMinutesForFile) {
+        keylogProcessedMinutes.add(minuteBucket);
+      }
+    } catch {
+      void 0;
+    }
+  }
+  return { keylogRawMinutes, keylogProcessedMinutes };
+}
+
+export async function buildHealthPastWeekHtml({
+  userDataPath,
+  readFile,
+  getKeyLogFileForDate,
+  nowTimestampMs = Date.now(),
+}: {
+  userDataPath: string;
+  readFile: (filePath: string) => Promise<string>;
+  getKeyLogFileForDate: (date: Date, suffix: string) => string;
+  nowTimestampMs?: number;
+}): Promise<string> {
+  const sinceTimestampMs = nowTimestampMs - 7 * 24 * 60 * 60 * 1000;
+  const minuteSlots = buildMinuteSlotsPastWeek(nowTimestampMs);
+  const { keylogRawMinutes, keylogProcessedMinutes } =
+    await scanKeylogAppSwitchMinuteSetsPastWeek({
+      readFile,
+      getKeyLogFileForDate,
+      sinceTimestampMs,
+      nowTimestampMs,
+    });
+  const screenshotSummaryMinutes = await scanScreenshotSummaryMinuteSet({
+    userDataPath,
+    sinceTimestampMs,
+    nowTimestampMs,
+  });
+  return renderHealthHtml({
+    minuteSlots,
+    keylogRawMinutes,
+    keylogProcessedMinutes,
+    screenshotSummaryMinutes,
+  });
+}
+
 export function renderHealthHtml({
   minuteSlots,
   keylogRawMinutes,
