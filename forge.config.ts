@@ -3,11 +3,33 @@ import { MakerSquirrel } from "@electron-forge/maker-squirrel";
 import { MakerZIP } from "@electron-forge/maker-zip";
 import { MakerDeb } from "@electron-forge/maker-deb";
 import { MakerRpm } from "@electron-forge/maker-rpm";
+import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const config: ForgeConfig = {
+  hooks: {
+    packageAfterPrune: async (_forgeConfig, buildPath) => {
+      const externalDependencies = ["better-sqlite3", "bindings", "file-uri-to-path"];
+      const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+      const destNodeModules = path.join(buildPath, "node_modules");
+      fs.mkdirSync(destNodeModules, { recursive: true });
+      for (const dep of externalDependencies) {
+        const src = path.join(projectRoot, "node_modules", dep);
+        const dest = path.join(destNodeModules, dep);
+        try {
+          fs.rmSync(dest, { recursive: true, force: true });
+          fs.cpSync(src, dest, { recursive: true });
+        } catch (error) {
+          console.error(`Failed to copy external dependency ${dep}:`, error);
+        }
+      }
+    },
+  },
   packagerConfig: {
     asar: true,
     osxSign: {},
@@ -17,7 +39,7 @@ const config: ForgeConfig = {
     ],
   },
   rebuildConfig: {
-    onlyModules: ["keytar"],
+    onlyModules: ["keytar", "better-sqlite3"],
   },
   makers: [
     new MakerSquirrel({}),
@@ -49,6 +71,7 @@ const config: ForgeConfig = {
         },
       ],
     }),
+    new AutoUnpackNativesPlugin({}),
     // Fuses are used to enable/disable various Electron functionality
     // at package time, before code signing the application
     new FusesPlugin({

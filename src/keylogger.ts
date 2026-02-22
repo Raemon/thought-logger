@@ -10,6 +10,8 @@ import { currentKeyLogFile } from "./electron/paths";
 import { loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences";
 import { readFile, writeFile } from "./electron/files";
+import logger from "./logging";
+import { insertLogEvent } from "./electron/logeventsDb";
 
 const BINARY_NAME = "MacKeyServer";
 
@@ -23,6 +25,7 @@ const keylogger = new GlobalKeyboardListener({
 
 // Track current application and text buffers per application
 let currentApplication = "";
+let currentWindowTitle = "";
 const applicationBuffers = new Map<string, string>();
 
 // Track if we should skip the next typed character (immediately after a modifier)
@@ -98,10 +101,11 @@ function getFormattedTimestamp(): { dateStr: string; timeStr: string } {
 }
 
 /** Handles application switch events */
-function handleAppSwitch(appName: string): ParsedKey {
+function handleAppSwitch(appName: string, windowTitle = ""): ParsedKey {
   const { dateStr, timeStr } = getFormattedTimestamp();
 
   currentApplication = appName;
+  currentWindowTitle = windowTitle;
   if (!applicationBuffers.has(appName)) {
     applicationBuffers.set(appName, "");
   }
@@ -236,9 +240,17 @@ function parseKeyEvent(
 ): ParsedKey {
   // Handle application switch
   if (event._raw.includes("Application activated")) {
-    const match = event._raw.match(/\{\{(.*)\}\}/);
+    const match = event._raw.match(/\{\{(.*?)\}\}/);
     if (!match) return { raw: "", processed: "", isAppSwitch: false };
-    return handleAppSwitch(match[1]);
+    try {
+      const parsed = JSON.parse(match[1]) as {
+        appName?: string;
+        windowTitle?: string;
+      };
+      return handleAppSwitch(parsed.appName || "Unknown", parsed.windowTitle || "");
+    } catch {
+      return handleAppSwitch(match[1]);
+    }
   }
 
   // Don't log keys if in protected apps
@@ -396,8 +408,29 @@ export async function rebuildLogByApp(filePath: string) {
 }
 
 let bufferedText = "";
+let dbBufferedText = "";
+let dbBufferedApplicationName = "";
+let dbBufferedWindowTitle = "";
 let timer: NodeJS.Timeout;
 let initialized = false;
+
+function flushDbBuffer(): void {
+  if (!dbBufferedText) return;
+  const keystrokes = dbBufferedText;
+  const applicationName = dbBufferedApplicationName || currentApplication || "Unknown";
+  const windowTitle = dbBufferedWindowTitle || currentWindowTitle || "";
+  dbBufferedText = "";
+  dbBufferedApplicationName = "";
+  dbBufferedWindowTitle = "";
+  insertLogEvent({
+    timestamp: Date.now(),
+    keystrokes,
+    applicationName,
+    windowTitle,
+  }).catch((error) => {
+    logger.error("Failed to insert logevent:", error);
+  });
+}
 
 export async function initializeKeylogger() {
   if (initialized) return;
@@ -412,7 +445,8 @@ export async function initializeKeylogger() {
   }, 5 * 1000);
 
   keylogger.addListener((event, down) => {
-    const { raw } = parseKeyEvent(event, down);
+    const parsed = parseKeyEvent(event, down);
+    const { raw } = parsed;
 
     // Write to raw log
     if (raw) {
@@ -421,7 +455,19 @@ export async function initializeKeylogger() {
       timer = setTimeout(() => {
         writeFile(currentKeyLogFile(), bufferedText, true);
         bufferedText = "";
+        flushDbBuffer();
       }, 500);
+    }
+    if (parsed.isAppSwitch) {
+      flushDbBuffer();
+      return;
+    }
+    if (raw) {
+      if (!dbBufferedText) {
+        dbBufferedApplicationName = currentApplication || "Unknown";
+        dbBufferedWindowTitle = currentWindowTitle || "";
+      }
+      dbBufferedText += raw;
     }
   });
 }
@@ -435,6 +481,7 @@ export function cleanupKeylogger() {
     writeFile(currentKeyLogFile(), bufferedText, true);
     bufferedText = "";
   }
+  flushDbBuffer();
 }
 
 export function updateKeyloggerPreferences(newPrefs: Preferences) {
@@ -443,4 +490,8 @@ export function updateKeyloggerPreferences(newPrefs: Preferences) {
 
 export function getCurrentApplication(): string {
   return currentApplication;
+}
+
+export function getCurrentWindowTitle(): string {
+  return currentWindowTitle;
 }
