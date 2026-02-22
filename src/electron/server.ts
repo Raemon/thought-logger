@@ -13,7 +13,15 @@ import {
   getScreenshotImagePathsForDate,
   readFile,
 } from "./files";
+import { getSqlLogitemsAll, getSqlLogitemsPast24Hours, renderSqlLogitemsProcessed } from "./sqlKeylogPipeline";
 import { allEndpoints } from "../constants/endpoints";
+import {
+  buildMinuteSlotsPastWeek,
+  extractKeylogAppSwitchMinuteSet,
+  renderHealthHtml,
+  scanScreenshotSummaryMinuteSet,
+  sqlLogitemsToMinuteSet,
+} from "./health";
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 
@@ -454,6 +462,86 @@ export function startLocalServer(port = 8765): http.Server {
         break;
       }
 
+      case "/health": {
+        try {
+          const nowTimestampMs = Date.now();
+          const sinceTimestampMs = nowTimestampMs - 7 * 24 * 60 * 60 * 1000;
+          const minuteSlots = buildMinuteSlotsPastWeek(nowTimestampMs);
+
+          const keylogDates: Date[] = [];
+          const today = new Date();
+          for (let i = 0; i < 7; i++) {
+            const date = new Date();
+            date.setDate(today.getDate() - i);
+            keylogDates.push(date);
+          }
+
+          const keylogRawMinutes = new Set<number>();
+          const keylogProcessedMinutes = new Set<number>();
+          for (const keylogDate of keylogDates) {
+            try {
+              const rawPath = getKeyLogFileForDate(keylogDate, "");
+              const rawText = await readFile(rawPath);
+              const rawMinutesForFile = extractKeylogAppSwitchMinuteSet(
+                rawText,
+                sinceTimestampMs,
+                nowTimestampMs,
+              );
+              for (const minuteBucket of rawMinutesForFile) {
+                keylogRawMinutes.add(minuteBucket);
+              }
+            } catch {
+              void 0;
+            }
+            try {
+              const processedPath = getKeyLogFileForDate(
+                keylogDate,
+                "processed.chronological.",
+              );
+              const processedText = await readFile(processedPath);
+              const processedMinutesForFile = extractKeylogAppSwitchMinuteSet(
+                processedText,
+                sinceTimestampMs,
+                nowTimestampMs,
+              );
+              for (const minuteBucket of processedMinutesForFile) {
+                keylogProcessedMinutes.add(minuteBucket);
+              }
+            } catch {
+              void 0;
+            }
+          }
+
+          const screenshotSummaryMinutes = await scanScreenshotSummaryMinuteSet({
+            userDataPath,
+            sinceTimestampMs,
+            nowTimestampMs,
+          });
+
+          const sqlLogitems = getSqlLogitemsAll();
+          const sqlMinutes = sqlLogitemsToMinuteSet(
+            sqlLogitems,
+            sinceTimestampMs,
+            nowTimestampMs,
+          );
+
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(
+            renderHealthHtml({
+              minuteSlots,
+              keylogRawMinutes,
+              keylogProcessedMinutes,
+              screenshotSummaryMinutes,
+              sqlMinutes,
+            }),
+          );
+        } catch {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to render /health.");
+        }
+        break;
+      }
+
       case "/week":
         try {
           const contents = await getWeekContents({ raw: false });
@@ -482,6 +570,28 @@ export function startLocalServer(port = 8765): http.Server {
         } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
           res.end("Failed to read raw log files for the past week.");
+        }
+        break;
+
+      case "/sql/raw":
+        try {
+          const logitems = getSqlLogitemsPast24Hours();
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(logitems));
+        } catch {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to read SQL keylog data.");
+        }
+        break;
+
+      case "/sql":
+        try {
+          const logitems = getSqlLogitemsPast24Hours();
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end(renderSqlLogitemsProcessed(logitems));
+        } catch {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to render SQL keylog data.");
         }
         break;
 

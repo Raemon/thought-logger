@@ -8,6 +8,11 @@ import {
   updateKeyloggerPreferences,
   cleanupKeylogger,
 } from "./keylogger";
+import {
+  initializeSqlKeylogPipeline,
+  shutdownSqlKeylogPipeline,
+  updateSqlKeylogPreferences,
+} from "./electron/sqlKeylogPipeline";
 import { checkPermissions } from "./electron/permissions";
 import { savePreferences, loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences";
@@ -105,10 +110,11 @@ app.on("activate", () => {
 // Handle app shutdown to ensure all buffered data is saved
 app.on("before-quit", () => {
   cleanupKeylogger();
+  shutdownSqlKeylogPipeline();
 });
 
 getSecret(LOG_FILE_ENCRYPTION).then((password) =>
-  password ? initializeKeylogger() : null,
+  password ? Promise.all([initializeKeylogger(), initializeSqlKeylogPipeline()]) : null,
 );
 
 ipcMain.handle("REQUEST_PERMISSIONS_STATUS", () => {
@@ -154,6 +160,7 @@ ipcMain.handle(
     toggleScheduledScreenshots(newPrefs);
     updateKeyloggerPreferences(newPrefs);
     updateDebugPreferences(newPrefs);
+    updateSqlKeylogPreferences();
   },
 );
 
@@ -181,6 +188,7 @@ ipcMain.handle("SAVE_SECRET", (_event, account: string, secret: string) => {
 
 ipcMain.handle("CHANGE_PASSWORD", async (_event, newPassword: string) => {
   initializeKeylogger();
+  initializeSqlKeylogPipeline();
   return changePassword(newPassword);
 });
 

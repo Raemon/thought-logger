@@ -10,8 +10,12 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      // Remove keytar from externals - we'll handle it separately
-      external: [],
+      // Keep sql.js bundled so the packaged app can import it.
+      // Also: inline dynamic imports to avoid a circular-chunk dependency between
+      // the main bundle and the sql.js asm chunk (which can break CJS interop at runtime).
+      output: {
+        inlineDynamicImports: true,
+      },
     },
     sourcemap: true,
   },

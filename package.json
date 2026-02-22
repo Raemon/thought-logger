@@ -85,6 +85,7 @@
     "react-dom": "^19.0.0",
     "react-dropdown": "^1.11.0",
     "react-markdown": "^10.1.0",
+    "sql.js": "^1.14.0",
     "winston": "^3.17.0",
     "zod": "^4.0.14"
   },
