@@ -82,13 +82,14 @@ export async function initializeSqlKeylogPipeline(): Promise<void> {
   }
 
   const binaryPath = getBinaryPath();
-  nativeProcess = spawn(binaryPath, [], { stdio: ["ignore", "pipe", "pipe"] });
+  const proc = spawn(binaryPath, [], { stdio: ["pipe", "pipe", "pipe"] });
+  nativeProcess = proc;
 
-  nativeProcess.stderr.on("data", (chunk) => {
+  proc.stderr.on("data", (chunk) => {
     logger.error(`MacKeyServerSql stderr: ${chunk.toString("utf8")}`);
   });
 
-  const rl = readline.createInterface({ input: nativeProcess.stdout });
+  const rl = readline.createInterface({ input: proc.stdout });
   rl.on("line", (line) => {
     try {
       const event = JSON.parse(line) as {
@@ -111,7 +112,7 @@ export async function initializeSqlKeylogPipeline(): Promise<void> {
     }
   });
 
-  nativeProcess.on("exit", (code) => {
+  proc.on("exit", (code) => {
     logger.error(`MacKeyServerSql exited with code ${code}`);
   });
 }
