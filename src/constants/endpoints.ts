@@ -11,7 +11,7 @@ export const endpointList = [
   { path: "/yesterday/screenshots/summaries", label: "yesterday/summaries", description: "Yesterday's screenshot summaries" },
   { path: "/week", label: "week", description: "Past week processed keylogs" },
   { path: "/week/raw", label: "week/raw", description: "Past week raw keylogs" },
-  { path: "/sql", label: "sql", description: "Processed SQL logitems (newest to oldest)" },
+  { path: "/sql", label: "sql", description: "Processed SQL logitems past 24h (newest to oldest)" },
   { path: "/sql/raw", label: "sql/raw", description: "Raw SQL logitems past 24h (JSON)" },
 ];
 

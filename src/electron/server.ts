@@ -13,7 +13,7 @@ import {
   getScreenshotImagePathsForDate,
   readFile,
 } from "./files";
-import { getSqlLogitemsAll, getSqlLogitemsPast24Hours, renderSqlLogitemsProcessed } from "./sqlKeylogPipeline";
+import { getSqlLogitemsPast24Hours, renderSqlLogitemsProcessed } from "./sqlKeylogPipeline";
 import { allEndpoints } from "../constants/endpoints";
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
@@ -499,7 +499,7 @@ export function startLocalServer(port = 8765): http.Server {
 
       case "/sql":
         try {
-          const logitems = getSqlLogitemsAll();
+          const logitems = getSqlLogitemsPast24Hours();
           res.writeHead(200, { "Content-Type": "text/plain" });
           res.end(renderSqlLogitemsProcessed(logitems));
         } catch {

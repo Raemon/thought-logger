@@ -396,9 +396,15 @@ async function readFileNoLock(
 
   const fileData = await fs.readFile(`${filePath}.crypt`);
 
-  const plaintext = await decryptUserData(fileData);
-
-  return binary ? plaintext : Buffer.from(plaintext).toString("utf8");
+  try {
+    const plaintext = await decryptUserData(fileData);
+    return binary ? plaintext : Buffer.from(plaintext).toString("utf8");
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message.includes("ciphertext is too short")) {
+      return binary ? new Uint8Array() : "";
+    }
+    throw error;
+  }
 }
 
 export async function readFile<T extends boolean = false>(

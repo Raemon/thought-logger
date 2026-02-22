@@ -108,7 +108,7 @@ exports[`Renders the logs 1`] = `
         <a
           class="text-blue-600 no-underline cursor-pointer text-xs"
           href="http://localhost:8765/sql"
-          title="Processed SQL logitems (newest to oldest)"
+          title="Processed SQL logitems past 24h (newest to oldest)"
         >
           sql
         </a>

@@ -11,7 +11,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       // Remove keytar from externals - we'll handle it separately
-      external: [],
+      external: ["sql.js", "sql.js/dist/sql-asm.js"],
     },
     sourcemap: true,
   },
