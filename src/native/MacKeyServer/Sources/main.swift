@@ -53,6 +53,7 @@ import AppKit
 import CoreGraphics
 import Darwin.C
 import Foundation
+import ApplicationServices
 //External imports
 import Swift
 
@@ -229,6 +230,27 @@ func getActiveAppName() -> String {
     return "Unknown"
 }
 
+func getFocusedWindowTitle() -> String {
+    guard let app = NSWorkspace.shared.frontmostApplication else { return "" }
+    let appElement = AXUIElementCreateApplication(app.processIdentifier)
+    var focusedWindow: CFTypeRef?
+    let windowErr = AXUIElementCopyAttributeValue(
+        appElement,
+        kAXFocusedWindowAttribute as CFString,
+        &focusedWindow
+    )
+    if windowErr != .success { return "" }
+    guard let windowElement = focusedWindow as! AXUIElement? else { return "" }
+    var title: CFTypeRef?
+    let titleErr = AXUIElementCopyAttributeValue(
+        windowElement,
+        kAXTitleAttribute as CFString,
+        &title
+    )
+    if titleErr != .success { return "" }
+    return title as? String ?? ""
+}
+
 /// myCGEventTapCallback
 /// [CGEventTapCallback](https://developer.apple.com/documentation/coregraphics/cgeventtapcallback) used by CGEvent.tapCreate
 /// @remark returning nil from this callback destroys the event and stops it propogating to
@@ -316,9 +338,16 @@ NSWorkspace.shared.notificationCenter.addObserver(
     queue: nil
 ) { notification in
     let appName = getActiveAppName()
+    let windowTitle = getFocusedWindowTitle()
     curId = curId + 1
     // Hackily emit a fake "keyboard event" with the newly activated application
-    print("KEYBOARD,DOWN,-1,0,0,\(curId),Application activated:{{\(appName)}}")
+    let payload: [String: String] = ["appName": appName, "windowTitle": windowTitle]
+    if let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
+       let json = String(data: data, encoding: .utf8) {
+        print("KEYBOARD,DOWN,-1,0,0,\(curId),Application activated:{{\(json)}}")
+    } else {
+        print("KEYBOARD,DOWN,-1,0,0,\(curId),Application activated:{{\(appName)}}")
+    }
     fflush(stdout)
 }
 

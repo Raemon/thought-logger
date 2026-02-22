@@ -13,11 +13,52 @@ import {
   getScreenshotImagePathsForDate,
   readFile,
 } from "./files";
+import { getLogEventsSince } from "./logeventsDb";
 import { allEndpoints } from "../constants/endpoints";
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 
 const userDataPath = app.getPath("userData");
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+const specialChars = new Set([
+  "⌃",
+  "⌘",
+  "⌥",
+  "←",
+  "→",
+  "↑",
+  "↓",
+  "⎋",
+  "↹",
+  "§",
+  "±",
+]);
+
+function processRawText(text: string): string {
+  let buffer = "";
+  for (const char of text) {
+    if (char === "⌫") {
+      buffer = buffer.slice(0, -1);
+    } else if (char === "⏎") {
+      buffer += "\n";
+    } else if (!specialChars.has(char)) {
+      buffer += char;
+    }
+  }
+  return buffer;
+}
+
+function formatTimeForKeylog(date: Date): string {
+  return date
+    .toLocaleTimeString("en-CA", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+    .replace(/:/g, ".");
+}
 
 /**
  * Gets the path to a key log file for a specific date
@@ -365,6 +406,44 @@ export function startLocalServer(port = 8765): http.Server {
           "today's",
         );
         break;
+
+      case "/log": {
+        try {
+          const events = await getLogEventsSince(Date.now() - DAY_IN_MS);
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          if (events.length === 0) {
+            res.end("No log entries found in the past 24 hours.");
+            break;
+          }
+          const contents = events
+            .map((event) => {
+              const date = new Date(event.timestamp);
+              const dateStr = date.toLocaleDateString("en-CA");
+              const timeStr = formatTimeForKeylog(date);
+              const titleSuffix = event.windowTitle ? ` - ${event.windowTitle}` : "";
+              const processed = processRawText(event.keystrokes);
+              return `${dateStr} ${timeStr}: ${event.applicationName || "Unknown"}${titleSuffix}\n${processed}`;
+            })
+            .join("\n\n");
+          res.end(contents);
+        } catch {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Failed to read log entries.");
+        }
+        break;
+      }
+
+      case "/log/json": {
+        try {
+          const events = await getLogEventsSince(Date.now() - DAY_IN_MS);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(events, null, 2));
+        } catch {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Failed to read log entries." }));
+        }
+        break;
+      }
 
       case "/today/screenshots": {
         try {
