@@ -68,7 +68,7 @@ describe("SQL keylog pipeline", () => {
     });
 
     repo.appendKeystrokeToCurrentLogitem({
-      nowTimestampMs: 62000,
+      nowTimestampMs: 62002,
       applicationName: "Chrome",
       windowTitle: "B",
       keystroke: "d",
@@ -121,6 +121,7 @@ describe("SQL keylog pipeline", () => {
     });
 
     const server = startLocalServer(0);
+    await new Promise((resolve) => server.on("listening", resolve));
     const address = server.address();
     if (address === null || typeof address === "string") {
       server.close();
