@@ -55,7 +55,16 @@ export async function writeEncryptedSqlKeylogDbBytesAtomic(
     const cryptPath = `${filePath}${ENCRYPTED_FILE_EXT}`;
     const tmpPath = `${cryptPath}.tmp`;
     await fs.writeFile(tmpPath, cipherData);
-    await fs.rename(tmpPath, cryptPath);
+    try {
+      await fs.rename(tmpPath, cryptPath);
+    } catch (error: unknown) {
+      if (isErrnoException(error) && (error.code === "EEXIST" || error.code === "EPERM")) {
+        await fs.unlink(cryptPath);
+        await fs.rename(tmpPath, cryptPath);
+      } else {
+        throw error;
+      }
+    }
 
     try {
       await fs.unlink(filePath);
