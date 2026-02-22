@@ -85,6 +85,10 @@ export async function initializeSqlKeylogPipeline(): Promise<void> {
   const proc = spawn(binaryPath, [], { stdio: ["pipe", "pipe", "pipe"] });
   nativeProcess = proc;
 
+  proc.on("error", (error) => {
+    logger.error(`Failed to start MacKeyServerSql: ${error instanceof Error ? error.message : `${error}`}`);
+  });
+
   proc.stderr.on("data", (chunk) => {
     logger.error(`MacKeyServerSql stderr: ${chunk.toString("utf8")}`);
   });
@@ -114,6 +118,7 @@ export async function initializeSqlKeylogPipeline(): Promise<void> {
 
   proc.on("exit", (code) => {
     logger.error(`MacKeyServerSql exited with code ${code}`);
+    nativeProcess = null;
   });
 }
 
