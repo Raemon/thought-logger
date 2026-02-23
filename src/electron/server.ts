@@ -455,7 +455,14 @@ function handleIndexRequest(res: http.ServerResponse) {
  */
 export function startLocalServer(port = 8765): http.Server {
   const server = http.createServer(async (req, res) => {
-    const url = new URL(req.url || "/", "http://localhost");
+    let url: URL;
+    try {
+      url = new URL(req.url || "/", "http://localhost");
+    } catch {
+      res.writeHead(400, { "Content-Type": "text/plain" });
+      res.end("Bad Request");
+      return;
+    }
     const pathname = url.pathname;
     switch (pathname) {
       case "/":
