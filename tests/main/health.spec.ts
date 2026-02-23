@@ -63,7 +63,8 @@ describe("/health helpers", () => {
     const minuteSlots = buildMinuteSlotsPastWeek(nowTimestampMs);
     const html = renderHealthHtml({
       minuteSlots,
-      logeventsMinutes: new Set(),
+      keylogMinutes: new Set(),
+      screenshotMinutes: new Set(),
     });
     const rowCount = html.split('class="healthRow"').length - 1;
     expect(rowCount).toBe(7 * 24 * 60);

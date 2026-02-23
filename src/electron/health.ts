@@ -36,28 +36,39 @@ export async function buildHealthPastWeekHtml({
   getLogEventsSince,
   nowTimestampMs = Date.now(),
 }: {
-  getLogEventsSince: (sinceMs: number) => Promise<Array<{ timestamp: number }>>;
+  getLogEventsSince: (
+    sinceMs: number,
+  ) => Promise<Array<{ timestamp: number; eventType?: "keylog" | "screenshotSummary" | string }>>;
   nowTimestampMs?: number;
 }): Promise<string> {
   const sinceTimestampMs = nowTimestampMs - 7 * 24 * 60 * 60 * 1000;
   const minuteSlots = buildMinuteSlotsPastWeek(nowTimestampMs);
-  const logeventsMinutes = new Set<number>();
+  const keylogMinutes = new Set<number>();
+  const screenshotMinutes = new Set<number>();
   const events = await getLogEventsSince(sinceTimestampMs);
   for (const event of events) {
-    logeventsMinutes.add(minuteBucketFromTimestampMs(event.timestamp));
+    const minuteBucket = minuteBucketFromTimestampMs(event.timestamp);
+    if (event.eventType === "screenshotSummary") {
+      screenshotMinutes.add(minuteBucket);
+    } else {
+      keylogMinutes.add(minuteBucket);
+    }
   }
   return renderHealthHtml({
     minuteSlots,
-    logeventsMinutes,
+    keylogMinutes,
+    screenshotMinutes,
   });
 }
 
 export function renderHealthHtml({
   minuteSlots,
-  logeventsMinutes = new Set(),
+  keylogMinutes = new Set(),
+  screenshotMinutes = new Set(),
 }: {
   minuteSlots: number[];
-  logeventsMinutes?: Set<number>;
+  keylogMinutes?: Set<number>;
+  screenshotMinutes?: Set<number>;
 }): string {
   let rows = "";
   let lastDateTitle = "";
@@ -77,12 +88,16 @@ export function renderHealthHtml({
       lastDateTitle = dateTitle;
     }
     const timestamp = formatMinutePt(minuteBucket);
-    const logeventsColor = logeventsMinutes.has(minuteBucket) ? "green" : "black";
+    const keylogColor = keylogMinutes.has(minuteBucket) ? "green" : "black";
+    const screenshotColor = screenshotMinutes.has(minuteBucket) ? "dodgerblue" : "black";
     rows +=
       `<div class="healthRow">` +
       `<div class="healthRowTooltip">${timestamp}</div>` +
       `<div style="height:1px;width:88px"></div>` +
-      `<div style="height:1px;width:80vw;background:${logeventsColor}"></div>` +
+      `<div style="display:flex;flex-direction:row;gap:4px;height:1px;width:80vw">` +
+      `<div style="height:1px;flex:1;background:${keylogColor}"></div>` +
+      `<div style="height:1px;flex:1;background:${screenshotColor}"></div>` +
+      `</div>` +
       `</div>`;
   }
 
@@ -103,7 +118,10 @@ export function renderHealthHtml({
     `<body style="margin:0;font-family:monospace">` +
     `<div style="display:flex;flex-direction:row;gap:4px;position:sticky;top:0;background:white">` +
     `<div style="font-size:10px;width:88px">timestamp</div>` +
-    `<div style="font-size:10px;width:80vw">logevents</div>` +
+    `<div style="display:flex;flex-direction:row;gap:4px;width:80vw">` +
+    `<div style="font-size:10px;flex:1">keylog</div>` +
+    `<div style="font-size:10px;flex:1">screenshot</div>` +
+    `</div>` +
     `</div>` +
     rows +
     `</body>` +
