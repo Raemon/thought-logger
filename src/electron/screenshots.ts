@@ -45,7 +45,6 @@ const ScreenshotText = z.object({
     .describe("windows in the screenshot"),
   timestamp: z
     .string()
-    .optional()
     .describe("local timestamp when the summary was captured"),
 });
 
