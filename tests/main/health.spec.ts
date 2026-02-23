@@ -4,13 +4,17 @@ import http from "node:http";
 
 import {
   buildMinuteSlotsPastWeek,
-  extractKeylogAppSwitchMinuteSet,
   formatMinutePt,
   minuteBucketFromTimestampMs,
   renderHealthHtml,
-  scanScreenshotSummaryMinuteSet,
 } from "../../src/electron/health";
 import { startLocalServer } from "../../src/electron/server";
+
+vi.mock("../../src/electron/logeventsDb", () => {
+  return {
+    getLogEventsSince: () => Promise.resolve([]),
+  };
+});
 
 vi.mock("electron", () => {
   return {
@@ -54,56 +58,12 @@ describe("/health helpers", () => {
     expect(slots[1]).toBe(minuteBucketFromTimestampMs(nowTimestampMs) - 1);
   });
 
-  it("extractKeylogAppSwitchMinuteSet buckets app-switch timestamps by minute", () => {
-    const nowTimestampMs = new Date(2025, 7, 21, 12, 0, 0).getTime();
-    const sinceTimestampMs = nowTimestampMs - 7 * 24 * 60 * 60 * 1000;
-    const rawText =
-      "\n2025-08-21 10.31.15: Chrome\nabc\n\n2025-08-21 10.32.05: Terminal\n";
-    const minutes = extractKeylogAppSwitchMinuteSet(rawText, sinceTimestampMs, nowTimestampMs);
-    const bucketA = minuteBucketFromTimestampMs(new Date(2025, 7, 21, 10, 31, 15).getTime());
-    const bucketB = minuteBucketFromTimestampMs(new Date(2025, 7, 21, 10, 32, 5).getTime());
-    expect(minutes.has(bucketA)).toBe(true);
-    expect(minutes.has(bucketB)).toBe(true);
-  });
-
-  it("scanScreenshotSummaryMinuteSet finds .json and .json.crypt summary files", async () => {
-    const nowTimestampMs = new Date(2025, 7, 21, 12, 0, 0).getTime();
-    const sinceTimestampMs = nowTimestampMs - 7 * 24 * 60 * 60 * 1000;
-
-    const filesystem = {
-      files: {
-        screenshots: {
-          "2025-08": {
-            "2025-08-21": {
-              "2025-08-21 10_30_00.project.document.json": "",
-              "2025-08-21 10_31_00.json.crypt": "",
-              "2025-08-21 10_32_00.jpg": "",
-            },
-          },
-        },
-      },
-    };
-    vol.fromNestedJSON(filesystem, "/");
-
-    const minutes = await scanScreenshotSummaryMinuteSet({
-      userDataPath: "/",
-      sinceTimestampMs,
-      nowTimestampMs,
-    });
-    const bucketA = minuteBucketFromTimestampMs(new Date(2025, 7, 21, 10, 30, 0).getTime());
-    const bucketB = minuteBucketFromTimestampMs(new Date(2025, 7, 21, 10, 31, 0).getTime());
-    expect(minutes.has(bucketA)).toBe(true);
-    expect(minutes.has(bucketB)).toBe(true);
-  });
-
   it("renderHealthHtml renders one row per minute slot", () => {
     const nowTimestampMs = new Date(2025, 7, 21, 12, 0, 0).getTime();
     const minuteSlots = buildMinuteSlotsPastWeek(nowTimestampMs);
     const html = renderHealthHtml({
       minuteSlots,
-      keylogRawMinutes: new Set(),
-      keylogProcessedMinutes: new Set(),
-      screenshotSummaryMinutes: new Set(),
+      logeventsMinutes: new Set(),
     });
     const rowCount = html.split('class="healthRow"').length - 1;
     expect(rowCount).toBe(7 * 24 * 60);

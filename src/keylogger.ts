@@ -1,15 +1,12 @@
 import { app } from "electron";
 import path from "node:path";
-import forEach from "lodash/forEach";
 import {
   GlobalKeyboardListener,
   IGlobalKeyDownMap,
   IGlobalKeyEvent,
 } from "node-global-key-listener";
-import { currentKeyLogFile } from "./electron/paths";
 import { loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences";
-import { readFile, writeFile } from "./electron/files";
 import logger from "./logging";
 import { insertLogEvent } from "./electron/logeventsDb";
 import { parseApplicationActivatedRaw } from "./keyloggerAppSwitch";
@@ -258,149 +255,6 @@ function parseKeyEvent(
   return processKeyPress(event, down);
 }
 
-/** Process raw text by handling backspaces and special characters */
-function processRawText(text: string, specialChars: Set<string>): string {
-  let buffer = "";
-  for (const char of text) {
-    if (char === "⌫") {
-      buffer = buffer.slice(0, -1);
-    } else if (char === "⏎") {
-      buffer += "\n"; // Convert placeholder back to newline
-    } else if (!specialChars.has(char)) {
-      buffer += char;
-    }
-  }
-  return buffer;
-}
-
-const specialChars = new Set([
-  "⌃",
-  "⌘",
-  "⌥",
-  "←",
-  "→",
-  "↑",
-  "↓",
-  "⎋",
-  "↹",
-  "§",
-  "±",
-]);
-
-/** Rebuild log chronologically, filtering out empty app sections */
-export async function rebuildChronologicalLog(filePath: string) {
-  const rawText = await readFile(filePath);
-
-  const lines = rawText.split("\n");
-  let processedContent = "";
-
-  let currentAppLine = "";
-  let sectionLines: string[] = [];
-
-  // Process line by line
-  forEach(lines, (line) => {
-    // Match lines that start with date/time, like "2023-10-05 13.22.55: AppName"
-    const dateAppSwitch = line.match(
-      /^(\d{4}-\d{2}-\d{2})\s+(\d{2}\.\d{2}\.\d{2}):\s+(.*)$/,
-    );
-
-    if (dateAppSwitch) {
-      // Process the previous section
-      if (currentAppLine) {
-        const sectionText = sectionLines.join("\n");
-        const processedText = processRawText(sectionText, specialChars);
-        // Only add the section if it has content after processing
-        if (processedText.trim()) {
-          processedContent += currentAppLine + "\n" + processedText + "\n\n";
-        }
-      }
-
-      // Set up for new section
-      currentAppLine = line;
-      sectionLines = [];
-    } else {
-      sectionLines.push(line);
-    }
-  });
-
-  // Process the last section
-  if (currentAppLine) {
-    const sectionText = sectionLines.join("\n");
-    const processedText = processRawText(sectionText, specialChars);
-    if (processedText.trim()) {
-      processedContent += currentAppLine + "\n" + processedText + "\n";
-    }
-  }
-
-  if (processedContent) {
-    const dir = path.dirname(filePath);
-    const basename = path.basename(filePath, "log");
-    const outputPath = path.join(dir, `${basename}processed.chronological.log`);
-    writeFile(outputPath, processedContent);
-  }
-}
-
-// Refactor rebuildLogByApp to use the shared processRawText function
-export async function rebuildLogByApp(filePath: string) {
-  const rawText = await readFile(filePath);
-
-  const lines = rawText.split("\n");
-  const appBuffers = new Map<string, string>();
-  let activeApp = "Unknown";
-  const lastAppTime = new Map<string, Date>();
-
-  forEach(lines, (line) => {
-    // Match lines that start with date/time, like "2023-10-05 13.22.55: AppName"
-    const dateAppSwitch = line.match(
-      /^(\d{4}-\d{2}-\d{2})\s+(\d{2}\.\d{2}\.\d{2}):\s+(.*)$/,
-    );
-    if (dateAppSwitch) {
-      activeApp = dateAppSwitch[3];
-      const currentTime = new Date(
-        `${dateAppSwitch[1]} ${dateAppSwitch[2].replace(/\./g, ":")}`,
-      );
-
-      // Add extra newline and timestamp if more than 15 minutes since last use
-      const lastTime = lastAppTime.get(activeApp);
-      if (
-        lastTime &&
-        currentTime.getTime() - lastTime.getTime() > 15 * 60 * 1000
-      ) {
-        const timeStr = currentTime.toLocaleTimeString("en-CA", {
-          hour12: false,
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        const existingBuffer = appBuffers.get(activeApp) || "";
-        appBuffers.set(activeApp, existingBuffer + `\n[${timeStr}]\n`);
-      }
-
-      lastAppTime.set(activeApp, currentTime);
-      if (!appBuffers.has(activeApp)) {
-        appBuffers.set(activeApp, "");
-      }
-    } else {
-      const buffer = processRawText(line, specialChars);
-      appBuffers.set(activeApp, buffer);
-    }
-  });
-
-  let processedContent = "";
-  appBuffers.forEach((text, app) => {
-    const trimmed = text.trim();
-    if (trimmed) {
-      processedContent += `\n=== ${app} ===\n${trimmed}\n`;
-    }
-  });
-  if (processedContent) {
-    const dir = path.dirname(filePath);
-    const basename = path.basename(filePath, "log");
-    const outputPath = path.join(dir, `${basename}processed.by-app.log`);
-    writeFile(outputPath, processedContent);
-  }
-}
-
-let bufferedText = "";
 let dbBufferedText = "";
 let dbBufferedApplicationName = "";
 let dbBufferedWindowTitle = "";
@@ -431,23 +285,13 @@ export async function initializeKeylogger() {
   // Load initial preferences
   preferences = loadPreferences();
 
-  // Set up periodic re-processing of logs
-  setInterval(async () => {
-    await rebuildLogByApp(currentKeyLogFile());
-    await rebuildChronologicalLog(currentKeyLogFile());
-  }, 5 * 1000);
-
   keylogger.addListener((event, down) => {
     const parsed = parseKeyEvent(event, down);
     const { raw } = parsed;
 
-    // Write to raw log
     if (raw) {
-      bufferedText += raw;
       clearInterval(timer);
       timer = setTimeout(() => {
-        writeFile(currentKeyLogFile(), bufferedText, true);
-        bufferedText = "";
         flushDbBuffer();
       }, 500);
     }
@@ -469,10 +313,6 @@ export async function initializeKeylogger() {
 export function cleanupKeylogger() {
   if (timer) {
     clearTimeout(timer);
-  }
-  if (bufferedText) {
-    writeFile(currentKeyLogFile(), bufferedText, true);
-    bufferedText = "";
   }
   flushDbBuffer();
 }

@@ -23,9 +23,14 @@ exports[`Renders the logs 1`] = `
         <a
           class="text-blue-600 no-underline cursor-pointer text-xs"
           href="http://localhost:8765/log"
-          title="Keylog aggregation + discrete screenshot summaries (defaults to past 24 hours, supports ?search= and ?type=keylog|screenshot)"
+          title="Keylog aggregation + discrete screenshot summaries (defaults to past 24 hours, supports ?search= and ?type=keylog|screenshot) (start/end: ms or YYYY-MM-DD_HH.MM.SSAM|PM)"
         >
           log
+          <span
+            class="text-gray-500"
+          >
+             ?start=&end=&search=&type=keylog|screenshot
+          </span>
         </a>
       </div>
       <div
@@ -44,197 +49,11 @@ exports[`Renders the logs 1`] = `
       >
         <a
           class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/health"
-          title="Past week per-minute activity overview"
-        >
-          health
-        </a>
-      </div>
-      <div
-        class="flex flex-wrap gap-2.5"
-      >
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
           href="http://localhost:8765/week"
           title="Aggregated keylogs JSON from past 168 hours"
         >
           week
         </a>
-      </div>
-    </div>
-    <div
-      class="flex gap-5"
-    >
-      <div
-        class="min-w-[220px] max-w-[250px] pr-2 border-r border-gray-200 text-sm sticky top-0 h-screen overflow-y-auto thin-scrollbar"
-      >
-        <div
-          class="font-bold mb-2"
-        >
-          Table of Contents
-        </div>
-        <div
-          class="mb-2"
-        >
-          <div
-            class="font-semibold"
-          >
-            2025-08
-          </div>
-          <div
-            style="margin-left: 10px;"
-          >
-            <div
-              class="mb-1"
-            >
-              <div
-                class="text-xs text-gray-600"
-              >
-                <a
-                  class="text-blue-500 hover:underline"
-                  href="#week-2025-W34"
-                >
-                  2025-W34
-                </a>
-              </div>
-              <div
-                style="margin-left: 10px;"
-              >
-                <div>
-                  <a
-                    class="text-blue-700 hover:underline"
-                    href="#day-2025-08-19"
-                    style="font-size: 13px;"
-                  >
-                    Tue, Aug 19
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div
-        class="min-w-[300px] flex-1 space-y-12"
-      >
-        <div
-          class="mb-2.5"
-          id="day-2025-08-19"
-        >
-          <div
-            class="mb-1 font-bold flex items-center"
-          >
-            <span
-              class="mr-auto"
-            >
-              Tuesday, August 19, 2025
-            </span>
-            <button
-              class="text-gray-600 hover:text-blue-600 group relative ml-2 p-1"
-            >
-              <span
-                class="absolute right-full mr-1 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs bg-gray-800 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none"
-              >
-                Regenerate summary
-              </span>
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                />
-              </svg>
-            </button>
-          </div>
-          <div
-            class="flex flex-col gap-1"
-          >
-            <div
-              class="p-3 rounded text-sm markdown bg-gray-100"
-            >
-              <p>
-                This is a daily summary
-              </p>
-            </div>
-          </div>
-          <div
-            class="flex gap-3 p-1"
-          >
-            <button
-              class="text-xs text-blue-800 font-normal"
-            >
-              Keylog
-            </button>
-            <button
-              class="text-xs text-blue-800 font-normal"
-            >
-              Screenshots
-            </button>
-            <button
-              class="text-xs text-blue-800 font-normal"
-            >
-              Summaries
-            </button>
-          </div>
-        </div>
-        <div
-          class="mb-2.5"
-          id="week-2025W33"
-        >
-          <div
-            class="mb-1 font-bold flex items-center"
-          >
-            <span
-              class="mr-auto"
-            >
-              Week of Monday, August 11, 2025 to Sunday, August 17, 2025
-            </span>
-            <button
-              class="text-gray-600 hover:text-blue-600 group relative ml-2 p-1"
-            >
-              <span
-                class="absolute right-full mr-1 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs bg-gray-800 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none"
-              >
-                Regenerate summary
-              </span>
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                />
-              </svg>
-            </button>
-          </div>
-          <div
-            class="flex flex-col gap-1"
-          >
-            <div
-              class="p-3 rounded text-sm markdown bg-sky-50"
-            >
-              <p>
-                This is a weekly summary
-              </p>
-            </div>
-          </div>
-        </div>
-        <button
-          class="text-blue-600 hover:underline text-sm"
-        >
-          Load all
-        </button>
       </div>
     </div>
   </div>

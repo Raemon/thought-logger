@@ -1,6 +1,3 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-
 const MINUTE_MS = 60 * 1000;
 const WEEK_MINUTES = 7 * 24 * 60;
 const PT_TIME_ZONE = "America/Los_Angeles";
@@ -35,253 +32,31 @@ function formatDatePt(minuteBucket: number): string {
   return date.toLocaleDateString("en-CA", { timeZone: PT_TIME_ZONE });
 }
 
-function parseLocalTimestampMsFromKeylogLineParts({
-  yyyyMmDd,
-  hh,
-  mm,
-  ss,
-}: {
-  yyyyMmDd: string;
-  hh: string;
-  mm: string;
-  ss: string;
-}): number | null {
-  const parts = yyyyMmDd.split("-");
-  if (parts.length !== 3) return null;
-  const year = Number(parts[0]);
-  const month = Number(parts[1]);
-  const day = Number(parts[2]);
-  const hour = Number(hh);
-  const minute = Number(mm);
-  const second = Number(ss);
-  if (
-    !Number.isFinite(year) ||
-    !Number.isFinite(month) ||
-    !Number.isFinite(day) ||
-    !Number.isFinite(hour) ||
-    !Number.isFinite(minute) ||
-    !Number.isFinite(second)
-  ) {
-    return null;
-  }
-  return new Date(year, month - 1, day, hour, minute, second).getTime();
-}
-
-export function extractKeylogAppSwitchMinuteSet(
-  rawKeylogText: string,
-  sinceTimestampMs: number,
-  nowTimestampMs: number,
-): Set<number> {
-  const minutes = new Set<number>();
-  const appSwitchRegex =
-    /^(\d{4}-\d{2}-\d{2})\s+(\d{2})\.(\d{2})\.(\d{2}):\s+.*$/gm;
-  let match: RegExpExecArray | null;
-  while ((match = appSwitchRegex.exec(rawKeylogText))) {
-    const timestampMs = parseLocalTimestampMsFromKeylogLineParts({
-      yyyyMmDd: match[1],
-      hh: match[2],
-      mm: match[3],
-      ss: match[4],
-    });
-    if (timestampMs === null) continue;
-    if (timestampMs < sinceTimestampMs || timestampMs > nowTimestampMs) continue;
-    minutes.add(minuteBucketFromTimestampMs(timestampMs));
-  }
-  return minutes;
-}
-
-function parseLocalTimestampMsFromScreenshotSummaryFilename(
-  fileName: string,
-): number | null {
-  const match = fileName.match(
-    /^(\d{4}-\d{2}-\d{2})\s+(\d{2})_(\d{2})_(\d{2})/,
-  );
-  if (!match) return null;
-  return parseLocalTimestampMsFromKeylogLineParts({
-    yyyyMmDd: match[1],
-    hh: match[2],
-    mm: match[3],
-    ss: match[4],
-  });
-}
-
-export async function scanScreenshotSummaryMinuteSet({
-  userDataPath,
-  sinceTimestampMs,
-  nowTimestampMs,
-}: {
-  userDataPath: string;
-  sinceTimestampMs: number;
-  nowTimestampMs: number;
-}): Promise<Set<number>> {
-  const minutes = new Set<number>();
-  const dayDates: Date[] = [];
-  const startDate = new Date(sinceTimestampMs);
-  const endDate = new Date(nowTimestampMs);
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(endDate.getTime());
-    date.setDate(endDate.getDate() - i);
-    if (date.getTime() < startDate.getTime() - 24 * 60 * 60 * 1000) continue;
-    dayDates.push(date);
-  }
-
-  for (const dayDate of dayDates) {
-    const year = dayDate.getFullYear();
-    const month = String(dayDate.getMonth() + 1).padStart(2, "0");
-    const folderName = `${year}-${month}`;
-    const dateStr = dayDate.toLocaleDateString("en-CA");
-    const dayFolderPath = path.join(
-      userDataPath,
-      "files",
-      "screenshots",
-      folderName,
-      dateStr,
-    );
-
-    let entries: string[];
-    try {
-      entries = await fs.readdir(dayFolderPath);
-    } catch {
-      continue;
-    }
-
-    for (const entryName of entries) {
-      const isJson =
-        entryName.endsWith(".json") || entryName.endsWith(".json.crypt");
-      if (!isJson) continue;
-      const timestampMs =
-        parseLocalTimestampMsFromScreenshotSummaryFilename(entryName);
-      if (timestampMs === null) continue;
-      if (timestampMs < sinceTimestampMs || timestampMs > nowTimestampMs) continue;
-      minutes.add(minuteBucketFromTimestampMs(timestampMs));
-    }
-  }
-
-  return minutes;
-}
-
-export function buildKeylogDatesPastWeek(nowTimestampMs: number): Date[] {
-  const keylogDates: Date[] = [];
-  const today = new Date(nowTimestampMs);
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(nowTimestampMs);
-    date.setDate(today.getDate() - i);
-    keylogDates.push(date);
-  }
-  return keylogDates;
-}
-
-export async function scanKeylogAppSwitchMinuteSetsPastWeek({
-  readFile,
-  getKeyLogFileForDate,
-  sinceTimestampMs,
-  nowTimestampMs,
-}: {
-  readFile: (filePath: string) => Promise<string>;
-  getKeyLogFileForDate: (date: Date, suffix: string) => string;
-  sinceTimestampMs: number;
-  nowTimestampMs: number;
-}): Promise<{
-  keylogRawMinutes: Set<number>;
-  keylogProcessedMinutes: Set<number>;
-}> {
-  const keylogDates = buildKeylogDatesPastWeek(nowTimestampMs);
-  const keylogRawMinutes = new Set<number>();
-  const keylogProcessedMinutes = new Set<number>();
-  for (const keylogDate of keylogDates) {
-    try {
-      const rawPath = getKeyLogFileForDate(keylogDate, "");
-      const rawText = await readFile(rawPath);
-      const rawMinutesForFile = extractKeylogAppSwitchMinuteSet(
-        rawText,
-        sinceTimestampMs,
-        nowTimestampMs,
-      );
-      for (const minuteBucket of rawMinutesForFile) {
-        keylogRawMinutes.add(minuteBucket);
-      }
-    } catch {
-      void 0;
-    }
-    try {
-      const processedPath = getKeyLogFileForDate(
-        keylogDate,
-        "processed.chronological.",
-      );
-      const processedText = await readFile(processedPath);
-      const processedMinutesForFile = extractKeylogAppSwitchMinuteSet(
-        processedText,
-        sinceTimestampMs,
-        nowTimestampMs,
-      );
-      for (const minuteBucket of processedMinutesForFile) {
-        keylogProcessedMinutes.add(minuteBucket);
-      }
-    } catch {
-      void 0;
-    }
-  }
-  return { keylogRawMinutes, keylogProcessedMinutes };
-}
-
 export async function buildHealthPastWeekHtml({
-  userDataPath,
-  readFile,
-  getKeyLogFileForDate,
   getLogEventsSince,
   nowTimestampMs = Date.now(),
 }: {
-  userDataPath: string;
-  readFile: (filePath: string) => Promise<string>;
-  getKeyLogFileForDate: (date: Date, suffix: string) => string;
-  getLogEventsSince?: (sinceMs: number) => Promise<Array<{ timestamp: number }>>;
+  getLogEventsSince: (sinceMs: number) => Promise<Array<{ timestamp: number }>>;
   nowTimestampMs?: number;
 }): Promise<string> {
   const sinceTimestampMs = nowTimestampMs - 7 * 24 * 60 * 60 * 1000;
   const minuteSlots = buildMinuteSlotsPastWeek(nowTimestampMs);
-  const { keylogRawMinutes, keylogProcessedMinutes } =
-    await scanKeylogAppSwitchMinuteSetsPastWeek({
-      readFile,
-      getKeyLogFileForDate,
-      sinceTimestampMs,
-      nowTimestampMs,
-    });
-  const screenshotSummaryMinutes = await scanScreenshotSummaryMinuteSet({
-    userDataPath,
-    sinceTimestampMs,
-    nowTimestampMs,
-  });
   const logeventsMinutes = new Set<number>();
-  if (getLogEventsSince) {
-    try {
-      const events = await getLogEventsSince(sinceTimestampMs);
-      for (const event of events) {
-        logeventsMinutes.add(minuteBucketFromTimestampMs(event.timestamp));
-      }
-    } catch {
-      void 0;
-    }
+  const events = await getLogEventsSince(sinceTimestampMs);
+  for (const event of events) {
+    logeventsMinutes.add(minuteBucketFromTimestampMs(event.timestamp));
   }
   return renderHealthHtml({
     minuteSlots,
-    keylogRawMinutes,
-    keylogProcessedMinutes,
-    screenshotSummaryMinutes,
     logeventsMinutes,
   });
 }
 
 export function renderHealthHtml({
   minuteSlots,
-  keylogRawMinutes,
-  keylogProcessedMinutes,
-  screenshotSummaryMinutes,
   logeventsMinutes = new Set(),
 }: {
   minuteSlots: number[];
-  keylogRawMinutes: Set<number>;
-  keylogProcessedMinutes: Set<number>;
-  screenshotSummaryMinutes: Set<number>;
   logeventsMinutes?: Set<number>;
 }): string {
   let rows = "";
@@ -297,26 +72,17 @@ export function renderHealthHtml({
         `<div style="font-size:14px;line-height:16px;width:88px;white-space:nowrap;overflow:hidden">` +
         `${dateTitle}` +
         `</div>` +
-        `<div style="height:16px;width:20vw"></div>` +
-        `<div style="height:16px;width:20vw"></div>` +
-        `<div style="height:16px;width:20vw"></div>` +
-        `<div style="height:16px;width:20vw"></div>` +
+        `<div style="height:16px;width:80vw"></div>` +
         `</div>`;
       lastDateTitle = dateTitle;
     }
     const timestamp = formatMinutePt(minuteBucket);
-    const keylogsRawColor = keylogRawMinutes.has(minuteBucket) ? "green" : "black";
-    const keylogsProcessedColor = keylogProcessedMinutes.has(minuteBucket) ? "green" : "black";
-    const screenshotsColor = screenshotSummaryMinutes.has(minuteBucket) ? "green" : "black";
     const logeventsColor = logeventsMinutes.has(minuteBucket) ? "green" : "black";
     rows +=
       `<div class="healthRow">` +
       `<div class="healthRowTooltip">${timestamp}</div>` +
       `<div style="height:1px;width:88px"></div>` +
-      `<div style="height:1px;width:20vw;background:${keylogsRawColor}"></div>` +
-      `<div style="height:1px;width:20vw;background:${keylogsProcessedColor}"></div>` +
-      `<div style="height:1px;width:20vw;background:${screenshotsColor}"></div>` +
-      `<div style="height:1px;width:20vw;background:${logeventsColor}"></div>` +
+      `<div style="height:1px;width:80vw;background:${logeventsColor}"></div>` +
       `</div>`;
   }
 
@@ -337,10 +103,7 @@ export function renderHealthHtml({
     `<body style="margin:0;font-family:monospace">` +
     `<div style="display:flex;flex-direction:row;gap:4px;position:sticky;top:0;background:white">` +
     `<div style="font-size:10px;width:88px">timestamp</div>` +
-    `<div style="font-size:10px;width:20vw">keylogs_raw</div>` +
-    `<div style="font-size:10px;width:20vw">keylogs_processed</div>` +
-    `<div style="font-size:10px;width:20vw">screenshots</div>` +
-    `<div style="font-size:10px;width:20vw">logevents</div>` +
+    `<div style="font-size:10px;width:80vw">logevents</div>` +
     `</div>` +
     rows +
     `</body>` +

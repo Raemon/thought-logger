@@ -3,7 +3,6 @@ import {
   PermissionStatus,
 } from "../electron/permissions";
 import { Preferences } from "./preferences";
-import { Summary } from "./files";
 
 declare global {
   interface UserData {
@@ -11,14 +10,9 @@ declare global {
     getUserDataFolder: () => Promise<string>;
     openDebugLogsFolder: () => void;
     getDebugLogsFolder: () => Promise<string>;
-    getRecentLogs: () => Promise<Summary[]>;
-    getAllLogs: () => Promise<Summary[]>;
-    getRecentApps: () => Promise<string[]>;
     openFile: (filePath: string) => void;
     openExternalUrl: (url: string) => void;
     readFile: (filePath: string) => Promise<string>;
-    generateAISummary: (log: Summary, loadAll?: boolean) => Promise<string>;
-    onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => () => void;
   }
 
   interface Window {

@@ -9,7 +9,6 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types";
 import { z } from "zod";
 import logger from "../logging";
 import {
-  getScreenshotSummariesForDate,
   getScreenshotImagePathsForDate,
   readFile,
 } from "./files";
@@ -187,110 +186,6 @@ function parseAggregatedLogQueryParams({
   };
 }
 
-/**
- * Gets the path to a key log file for a specific date
- * @param date The date to get the log file for
- * @returns The path to the log file
- */
-function getKeyLogFileForDate(date: Date, suffix: string): string {
-  const year = date.getFullYear();
-  const month = new Intl.DateTimeFormat("en-US", { month: "2-digit" }).format(
-    date,
-  );
-  const dateStr = date.toLocaleDateString("en-CA"); // Format as YYYY-MM-DD
-
-  const folderPath = path.join(
-    userDataPath,
-    "files",
-    "keylogs",
-    `${year}-${month}`,
-  );
-
-  return path.join(folderPath, `${dateStr}.${suffix}log`);
-}
-
-/**
- * Gets the path to today's key log file
- * @returns The path to today's log file
- */
-export function currentKeyLogFile({ raw = false }: { raw?: boolean }): string {
-  return getKeyLogFileForDate(
-    new Date(),
-    raw ? "" : "processed.chronological.",
-  );
-}
-
-/**
- * Gets the path to yesterday's key log file
- * @returns The path to yesterday's log file
- */
-function getYesterdayKeyLogFile({ raw = false }: { raw?: boolean }): string {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return getKeyLogFileForDate(yesterday, raw ? "" : "processed.chronological.");
-}
-
-/**
- * Gets the paths to all key log files from the past week
- * @returns Array of paths to log files from the past week
- */
-function getWeekKeyLogFiles(): string[] {
-  const files = [];
-  const today = new Date();
-
-  // Get log files for today and the past 6 days (7 days total)
-  for (let i = 0; i < 7; i++) {
-    const date = new Date();
-    date.setDate(today.getDate() - i);
-    files.push(getKeyLogFileForDate(date, "processed.chronological."));
-  }
-
-  return files;
-}
-
-/**
- * Fetches contents of log files for the week
- */
-async function getWeekContents({
-  raw = false,
-}: {
-  raw?: boolean;
-}): Promise<string> {
-  const filePaths = getWeekKeyLogFiles().map((file) => {
-    // If raw is true, remove the "processed.chronological." suffix
-    return raw ? file.replace("processed.chronological.", "") : file;
-  });
-
-  const contents = await Promise.all(
-    filePaths.map(async (filePath) => {
-      try {
-        return readFile(filePath);
-      } catch {
-        return `Unable to read file: ${filePath}\n`;
-      }
-    }),
-  );
-  return contents.join("\n\n");
-}
-
-/**
- * Route handler for serving log files
- */
-async function handleLogFileRequest(
-  res: http.ServerResponse,
-  filePath: string,
-  description: string,
-) {
-  try {
-    const data = await readFile(filePath);
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end(data);
-  } catch {
-    res.writeHead(500, { "Content-Type": "text/plain" });
-    res.end(`Failed to read ${description} log file. ${filePath}`);
-  }
-}
-
 async function handleAggregatedLogRequest(
   res: http.ServerResponse,
   startTimestamp: number,
@@ -383,29 +278,6 @@ async function handleAggregatedLogRequest(
     res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Failed to read log entries." }));
   }
-}
-
-async function handleScreenshotSummaryList(
-  res: http.ServerResponse,
-  dateString: string,
-) {
-  const summaries = await getScreenshotSummariesForDate(dateString);
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  if (summaries.length === 0) {
-    res.end(`No screenshot summaries for ${dateString}.`);
-    return;
-  }
-  const contents = summaries
-    .map((summary) => {
-      try {
-        const jsonData = JSON.parse(summary.contents);
-        return `${summary.path}:\n${JSON.stringify(jsonData, null, 2)}`;
-      } catch {
-        return `${summary.path}:\n${summary.contents}`;
-      }
-    })
-    .join("\n\n");
-  res.end(contents);
 }
 
 async function handleScreenshotImageListForDate(
@@ -539,20 +411,40 @@ async function handleMCPPostRequest(
       },
       async ({ date }) => {
         let text: string;
-
-        const parsedDate = new Date(date);
-
-        try {
-          const filePath = getKeyLogFileForDate(
-            parsedDate,
-            "processed.chronological.",
-          );
-          text = await readFile(filePath);
-        } catch (error) {
-          if (error instanceof Error) {
-            text = `Unable to fetch keylog data for ${date}: ${error.message}`;
-          } else {
-            throw error;
+        const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) {
+          text = `Unable to fetch keylog data for ${date}: invalid date format`;
+        } else {
+          const year = Number(match[1]);
+          const monthIndex = Number(match[2]) - 1;
+          const day = Number(match[3]);
+          const dayStart = new Date(year, monthIndex, day, 0, 0, 0, 0).getTime();
+          const dayEnd = dayStart + DAY_IN_MS - 1;
+          try {
+            const eventsAllSinceStart = await getLogEventsSince(dayStart);
+            const events = eventsAllSinceStart.filter((event) => event.timestamp <= dayEnd);
+            const keylogEvents = events.filter((event) => event.eventType === "keylog");
+            if (keylogEvents.length === 0) {
+              text = `No keylog data for ${date}.`;
+            } else {
+              const groups = aggregateLogEventsByAppWindowAndGap(keylogEvents).slice().sort((a, b) => a.startTimestamp - b.startTimestamp);
+              text = groups
+                .map((group) => {
+                  const appName = group.applicationName || "Unknown";
+                  const windowTitle = group.windowTitle || "";
+                  const startTime = formatLocalTimestampForUrlParam(group.startTimestamp);
+                  const endTime = formatLocalTimestampForUrlParam(group.endTimestamp);
+                  const processed = processRawText(group.keystrokes);
+                  return `[${startTime} - ${endTime}] ${appName}${windowTitle ? ` - ${windowTitle}` : ""}\n${processed}`;
+                })
+                .join("\n\n");
+            }
+          } catch (error) {
+            if (error instanceof Error) {
+              text = `Unable to fetch keylog data for ${date}: ${error.message}`;
+            } else {
+              throw error;
+            }
           }
         }
 
@@ -644,14 +536,6 @@ export function startLocalServer(port = 8765): http.Server {
         break;
       }
 
-      case "/today/raw":
-        await handleLogFileRequest(
-          res,
-          currentKeyLogFile({ raw: true }),
-          "today's",
-        );
-        break;
-
       case "/log": {
         const now = Date.now();
         const parsedQuery = parseAggregatedLogQueryParams({
@@ -717,17 +601,6 @@ export function startLocalServer(port = 8765): http.Server {
         break;
       }
 
-      case "/today/screenshots/summaries": {
-        try {
-          const dateString = new Date().toLocaleDateString("en-CA");
-          await handleScreenshotSummaryList(res, dateString);
-        } catch {
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("Failed to list today's screenshot summaries.");
-        }
-        break;
-      }
-
       case "/yesterday": {
         const now = new Date();
         const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -752,14 +625,6 @@ export function startLocalServer(port = 8765): http.Server {
         );
         break;
       }
-
-      case "/yesterday/raw":
-        await handleLogFileRequest(
-          res,
-          getYesterdayKeyLogFile({ raw: true }),
-          "yesterday's",
-        );
-        break;
 
       case "/yesterday/screenshots": {
         try {
@@ -787,25 +652,9 @@ export function startLocalServer(port = 8765): http.Server {
         break;
       }
 
-      case "/yesterday/screenshots/summaries": {
-        try {
-          const date = new Date();
-          date.setDate(date.getDate() - 1);
-          const dateString = date.toLocaleDateString("en-CA");
-          await handleScreenshotSummaryList(res, dateString);
-        } catch {
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("Failed to list yesterday's screenshot summaries.");
-        }
-        break;
-      }
-
       case "/health": {
         try {
           const html = await buildHealthPastWeekHtml({
-            userDataPath,
-            readFile,
-            getKeyLogFileForDate,
             getLogEventsSince,
           });
           res.writeHead(200, { "Content-Type": "text/html" });
@@ -850,43 +699,22 @@ export function startLocalServer(port = 8765): http.Server {
 
         break;
 
-      case "/week/raw":
-        try {
-          const contents = await getWeekContents({ raw: true });
-          res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end(contents);
-        } catch {
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("Failed to read raw log files for the past week.");
-        }
-        break;
-
       default: {
         const screenshotFileMatch = pathname.match(/^\/screenshot\/(.+)$/);
-        // Check if the URL matches the format /YYYY-MM-DD
         const screenshotImageMatch = pathname.match(
           /^\/(\d{4}-\d{2}-\d{2})\/screenshots$/,
         );
         const screenshotGalleryMatch = pathname.match(
           /^\/(\d{4}-\d{2}-\d{2})\/screenshots\/all$/,
         );
-        const screenshotSummaryMatch = pathname.match(
-          /^\/(\d{4}-\d{2}-\d{2})\/screenshots\/summaries$/,
-        );
-        const dateMatch = pathname.match(/^\/(\d{4}-\d{2}-\d{2})$/);
 
         if (screenshotFileMatch) {
           await handleScreenshotImageRequest(res, screenshotFileMatch[1]);
         } else if (
           screenshotImageMatch ||
-          screenshotGalleryMatch ||
-          screenshotSummaryMatch ||
-          dateMatch
+          screenshotGalleryMatch
         ) {
-          const dateStr = (screenshotImageMatch ||
-            screenshotGalleryMatch ||
-            screenshotSummaryMatch ||
-            dateMatch)?.[1];
+          const dateStr = (screenshotImageMatch || screenshotGalleryMatch)?.[1];
 
           if (!dateStr) {
             res.writeHead(400, { "Content-Type": "text/plain" });
@@ -905,29 +733,17 @@ export function startLocalServer(port = 8765): http.Server {
               break;
             }
 
-            if (screenshotSummaryMatch) {
-              await handleScreenshotSummaryList(res, dateStr);
-            } else if (screenshotGalleryMatch) {
+            if (screenshotGalleryMatch) {
               await handleScreenshotImageGalleryForDate(res, dateStr);
             } else if (screenshotImageMatch) {
               await handleScreenshotImageListForDate(res, dateStr);
-            } else {
-              const filePath = getKeyLogFileForDate(
-                date,
-                "processed.chronological.",
-              );
-              await handleLogFileRequest(res, filePath, `log for ${dateStr}`);
             }
           } catch {
             res.writeHead(500, { "Content-Type": "text/plain" });
             res.end(
-              screenshotSummaryMatch
-                ? `Failed to retrieve screenshot summaries for ${dateStr}.`
-                : screenshotGalleryMatch
-                  ? `Failed to render screenshot gallery for ${dateStr}.`
-                  : screenshotImageMatch
-                    ? `Failed to retrieve screenshot images for ${dateStr}.`
-                    : `Failed to retrieve log file for ${dateStr}.`,
+              screenshotGalleryMatch
+                ? `Failed to render screenshot gallery for ${dateStr}.`
+                : `Failed to retrieve screenshot images for ${dateStr}.`,
             );
           }
         } else {

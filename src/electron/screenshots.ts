@@ -190,21 +190,12 @@ export async function parseScreenshot(
   }
   extractedText.timestamp = new Date().toLocaleString();
   const firstWindow = extractedText.windows[0];
-  const encodedApp = encodeURIComponent(currentApplication);
-  const encodedTitle = firstWindow
-    ? encodeURIComponent(firstWindow.title.slice(0, 50))
-    : "unknown";
-  const jsonFilePath = imgPath.replace(
-    ".jpg",
-    `.${encodedApp}.${encodedTitle}.json`,
-  );
-  await writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
   await insertScreenshotSummaryLogEvent({
     timestamp: Date.now(),
     applicationName: firstWindow?.applicationName || currentApplication || "Unknown",
     windowTitle: firstWindow?.title || "",
     payload: extractedText,
-    meta: { imgPath, jsonFilePath, captureApplication: currentApplication },
+    meta: { imgPath, captureApplication: currentApplication },
   });
 }
 

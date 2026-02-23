@@ -47,25 +47,17 @@ beforeEach(async () => {
 });
 
 describe("encryptAllUnencryptedFiles", () => {
-  it("encrypts all unencrypted log and screenshot files", async () => {
+  it("encrypts all unencrypted screenshot image files", async () => {
     const imageData = Buffer.from([1, 2, 3, 4]);
     const filesystem = {
-      "/files/keylogs/2025-08/2025-08-20.log": "test data",
-      "/files/keylogs/2025-08/2025-08-19.processed.chronological.log":
-        "test data",
       "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.jpg":
         imageData,
-      "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.json":
-        '["test data"]',
       "/files/screenshots/2025-08/2025-08-20/2025-08-20 11_00_00.jpg":
         imageData,
-      "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.json":
-        '["test data"]',
     };
 
     vol.fromJSON(filesystem, "/");
 
-    // This will fail because encryptAllUnencryptedFiles doesn't exist yet
     await encryptAllUnencryptedFiles();
 
     const expectedFilePaths = Object.keys(filesystem)
@@ -84,20 +76,13 @@ describe("#countUnencryptedFiles", () => {
   it("counts the unencrypted files", async () => {
     const binaryData = Buffer.from([1, 2, 3, 4]);
     const filesystem = {
-      "/files/keylogs/2025-08/2025-08-19.log": "test data",
-      "/files/keylogs/2025-08/2025-08-19.processed.chronological.log.crypt":
-        binaryData,
       "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.jpg":
         binaryData,
-      "/files/screenshots/2025-08/2025-08-20/2025-08-20 10_30_00.json":
-        '["test data"]',
       "/files/screenshots/2025-08/2025-08-20/2025-08-20 11_00_00.jpg.crypt":
-        binaryData,
-      "/files/screenshots/2025-08/2025-08-20/2025-08-20 12_45_00.jsoncrypt":
         binaryData,
     };
     vol.fromJSON(filesystem);
     const count = await countUnencryptedFiles();
-    expect(count).toBe(3);
+    expect(count).toBe(1);
   });
 });

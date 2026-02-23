@@ -13,13 +13,8 @@ import { savePreferences, loadPreferences } from "./preferences";
 import { Preferences } from "./types/preferences";
 import { toggleScheduledScreenshots } from "./electron/screenshots";
 import { startLocalServer } from "./electron/server";
-import {
-  startDailySummaryCheck,
-  getAvailableModels,
-  summarize,
-} from "./electron/summarizer";
-import { Summary } from "./types/files";
-import { setDefaultOptions, isEqual } from "date-fns";
+import { getAvailableModels } from "./electron/openRouter";
+import { setDefaultOptions } from "date-fns";
 import logger, {
   getLatestError,
   getRecentErrors,
@@ -30,11 +25,8 @@ import logger, {
 } from "./logging";
 import {
   encryptAllUnencryptedFiles,
-  getRecentApps,
-  getRecentSummaries,
   readFile,
   countUnencryptedFiles,
-  MONTH_IN_SECONDS,
 } from "./electron/files";
 import { getSecret, setSecret } from "./electron/credentials";
 import { LOG_FILE_ENCRYPTION } from "./constants/credentials";
@@ -82,7 +74,6 @@ app.on("ready", function () {
   updateDebugPreferences(prefs);
   toggleScheduledScreenshots(prefs);
   startLocalServer();
-  startDailySummaryCheck();
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -197,39 +188,6 @@ ipcMain.handle("READ_FILE", async (_event, filePath: string) => {
     throw error;
   }
 });
-
-ipcMain.handle("GENERATE_AI_SUMMARY", async (_event, summary: Summary, loadAll: boolean) => {
-  const ageInSeconds = loadAll ? Infinity : MONTH_IN_SECONDS;
-  const oldLogs = await getRecentSummaries(ageInSeconds);
-  for (const log of oldLogs) {
-    const { date, scope } = log;
-    if (isEqual(date, summary.date) && scope === summary.scope) {
-      log.loading = true;
-    }
-  }
-  updateSummaries(oldLogs);
-  await summarize(summary);
-  const newLogs = await getRecentSummaries(ageInSeconds);
-  updateSummaries(newLogs);
-});
-
-function updateSummaries(summaries: Summary[]): void {
-  BrowserWindow.getAllWindows().forEach((win) =>
-    win.webContents.send("UPDATE_RECENT_LOGS", summaries),
-  );
-}
-
-ipcMain.handle("GET_RECENT_LOGS", async () => {
-  return getRecentSummaries().then((summaries) =>
-    summaries.filter((summary) => summary.contents),
-  );
-});
-
-ipcMain.handle("GET_ALL_LOGS", async () => {
-  return getRecentSummaries(Infinity);
-});
-
-ipcMain.handle("GET_RECENT_APPS", getRecentApps);
 
 ipcMain.handle("COUNT_UNENCRYPTED_FILES", async () => {
   return countUnencryptedFiles();

@@ -1,6 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import { Preferences } from "./types/preferences";
-import { Summary } from "./types/files";
 
 contextBridge.exposeInMainWorld("permissions", {
   requestPermissionsStatus: () =>
@@ -32,17 +31,6 @@ const userData: UserData = {
   openFile: (path: string) => ipcRenderer.send("OPEN_FILE", path),
   openExternalUrl: (url: string) => ipcRenderer.send("OPEN_EXTERNAL_URL", url),
   readFile: (path: string) => ipcRenderer.invoke("READ_FILE", path),
-  generateAISummary: (log: Summary, loadAll = false) =>
-    ipcRenderer.invoke("GENERATE_AI_SUMMARY", log, loadAll),
-  getRecentLogs: () => ipcRenderer.invoke("GET_RECENT_LOGS"),
-  getAllLogs: () => ipcRenderer.invoke("GET_ALL_LOGS"),
-  getRecentApps: () => ipcRenderer.invoke("GET_RECENT_APPS"),
-  onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => {
-    const handler = (_event: IpcRendererEvent, summaries: Summary[]) =>
-      callback(summaries);
-    ipcRenderer.on("UPDATE_RECENT_LOGS", handler);
-    return () => ipcRenderer.removeListener("UPDATE_RECENT_LOGS", handler);
-  },
 };
 
 contextBridge.exposeInMainWorld("userData", userData);
@@ -85,9 +73,4 @@ interface UserData {
   openFile: (path: string) => void;
   openExternalUrl: (url: string) => void;
   readFile: (path: string) => Promise<string>;
-  generateAISummary: (log: Summary, loadAll?: boolean) => Promise<void>;
-  getRecentLogs: () => Promise<Summary[]>;
-  getAllLogs: () => Promise<Summary[]>;
-  getRecentApps: () => Promise<string[]>;
-  onUpdateRecentLogs: (callback: (summaries: Summary[]) => void) => void;
 }
