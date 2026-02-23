@@ -121,7 +121,7 @@ export function App() {
         </div>
       ) : (
         <TabContainer defaultTab={defaultTab}>
-          <Tab id="logs" label="Logs">
+          <Tab id="logs" label="API">
             <FileInfo />
           </Tab>
           <Tab id="settings" label="Settings">

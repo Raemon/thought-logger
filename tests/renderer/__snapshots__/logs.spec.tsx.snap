@@ -12,37 +12,9 @@ exports[`Renders the logs 1`] = `
         <a
           class="text-blue-600 no-underline cursor-pointer text-xs"
           href="http://localhost:8765/today"
-          title="Today's processed keylog"
+          title="Aggregated keylogs JSON from past 24 hours"
         >
           today
-        </a>
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/today/raw"
-          title="Today's raw keylog"
-        >
-          today/raw
-        </a>
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/today/screenshots"
-          title="Today's screenshot image paths"
-        >
-          today/screenshots
-        </a>
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/today/screenshots/all"
-          title="Today's screenshot images gallery"
-        >
-          today/screenshots/all
-        </a>
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/today/screenshots/summaries"
-          title="Today's screenshot summaries"
-        >
-          today/summaries
         </a>
       </div>
       <div
@@ -51,16 +23,9 @@ exports[`Renders the logs 1`] = `
         <a
           class="text-blue-600 no-underline cursor-pointer text-xs"
           href="http://localhost:8765/log"
-          title="Aggregated decrypted keylogs JSON (defaults to past 24 hours, supports ?search=)"
+          title="Keylog aggregation + discrete screenshot summaries (defaults to past 24 hours, supports ?search= and ?type=keylog|screenshot)"
         >
           log
-        </a>
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/log/raw"
-          title="Decrypted logevents JSON from past 24 hours"
-        >
-          log/json
         </a>
       </div>
       <div
@@ -69,37 +34,9 @@ exports[`Renders the logs 1`] = `
         <a
           class="text-blue-600 no-underline cursor-pointer text-xs"
           href="http://localhost:8765/yesterday"
-          title="Yesterday's processed keylog"
+          title="Aggregated keylogs JSON from previous midnight to midnight"
         >
           yesterday
-        </a>
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/yesterday/raw"
-          title="Yesterday's raw keylog"
-        >
-          yesterday/raw
-        </a>
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/yesterday/screenshots"
-          title="Yesterday's screenshot image paths"
-        >
-          yesterday/screenshots
-        </a>
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/yesterday/screenshots/all"
-          title="Yesterday's screenshot images gallery"
-        >
-          yesterday/screenshots/all
-        </a>
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/yesterday/screenshots/summaries"
-          title="Yesterday's screenshot summaries"
-        >
-          yesterday/summaries
         </a>
       </div>
       <div
@@ -119,16 +56,9 @@ exports[`Renders the logs 1`] = `
         <a
           class="text-blue-600 no-underline cursor-pointer text-xs"
           href="http://localhost:8765/week"
-          title="Past week processed keylogs"
+          title="Aggregated keylogs JSON from past 168 hours"
         >
           week
-        </a>
-        <a
-          class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/week/raw"
-          title="Past week raw keylogs"
-        >
-          week/raw
         </a>
       </div>
     </div>
