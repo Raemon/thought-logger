@@ -51,13 +51,13 @@ exports[`Renders the logs 1`] = `
         <a
           class="text-blue-600 no-underline cursor-pointer text-xs"
           href="http://localhost:8765/log"
-          title="Decrypted logevents from past 24 hours"
+          title="Aggregated decrypted keylogs JSON (defaults to past 24 hours)"
         >
           log
         </a>
         <a
           class="text-blue-600 no-underline cursor-pointer text-xs"
-          href="http://localhost:8765/log/json"
+          href="http://localhost:8765/log/raw"
           title="Decrypted logevents JSON from past 24 hours"
         >
           log/json

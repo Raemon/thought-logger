@@ -540,7 +540,7 @@ export function startLocalServer(port = 8765): http.Server {
         break;
       }
 
-      case "/log/json": {
+      case "/log/raw": {
         try {
           const events = await getLogEventsSince(Date.now() - DAY_IN_MS);
           res.writeHead(200, { "Content-Type": "application/json" });
@@ -646,6 +646,7 @@ export function startLocalServer(port = 8765): http.Server {
             userDataPath,
             readFile,
             getKeyLogFileForDate,
+            getLogEventsSince,
           });
           res.writeHead(200, { "Content-Type": "text/html" });
           res.end(html);

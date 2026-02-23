@@ -228,11 +228,13 @@ export async function buildHealthPastWeekHtml({
   userDataPath,
   readFile,
   getKeyLogFileForDate,
+  getLogEventsSince,
   nowTimestampMs = Date.now(),
 }: {
   userDataPath: string;
   readFile: (filePath: string) => Promise<string>;
   getKeyLogFileForDate: (date: Date, suffix: string) => string;
+  getLogEventsSince?: (sinceMs: number) => Promise<Array<{ timestamp: number }>>;
   nowTimestampMs?: number;
 }): Promise<string> {
   const sinceTimestampMs = nowTimestampMs - 7 * 24 * 60 * 60 * 1000;
@@ -249,11 +251,23 @@ export async function buildHealthPastWeekHtml({
     sinceTimestampMs,
     nowTimestampMs,
   });
+  const logeventsMinutes = new Set<number>();
+  if (getLogEventsSince) {
+    try {
+      const events = await getLogEventsSince(sinceTimestampMs);
+      for (const event of events) {
+        logeventsMinutes.add(minuteBucketFromTimestampMs(event.timestamp));
+      }
+    } catch {
+      void 0;
+    }
+  }
   return renderHealthHtml({
     minuteSlots,
     keylogRawMinutes,
     keylogProcessedMinutes,
     screenshotSummaryMinutes,
+    logeventsMinutes,
   });
 }
 
@@ -262,11 +276,13 @@ export function renderHealthHtml({
   keylogRawMinutes,
   keylogProcessedMinutes,
   screenshotSummaryMinutes,
+  logeventsMinutes = new Set(),
 }: {
   minuteSlots: number[];
   keylogRawMinutes: Set<number>;
   keylogProcessedMinutes: Set<number>;
   screenshotSummaryMinutes: Set<number>;
+  logeventsMinutes?: Set<number>;
 }): string {
   let rows = "";
   let lastDateTitle = "";
@@ -281,9 +297,10 @@ export function renderHealthHtml({
         `<div style="font-size:14px;line-height:16px;width:88px;white-space:nowrap;overflow:hidden">` +
         `${dateTitle}` +
         `</div>` +
-        `<div style="height:16px;width:25vw"></div>` +
-        `<div style="height:16px;width:25vw"></div>` +
-        `<div style="height:16px;width:25vw"></div>` +
+        `<div style="height:16px;width:20vw"></div>` +
+        `<div style="height:16px;width:20vw"></div>` +
+        `<div style="height:16px;width:20vw"></div>` +
+        `<div style="height:16px;width:20vw"></div>` +
         `</div>`;
       lastDateTitle = dateTitle;
     }
@@ -291,13 +308,15 @@ export function renderHealthHtml({
     const keylogsRawColor = keylogRawMinutes.has(minuteBucket) ? "green" : "black";
     const keylogsProcessedColor = keylogProcessedMinutes.has(minuteBucket) ? "green" : "black";
     const screenshotsColor = screenshotSummaryMinutes.has(minuteBucket) ? "green" : "black";
+    const logeventsColor = logeventsMinutes.has(minuteBucket) ? "green" : "black";
     rows +=
       `<div class="healthRow">` +
       `<div class="healthRowTooltip">${timestamp}</div>` +
       `<div style="height:1px;width:88px"></div>` +
-      `<div style="height:1px;width:25vw;background:${keylogsRawColor}"></div>` +
-      `<div style="height:1px;width:25vw;background:${keylogsProcessedColor}"></div>` +
-      `<div style="height:1px;width:25vw;background:${screenshotsColor}"></div>` +
+      `<div style="height:1px;width:20vw;background:${keylogsRawColor}"></div>` +
+      `<div style="height:1px;width:20vw;background:${keylogsProcessedColor}"></div>` +
+      `<div style="height:1px;width:20vw;background:${screenshotsColor}"></div>` +
+      `<div style="height:1px;width:20vw;background:${logeventsColor}"></div>` +
       `</div>`;
   }
 
@@ -318,9 +337,10 @@ export function renderHealthHtml({
     `<body style="margin:0;font-family:monospace">` +
     `<div style="display:flex;flex-direction:row;gap:4px;position:sticky;top:0;background:white">` +
     `<div style="font-size:10px;width:88px">timestamp</div>` +
-    `<div style="font-size:10px;width:25vw">keylogs_raw</div>` +
-    `<div style="font-size:10px;width:25vw">keylogs_processed</div>` +
-    `<div style="font-size:10px;width:25vw">screenshots</div>` +
+    `<div style="font-size:10px;width:20vw">keylogs_raw</div>` +
+    `<div style="font-size:10px;width:20vw">keylogs_processed</div>` +
+    `<div style="font-size:10px;width:20vw">screenshots</div>` +
+    `<div style="font-size:10px;width:20vw">logevents</div>` +
     `</div>` +
     rows +
     `</body>` +
