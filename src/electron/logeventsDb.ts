@@ -11,6 +11,9 @@ export type LogEvent = {
   keystrokes: string;
   applicationName: string;
   windowTitle: string;
+  eventType: "keylog" | "screenshotSummary";
+  payload: unknown | null;
+  meta: unknown | null;
 };
 
 function repairLegacyAppWindowFields({
@@ -60,16 +63,70 @@ export function createLogeventsDb({
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.exec(
-    "CREATE TABLE IF NOT EXISTS logevent (id INTEGER PRIMARY KEY AUTOINCREMENT,timestamp INTEGER NOT NULL,keystrokes BLOB NOT NULL,applicationName BLOB NOT NULL,windowTitle BLOB NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS logevent (id INTEGER PRIMARY KEY AUTOINCREMENT,timestamp INTEGER NOT NULL,keystrokes BLOB NOT NULL,applicationName BLOB NOT NULL,windowTitle BLOB NOT NULL,eventType TEXT NOT NULL DEFAULT 'keylog',payload BLOB,meta BLOB)",
   );
   db.exec("CREATE INDEX IF NOT EXISTS logevent_timestamp ON logevent(timestamp)");
 
+  const existingColsRaw = db.pragma("table_info(logevent)") as unknown;
+  const existingCols = Array.isArray(existingColsRaw)
+    ? (existingColsRaw as Array<{ name: string }>)
+    : [];
+  const colNames = new Set(existingCols.map((c) => c.name));
+  if (!colNames.has("eventType")) {
+    db.exec("ALTER TABLE logevent ADD COLUMN eventType TEXT NOT NULL DEFAULT 'keylog'");
+  }
+  if (!colNames.has("payload")) {
+    db.exec("ALTER TABLE logevent ADD COLUMN payload BLOB");
+  }
+  if (!colNames.has("meta")) {
+    db.exec("ALTER TABLE logevent ADD COLUMN meta BLOB");
+  }
+
   const insertStmt = db.prepare(
-    "INSERT INTO logevent (timestamp,keystrokes,applicationName,windowTitle) VALUES (@timestamp,@keystrokes,@applicationName,@windowTitle)",
+    "INSERT INTO logevent (timestamp,keystrokes,applicationName,windowTitle,eventType,payload,meta) VALUES (@timestamp,@keystrokes,@applicationName,@windowTitle,@eventType,@payload,@meta)",
   );
   const selectSinceStmt = db.prepare(
-    "SELECT id,timestamp,keystrokes,applicationName,windowTitle FROM logevent WHERE timestamp >= ? ORDER BY timestamp DESC,id DESC",
+    "SELECT id,timestamp,keystrokes,applicationName,windowTitle,eventType,payload,meta FROM logevent WHERE timestamp >= ? ORDER BY timestamp DESC,id DESC",
   );
+
+  async function insertRow({
+    timestamp,
+    keystrokes,
+    applicationName,
+    windowTitle,
+    eventType,
+    payload,
+    meta,
+  }: {
+    timestamp: number;
+    keystrokes: string;
+    applicationName: string;
+    windowTitle: string;
+    eventType: "keylog" | "screenshotSummary";
+    payload: unknown | null;
+    meta: unknown | null;
+  }): Promise<void> {
+    const payloadText = payload === null ? null : JSON.stringify(payload);
+    const metaText = meta === null ? null : JSON.stringify(meta);
+    const [encKeys, encApp, encTitle] = await Promise.all([
+      encrypt(keystrokes),
+      encrypt(applicationName),
+      encrypt(windowTitle),
+    ]);
+    const [encPayload, encMeta] = await Promise.all([
+      payloadText === null ? null : encrypt(payloadText),
+      metaText === null ? null : encrypt(metaText),
+    ]);
+    insertStmt.run({
+      timestamp,
+      keystrokes: Buffer.from(encKeys),
+      applicationName: Buffer.from(encApp),
+      windowTitle: Buffer.from(encTitle),
+      eventType,
+      payload: encPayload === null ? null : Buffer.from(encPayload),
+      meta: encMeta === null ? null : Buffer.from(encMeta),
+    });
+  }
 
   async function insertLogEvent({
     timestamp,
@@ -82,16 +139,38 @@ export function createLogeventsDb({
     applicationName: string;
     windowTitle: string;
   }): Promise<void> {
-    const [encKeys, encApp, encTitle] = await Promise.all([
-      encrypt(keystrokes),
-      encrypt(applicationName),
-      encrypt(windowTitle),
-    ]);
-    insertStmt.run({
+    return insertRow({
       timestamp,
-      keystrokes: Buffer.from(encKeys),
-      applicationName: Buffer.from(encApp),
-      windowTitle: Buffer.from(encTitle),
+      keystrokes,
+      applicationName,
+      windowTitle,
+      eventType: "keylog",
+      payload: null,
+      meta: null,
+    });
+  }
+
+  async function insertScreenshotSummaryLogEvent({
+    timestamp,
+    applicationName,
+    windowTitle,
+    payload,
+    meta,
+  }: {
+    timestamp: number;
+    applicationName: string;
+    windowTitle: string;
+    payload: unknown;
+    meta: unknown;
+  }): Promise<void> {
+    return insertRow({
+      timestamp,
+      keystrokes: "",
+      applicationName,
+      windowTitle,
+      eventType: "screenshotSummary",
+      payload,
+      meta,
     });
   }
 
@@ -102,6 +181,9 @@ export function createLogeventsDb({
       keystrokes: Buffer;
       applicationName: Buffer;
       windowTitle: Buffer;
+      eventType: "keylog" | "screenshotSummary" | string;
+      payload: Buffer | null;
+      meta: Buffer | null;
     }>;
 
     const decoder = new TextDecoder();
@@ -112,16 +194,43 @@ export function createLogeventsDb({
           decrypt(row.applicationName),
           decrypt(row.windowTitle),
         ]);
+        const [payloadBytes, metaBytes] = await Promise.all([
+          row.payload ? decrypt(row.payload) : null,
+          row.meta ? decrypt(row.meta) : null,
+        ]);
+        const payloadText = payloadBytes ? decoder.decode(payloadBytes) : null;
+        const metaText = metaBytes ? decoder.decode(metaBytes) : null;
+        let payload: unknown | null = null;
+        let meta: unknown | null = null;
+        if (payloadText) {
+          try {
+            payload = JSON.parse(payloadText);
+          } catch {
+            payload = payloadText;
+          }
+        }
+        if (metaText) {
+          try {
+            meta = JSON.parse(metaText);
+          } catch {
+            meta = metaText;
+          }
+        }
         const repaired = repairLegacyAppWindowFields({
           applicationName: decoder.decode(appName),
           windowTitle: decoder.decode(title),
         });
+        const eventType =
+          row.eventType === "screenshotSummary" ? ("screenshotSummary" as const) : ("keylog" as const);
         return {
           id: row.id,
           timestamp: row.timestamp,
           keystrokes: decoder.decode(keys),
           applicationName: repaired.applicationName,
           windowTitle: repaired.windowTitle,
+          eventType,
+          payload,
+          meta,
         };
       }),
     );
@@ -133,7 +242,7 @@ export function createLogeventsDb({
     db.close();
   }
 
-  return { insertLogEvent, getLogEventsSince, close };
+  return { insertLogEvent, insertScreenshotSummaryLogEvent, getLogEventsSince, close };
 }
 
 let singleton:
@@ -163,6 +272,16 @@ export async function insertLogEvent(args: {
   windowTitle: string;
 }): Promise<void> {
   return getSingleton().insertLogEvent(args);
+}
+
+export async function insertScreenshotSummaryLogEvent(args: {
+  timestamp: number;
+  applicationName: string;
+  windowTitle: string;
+  payload: unknown;
+  meta: unknown;
+}): Promise<void> {
+  return getSingleton().insertScreenshotSummaryLogEvent(args);
 }
 
 export async function getLogEventsSince(sinceMs: number): Promise<LogEvent[]> {

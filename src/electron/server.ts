@@ -129,6 +129,64 @@ function parseLocalTimestampFromUrlParam(value: string): number | null {
   return date.getTime();
 }
 
+function parseLogTypeParam(value: string | null):
+  | { ok: true; filter: "keylog" | "screenshotSummary" | null }
+  | { ok: false; error: string } {
+  if (!value) return { ok: true, filter: null };
+  if (value === "keylog") return { ok: true, filter: "keylog" };
+  if (value === "screenshot") return { ok: true, filter: "screenshotSummary" };
+  return { ok: false, error: `Invalid type: ${value}. Expected keylog or screenshot.` };
+}
+
+function parseAggregatedLogQueryParams({
+  url,
+  defaultEndTimestamp,
+  defaultStartTimestamp,
+  defaultDurationMs,
+}: {
+  url: URL;
+  defaultEndTimestamp: number;
+  defaultStartTimestamp: number;
+  defaultDurationMs: number;
+}):
+  | {
+      ok: true;
+      startTimestamp: number;
+      endTimestamp: number;
+      searchParam: string | null;
+      typeFilter: "keylog" | "screenshotSummary" | null;
+    }
+  | { ok: false; error: string } {
+  const startParam = url.searchParams.get("start");
+  const endParam = url.searchParams.get("end");
+  const searchParam = url.searchParams.get("search");
+  const typeParam = url.searchParams.get("type");
+  const parsedType = parseLogTypeParam(typeParam);
+  if (!parsedType.ok) return parsedType;
+  const parsedStart = startParam ? parseLocalTimestampFromUrlParam(startParam) : null;
+  const parsedEnd = endParam ? parseLocalTimestampFromUrlParam(endParam) : null;
+  if (startParam && parsedStart === null) {
+    return { ok: false, error: `Invalid start timestamp: ${startParam}` };
+  }
+  if (endParam && parsedEnd === null) {
+    return { ok: false, error: `Invalid end timestamp: ${endParam}` };
+  }
+  const endTimestamp = parsedEnd ?? defaultEndTimestamp;
+  const startTimestamp =
+    parsedStart ??
+    (parsedEnd !== null ? endTimestamp - defaultDurationMs : defaultStartTimestamp);
+  if (startTimestamp > endTimestamp) {
+    return { ok: false, error: "Invalid range: start is after end." };
+  }
+  return {
+    ok: true,
+    startTimestamp,
+    endTimestamp,
+    searchParam,
+    typeFilter: parsedType.filter,
+  };
+}
+
 /**
  * Gets the path to a key log file for a specific date
  * @param date The date to get the log file for
@@ -230,6 +288,100 @@ async function handleLogFileRequest(
   } catch {
     res.writeHead(500, { "Content-Type": "text/plain" });
     res.end(`Failed to read ${description} log file. ${filePath}`);
+  }
+}
+
+async function handleAggregatedLogRequest(
+  res: http.ServerResponse,
+  startTimestamp: number,
+  endTimestamp: number,
+  searchParam?: string | null,
+  typeFilter?: "keylog" | "screenshotSummary" | null,
+) {
+  try {
+    const eventsAllSinceStart = await getLogEventsSince(startTimestamp);
+    const events = eventsAllSinceStart.filter((event) => event.timestamp <= endTimestamp);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    if (events.length === 0) {
+      res.end(JSON.stringify([], null, 2));
+      return;
+    }
+    const keylogEvents = events.filter((event) => event.eventType === "keylog");
+    const screenshotSummaryEvents = events.filter(
+      (event) => event.eventType === "screenshotSummary",
+    );
+    type LogResponseItem =
+      | {
+          type: "keylog";
+          start: string;
+          end: string;
+          appName: string;
+          windowTitle: string;
+          keylogs: string;
+          sortTimestamp: number;
+        }
+      | {
+          type: "screenshotSummary";
+          timestamp: string;
+          appName: string;
+          windowTitle: string;
+          screenshotSummary: unknown;
+          meta: unknown;
+          sortTimestamp: number;
+        };
+    const groups = aggregateLogEventsByAppWindowAndGap(keylogEvents).slice().sort((a, b) => b.endTimestamp - a.endTimestamp);
+    const responseKeylogs: LogResponseItem[] = groups.map((group) => {
+      const appName = group.applicationName || "Unknown";
+      const windowTitle = group.windowTitle || "";
+      const startTime = formatLocalTimestampForUrlParam(group.startTimestamp);
+      const endTime = formatLocalTimestampForUrlParam(group.endTimestamp);
+      return {
+        type: "keylog",
+        start: startTime,
+        end: endTime,
+        appName,
+        windowTitle,
+        keylogs: processRawText(group.keystrokes),
+        sortTimestamp: group.endTimestamp,
+      };
+    });
+    const responseScreenshots: LogResponseItem[] = screenshotSummaryEvents.map((event) => {
+      const appName = event.applicationName || "Unknown";
+      const windowTitle = event.windowTitle || "";
+      const timestamp = formatLocalTimestampForUrlParam(event.timestamp);
+      return {
+        type: "screenshotSummary",
+        timestamp,
+        appName,
+        windowTitle,
+        screenshotSummary: event.payload,
+        meta: event.meta,
+        sortTimestamp: event.timestamp,
+      };
+    });
+    const response = [...responseKeylogs, ...responseScreenshots].sort((a, b) => b.sortTimestamp - a.sortTimestamp).map((item) => {
+      const { sortTimestamp: _sortTimestamp, ...rest } = item;
+      return rest;
+    });
+    const responseByType = typeFilter ? response.filter((item) => item.type === typeFilter) : response;
+    if (searchParam) {
+      const search = searchParam.toLowerCase();
+      const filtered = responseByType.filter((item) => {
+        const appMatch = item.appName.toLowerCase().includes(search);
+        const titleMatch = item.windowTitle.toLowerCase().includes(search);
+        if (item.type === "keylog") {
+          return appMatch || titleMatch || item.keylogs.toLowerCase().includes(search);
+        }
+        const payloadText = JSON.stringify(item.screenshotSummary || "");
+        return appMatch || titleMatch || payloadText.toLowerCase().includes(search);
+      });
+      res.end(JSON.stringify(filtered, null, 2));
+    } else {
+      res.end(JSON.stringify(responseByType, null, 2));
+    }
+  } catch {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Failed to read log entries." }));
   }
 }
 
@@ -469,13 +621,28 @@ export function startLocalServer(port = 8765): http.Server {
       case "/":
         handleIndexRequest(res);
         break;
-      case "/today":
-        await handleLogFileRequest(
+      case "/today": {
+        const now = Date.now();
+        const parsedQuery = parseAggregatedLogQueryParams({
+          url,
+          defaultEndTimestamp: now,
+          defaultStartTimestamp: now - DAY_IN_MS,
+          defaultDurationMs: DAY_IN_MS,
+        });
+        if (!parsedQuery.ok) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: parsedQuery.error }));
+          break;
+        }
+        await handleAggregatedLogRequest(
           res,
-          currentKeyLogFile({ raw: false }),
-          "today's",
+          parsedQuery.startTimestamp,
+          parsedQuery.endTimestamp,
+          parsedQuery.searchParam,
+          parsedQuery.typeFilter,
         );
         break;
+      }
 
       case "/today/raw":
         await handleLogFileRequest(
@@ -486,74 +653,41 @@ export function startLocalServer(port = 8765): http.Server {
         break;
 
       case "/log": {
-        try {
-          const startParam = url.searchParams.get("start");
-          const endParam = url.searchParams.get("end");
-          const searchParam = url.searchParams.get("search");
-          const defaultEnd = Date.now();
-          const parsedStart = startParam ? parseLocalTimestampFromUrlParam(startParam) : null;
-          const parsedEnd = endParam ? parseLocalTimestampFromUrlParam(endParam) : null;
-          if (startParam && parsedStart === null) {
-            res.writeHead(400, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: `Invalid start timestamp: ${startParam}` }));
-            break;
-          }
-          if (endParam && parsedEnd === null) {
-            res.writeHead(400, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: `Invalid end timestamp: ${endParam}` }));
-            break;
-          }
-          const endTimestamp = parsedEnd ?? defaultEnd;
-          const startTimestamp =
-            parsedStart ??
-            (parsedEnd !== null ? endTimestamp - DAY_IN_MS : Date.now() - DAY_IN_MS);
-          if (startTimestamp > endTimestamp) {
-            res.writeHead(400, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: "Invalid range: start is after end." }));
-            break;
-          }
-          const eventsAllSinceStart = await getLogEventsSince(startTimestamp);
-          const events = eventsAllSinceStart.filter((event) => event.timestamp <= endTimestamp);
-          res.writeHead(200, { "Content-Type": "application/json" });
-          if (events.length === 0) {
-            res.end(JSON.stringify([], null, 2));
-            break;
-          }
-          const groups = aggregateLogEventsByAppWindowAndGap(events).slice().sort((a, b) => b.endTimestamp - a.endTimestamp);
-          const response = groups.map((group) => {
-            const appName = group.applicationName || "Unknown";
-            const windowTitle = group.windowTitle || "";
-            const startTime = formatLocalTimestampForUrlParam(group.startTimestamp);
-            const endTime = formatLocalTimestampForUrlParam(group.endTimestamp);
-            return {
-              start: startTime,
-              end: endTime,
-              appName,
-              windowTitle,
-              keylogs: processRawText(group.keystrokes),
-            };
-          });
-          if (searchParam) {
-            const search = searchParam.toLowerCase();
-            const filtered = response.filter((group) => {
-              return group.appName.toLowerCase().includes(search) || group.windowTitle.toLowerCase().includes(search) || group.keylogs.toLowerCase().includes(search);
-            });
-            res.end(JSON.stringify(filtered, null, 2));
-          } else {
-            res.end(JSON.stringify(response, null, 2));
-          }
-        } catch {
-          res.writeHead(500, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: "Failed to read log entries." }));
+        const now = Date.now();
+        const parsedQuery = parseAggregatedLogQueryParams({
+          url,
+          defaultEndTimestamp: now,
+          defaultStartTimestamp: now - DAY_IN_MS,
+          defaultDurationMs: DAY_IN_MS,
+        });
+        if (!parsedQuery.ok) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: parsedQuery.error }));
+          break;
         }
+        await handleAggregatedLogRequest(
+          res,
+          parsedQuery.startTimestamp,
+          parsedQuery.endTimestamp,
+          parsedQuery.searchParam,
+          parsedQuery.typeFilter,
+        );
         break;
       }
 
       case "/log/raw": {
         try {
+          const typeParam = url.searchParams.get("type");
+          const parsedType = parseLogTypeParam(typeParam);
+          if (!parsedType.ok) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: parsedType.error }));
+            break;
+          }
           const events = await getLogEventsSince(Date.now() - DAY_IN_MS);
+          const filtered = parsedType.filter ? events.filter((event) => event.eventType === parsedType.filter) : events;
           res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify(events, null, 2));
+          res.end(JSON.stringify(filtered, null, 2));
         } catch {
           res.writeHead(500, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "Failed to read log entries." }));
@@ -594,13 +728,30 @@ export function startLocalServer(port = 8765): http.Server {
         break;
       }
 
-      case "/yesterday":
-        await handleLogFileRequest(
+      case "/yesterday": {
+        const now = new Date();
+        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterdayMidnight = new Date(todayMidnight.getTime() - DAY_IN_MS);
+        const parsedQuery = parseAggregatedLogQueryParams({
+          url,
+          defaultEndTimestamp: todayMidnight.getTime(),
+          defaultStartTimestamp: yesterdayMidnight.getTime(),
+          defaultDurationMs: DAY_IN_MS,
+        });
+        if (!parsedQuery.ok) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: parsedQuery.error }));
+          break;
+        }
+        await handleAggregatedLogRequest(
           res,
-          getYesterdayKeyLogFile({ raw: false }),
-          "yesterday's",
+          parsedQuery.startTimestamp,
+          parsedQuery.endTimestamp,
+          parsedQuery.searchParam,
+          parsedQuery.typeFilter,
         );
         break;
+      }
 
       case "/yesterday/raw":
         await handleLogFileRequest(
@@ -666,16 +817,29 @@ export function startLocalServer(port = 8765): http.Server {
         break;
       }
 
-      case "/week":
-        try {
-          const contents = await getWeekContents({ raw: false });
-          res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end(contents);
-        } catch {
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("Failed to read log files for the past week.");
+      case "/week": {
+        const WEEK_IN_MS = 7 * DAY_IN_MS;
+        const now = Date.now();
+        const parsedQuery = parseAggregatedLogQueryParams({
+          url,
+          defaultEndTimestamp: now,
+          defaultStartTimestamp: now - WEEK_IN_MS,
+          defaultDurationMs: WEEK_IN_MS,
+        });
+        if (!parsedQuery.ok) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: parsedQuery.error }));
+          break;
         }
+        await handleAggregatedLogRequest(
+          res,
+          parsedQuery.startTimestamp,
+          parsedQuery.endTimestamp,
+          parsedQuery.searchParam,
+          parsedQuery.typeFilter,
+        );
         break;
+      }
 
       case "/mcp":
         if (req.method == "POST") {

@@ -23,6 +23,9 @@ vi.mock("better-sqlite3", () => {
     keystrokes: Buffer;
     applicationName: Buffer;
     windowTitle: Buffer;
+    eventType: string;
+    payload: Buffer | null;
+    meta: Buffer | null;
   };
   type DbState = { rows: StoredRow[]; nextId: number };
   type InsertParams = {
@@ -30,6 +33,9 @@ vi.mock("better-sqlite3", () => {
     keystrokes: Buffer;
     applicationName: Buffer;
     windowTitle: Buffer;
+    eventType: string;
+    payload: Buffer | null;
+    meta: Buffer | null;
   };
 
   class FakeStatement {
@@ -47,6 +53,9 @@ vi.mock("better-sqlite3", () => {
         keystrokes: params.keystrokes,
         applicationName: params.applicationName,
         windowTitle: params.windowTitle,
+        eventType: params.eventType,
+        payload: params.payload,
+        meta: params.meta,
       };
       this.state.rows.push(row);
       return { changes: 1, lastInsertRowid: row.id };
@@ -61,7 +70,19 @@ vi.mock("better-sqlite3", () => {
 
   class FakeDatabase {
     private readonly state: DbState = { rows: [], nextId: 1 };
-    pragma(): string {
+    pragma(value?: string): string | Array<{ name: string }> {
+      if (value === "table_info(logevent)") {
+        return [
+          { name: "id" },
+          { name: "timestamp" },
+          { name: "keystrokes" },
+          { name: "applicationName" },
+          { name: "windowTitle" },
+          { name: "eventType" },
+          { name: "payload" },
+          { name: "meta" },
+        ];
+      }
       return "wal";
     }
     exec(): void {
@@ -69,7 +90,7 @@ vi.mock("better-sqlite3", () => {
     }
     prepare(sql: string) {
       if (sql.startsWith("INSERT INTO logevent")) return new FakeStatement("insert", this.state);
-      if (sql.startsWith("SELECT id,timestamp,keystrokes,applicationName,windowTitle FROM logevent")) {
+      if (sql.startsWith("SELECT id,timestamp,keystrokes,applicationName,windowTitle,eventType,payload,meta FROM logevent")) {
         return new FakeStatement("selectSince", this.state);
       }
       throw new Error(`Unexpected SQL: ${sql}`);

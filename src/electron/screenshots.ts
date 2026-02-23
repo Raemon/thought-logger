@@ -14,6 +14,7 @@ import { LOG_FILE_ENCRYPTION, OPEN_ROUTER } from "../constants/credentials";
 import { writeFile } from "./files";
 import { ENCRYPTED_FILE_EXT } from "./encryption";
 import path from "node:path";
+import { insertScreenshotSummaryLogEvent } from "./logeventsDb";
 
 const ScreenshotText = z.object({
   windows: z
@@ -199,6 +200,13 @@ export async function parseScreenshot(
     `.${encodedApp}.${encodedTitle}.json`,
   );
   await writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
+  await insertScreenshotSummaryLogEvent({
+    timestamp: Date.now(),
+    applicationName: firstWindow?.applicationName || currentApplication || "Unknown",
+    windowTitle: firstWindow?.title || "",
+    payload: extractedText,
+    meta: { imgPath, jsonFilePath, captureApplication: currentApplication },
+  });
 }
 
 async function takeScreenshot(quality: number) {

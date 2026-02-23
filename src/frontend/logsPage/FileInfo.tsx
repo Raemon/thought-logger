@@ -37,7 +37,7 @@ export function FileInfo() {
   return (
     <div>
       <EndpointLinks />
-      <div className="flex gap-5">
+      {/* <div className="flex gap-5">
         <TableOfContents tocByMonth={tocByMonth} />
         <div className="min-w-[300px] flex-1 space-y-12">
           {serializedLogs
@@ -54,7 +54,7 @@ export function FileInfo() {
             </button>
           )}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

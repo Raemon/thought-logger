@@ -1,32 +1,17 @@
 export const endpointList = [
-  { path: "/today", label: "today", description: "Today's processed keylog" },
-  { path: "/today/raw", label: "today/raw", description: "Today's raw keylog" },
-  { path: "/log", label: "log", description: "Aggregated decrypted keylogs JSON (defaults to past 24 hours, supports ?search=)" },
-  { path: "/log/raw", label: "log/json", description: "Decrypted logevents JSON from past 24 hours" },
-  { path: "/today/screenshots", label: "today/screenshots", description: "Today's screenshot image paths" },
-  { path: "/today/screenshots/all", label: "today/screenshots/all", description: "Today's screenshot images gallery" },
-  { path: "/today/screenshots/summaries", label: "today/summaries", description: "Today's screenshot summaries" },
-  { path: "/yesterday", label: "yesterday", description: "Yesterday's processed keylog" },
-  { path: "/yesterday/raw", label: "yesterday/raw", description: "Yesterday's raw keylog" },
-  { path: "/yesterday/screenshots", label: "yesterday/screenshots", description: "Yesterday's screenshot image paths" },
-  { path: "/yesterday/screenshots/all", label: "yesterday/screenshots/all", description: "Yesterday's screenshot images gallery" },
-  { path: "/yesterday/screenshots/summaries", label: "yesterday/summaries", description: "Yesterday's screenshot summaries" },
-  { path: "/health", label: "health", description: "Past week per-minute activity overview" },
-  { path: "/week", label: "week", description: "Past week processed keylogs" },
-  { path: "/week/raw", label: "week/raw", description: "Past week raw keylogs" },
+  { path: "/today", label: "today", description: "Aggregated keylogs JSON from past 24 hours" },
+  { path: "/log", label: "log", description: "Keylog aggregation + discrete screenshot summaries (defaults to past 24 hours, supports ?search= and ?type=keylog|screenshot)" },
+  // { path: "/log/raw", label: "log/raw", description: "Decrypted logevents JSON (keylogs + screenshot summaries) from past 24 hours (supports ?type=keylog|screenshot)" },
+  { path: "/yesterday", label: "yesterday", description: "Aggregated keylogs JSON from previous midnight to midnight" },
+  { path: "/week", label: "week", description: "Aggregated keylogs JSON from past 168 hours" },
 ];
 
-// These endpoints have dynamic paths and are not directly linkable from the UI
-export const dynamicEndpoints = [
-  { path: "/screenshot/[filepath]", label: "Screenshot", description: "Serve a screenshot image" },
-  { path: "/mcp", label: "MCP", description: "MCP server endpoint" },
-  { path: "/YYYY-MM-DD", label: "Keylog", description: "Processed keylog for date" },
-  { path: "/YYYY-MM-DD/screenshots", label: "Screenshots", description: "Screenshot images for date" },
-  { path: "/YYYY-MM-DD/screenshots/summaries", label: "Summaries", description: "Screenshot summaries for date" },
+export const otherEndpoints = [
+  { path: "/health", label: "health", description: "Past week per-minute activity overview" },
 ];
 
 // Combined list for the index page
 export const allEndpoints = [
   ...endpointList.map(({ path, description }) => ({ path, description })),
-  ...dynamicEndpoints,
+  ...otherEndpoints,
 ];
