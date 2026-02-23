@@ -8,7 +8,7 @@ import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 
 export function App() {
   const [recentErrors, setRecentErrors] = useState<string[]>([]);
-  const [defaultTab] = useState<"logs" | "settings">("logs");
+  const [defaultTab] = useState<"logs" | "settings">("settings");
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [encryptionComplete, setEncryptionComplete] = useState(false);
   const [shouldEncrypt, setShouldEncrypt] = useState(false);
