@@ -13,6 +13,29 @@ export type LogEvent = {
   windowTitle: string;
 };
 
+function repairLegacyAppWindowFields({
+  applicationName,
+  windowTitle,
+}: {
+  applicationName: string;
+  windowTitle: string;
+}): { applicationName: string; windowTitle: string } {
+  if (windowTitle) return { applicationName, windowTitle };
+  const trimmed = applicationName.trim();
+  if (!trimmed.startsWith("{")) return { applicationName, windowTitle };
+  if (!trimmed.includes('"appName"') && !trimmed.includes('"windowTitle"')) {
+    return { applicationName, windowTitle };
+  }
+  const jsonText = trimmed.endsWith("}") ? trimmed : `${trimmed}}`;
+  try {
+    const parsed = JSON.parse(jsonText) as { appName?: string; windowTitle?: string };
+    if (!parsed.appName && !parsed.windowTitle) return { applicationName, windowTitle };
+    return { applicationName: parsed.appName || applicationName, windowTitle: parsed.windowTitle || "" };
+  } catch {
+    return { applicationName, windowTitle };
+  }
+}
+
 type Encrypter = (
   plaintext: string | Uint8Array<ArrayBufferLike>,
 ) => Promise<Uint8Array>;
@@ -89,12 +112,16 @@ export function createLogeventsDb({
           decrypt(row.applicationName),
           decrypt(row.windowTitle),
         ]);
+        const repaired = repairLegacyAppWindowFields({
+          applicationName: decoder.decode(appName),
+          windowTitle: decoder.decode(title),
+        });
         return {
           id: row.id,
           timestamp: row.timestamp,
           keystrokes: decoder.decode(keys),
-          applicationName: decoder.decode(appName),
-          windowTitle: decoder.decode(title),
+          applicationName: repaired.applicationName,
+          windowTitle: repaired.windowTitle,
         };
       }),
     );

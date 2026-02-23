@@ -14,6 +14,7 @@ import {
   readFile,
 } from "./files";
 import { getLogEventsSince } from "./logeventsDb";
+import { aggregateLogEventsByAppWindowAndGap } from "./logAggregation";
 import { allEndpoints } from "../constants/endpoints";
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
@@ -49,15 +50,82 @@ function processRawText(text: string): string {
   return buffer;
 }
 
-function formatTimeForKeylog(date: Date): string {
-  return date
-    .toLocaleTimeString("en-CA", {
-      hour12: false,
+function formatLocalTimestampForUrlParam(timestampMs: number): string {
+  const date = new Date(timestampMs);
+  const dateStr = date.toLocaleDateString("en-CA");
+  const timeStr = date
+    .toLocaleTimeString("en-US", {
+      hour12: true,
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
     })
-    .replace(/:/g, ".");
+    .replace(/:/g, ".")
+    .replace(" ", "");
+  return `${dateStr}_${timeStr}`;
+}
+
+function parseLocalTimestampFromUrlParam(value: string): number | null {
+  if (/^\d+$/.test(value)) {
+    const timestampMs = Number(value);
+    if (!Number.isFinite(timestampMs)) return null;
+    return timestampMs;
+  }
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})_(\d{2})\.(\d{2})\.(\d{2})(AM|PM)$/,
+  );
+  if (!match) return null;
+  const [, yyyy, mm, dd, hh, min, sec, ampm] = match;
+  const year = Number(yyyy);
+  const monthIndex = Number(mm) - 1;
+  const day = Number(dd);
+  const minute = Number(min);
+  const second = Number(sec);
+  const hour12 = Number(hh);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(monthIndex) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour12) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(second)
+  ) {
+    return null;
+  }
+  if (
+    monthIndex < 0 ||
+    monthIndex > 11 ||
+    day < 1 ||
+    day > 31 ||
+    hour12 < 1 ||
+    hour12 > 12 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59
+  ) {
+    return null;
+  }
+  const hour24 =
+    ampm === "AM"
+      ? hour12 === 12
+        ? 0
+        : hour12
+      : hour12 === 12
+        ? 12
+        : hour12 + 12;
+  const date = new Date(year, monthIndex, day, hour24, minute, second, 0);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== monthIndex ||
+    date.getDate() !== day ||
+    date.getHours() !== hour24 ||
+    date.getMinutes() !== minute ||
+    date.getSeconds() !== second
+  ) {
+    return null;
+  }
+  return date.getTime();
 }
 
 /**
@@ -387,7 +455,9 @@ function handleIndexRequest(res: http.ServerResponse) {
  */
 export function startLocalServer(port = 8765): http.Server {
   const server = http.createServer(async (req, res) => {
-    switch (req.url) {
+    const url = new URL(req.url || "/", "http://localhost");
+    const pathname = url.pathname;
+    switch (pathname) {
       case "/":
         handleIndexRequest(res);
         break;
@@ -409,26 +479,55 @@ export function startLocalServer(port = 8765): http.Server {
 
       case "/log": {
         try {
-          const events = await getLogEventsSince(Date.now() - DAY_IN_MS);
-          res.writeHead(200, { "Content-Type": "text/plain" });
-          if (events.length === 0) {
-            res.end("No log entries found in the past 24 hours.");
+          const startParam = url.searchParams.get("start");
+          const endParam = url.searchParams.get("end");
+          const defaultEnd = Date.now();
+          const parsedStart = startParam ? parseLocalTimestampFromUrlParam(startParam) : null;
+          const parsedEnd = endParam ? parseLocalTimestampFromUrlParam(endParam) : null;
+          if (startParam && parsedStart === null) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: `Invalid start timestamp: ${startParam}` }));
             break;
           }
-          const contents = events
-            .map((event) => {
-              const date = new Date(event.timestamp);
-              const dateStr = date.toLocaleDateString("en-CA");
-              const timeStr = formatTimeForKeylog(date);
-              const titleSuffix = event.windowTitle ? ` - ${event.windowTitle}` : "";
-              const processed = processRawText(event.keystrokes);
-              return `${dateStr} ${timeStr}: ${event.applicationName || "Unknown"}${titleSuffix}\n${processed}`;
-            })
-            .join("\n\n");
-          res.end(contents);
+          if (endParam && parsedEnd === null) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: `Invalid end timestamp: ${endParam}` }));
+            break;
+          }
+          const endTimestamp = parsedEnd ?? defaultEnd;
+          const startTimestamp =
+            parsedStart ??
+            (parsedEnd !== null ? endTimestamp - DAY_IN_MS : Date.now() - DAY_IN_MS);
+          if (startTimestamp > endTimestamp) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Invalid range: start is after end." }));
+            break;
+          }
+          const eventsAllSinceStart = await getLogEventsSince(startTimestamp);
+          const events = eventsAllSinceStart.filter((event) => event.timestamp <= endTimestamp);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          if (events.length === 0) {
+            res.end(JSON.stringify([], null, 2));
+            break;
+          }
+          const groups = aggregateLogEventsByAppWindowAndGap(events).slice().sort((a, b) => b.endTimestamp - a.endTimestamp);
+          const response = groups.map((group) => {
+            const appName = group.applicationName || "Unknown";
+            const windowTitle = group.windowTitle || "";
+            const startTime = formatLocalTimestampForUrlParam(group.startTimestamp);
+            const endTime = formatLocalTimestampForUrlParam(group.endTimestamp);
+            return {
+              start: startTime,
+              end: endTime,
+              appName,
+              windowTitle,
+              keylogs: processRawText(group.keystrokes),
+            };
+          });
+          res.end(JSON.stringify(response, null, 2));
         } catch {
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("Failed to read log entries.");
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Failed to read log entries." }));
         }
         break;
       }
@@ -565,18 +664,18 @@ export function startLocalServer(port = 8765): http.Server {
         break;
 
       default: {
-        const screenshotFileMatch = req.url?.match(/^\/screenshot\/(.+)$/);
+        const screenshotFileMatch = pathname.match(/^\/screenshot\/(.+)$/);
         // Check if the URL matches the format /YYYY-MM-DD
-        const screenshotImageMatch = req.url?.match(
+        const screenshotImageMatch = pathname.match(
           /^\/(\d{4}-\d{2}-\d{2})\/screenshots$/,
         );
-        const screenshotGalleryMatch = req.url?.match(
+        const screenshotGalleryMatch = pathname.match(
           /^\/(\d{4}-\d{2}-\d{2})\/screenshots\/all$/,
         );
-        const screenshotSummaryMatch = req.url?.match(
+        const screenshotSummaryMatch = pathname.match(
           /^\/(\d{4}-\d{2}-\d{2})\/screenshots\/summaries$/,
         );
-        const dateMatch = req.url?.match(/^\/(\d{4}-\d{2}-\d{2})$/);
+        const dateMatch = pathname.match(/^\/(\d{4}-\d{2}-\d{2})$/);
 
         if (screenshotFileMatch) {
           await handleScreenshotImageRequest(res, screenshotFileMatch[1]);

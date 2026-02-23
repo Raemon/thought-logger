@@ -12,6 +12,7 @@ import { Preferences } from "./types/preferences";
 import { readFile, writeFile } from "./electron/files";
 import logger from "./logging";
 import { insertLogEvent } from "./electron/logeventsDb";
+import { parseApplicationActivatedRaw } from "./keyloggerAppSwitch";
 
 const BINARY_NAME = "MacKeyServer";
 
@@ -240,17 +241,9 @@ function parseKeyEvent(
 ): ParsedKey {
   // Handle application switch
   if (event._raw.includes("Application activated")) {
-    const match = event._raw.match(/\{\{(.*?)\}\}/);
-    if (!match) return { raw: "", processed: "", isAppSwitch: false };
-    try {
-      const parsed = JSON.parse(match[1]) as {
-        appName?: string;
-        windowTitle?: string;
-      };
-      return handleAppSwitch(parsed.appName || "Unknown", parsed.windowTitle || "");
-    } catch {
-      return handleAppSwitch(match[1]);
-    }
+    const parsed = parseApplicationActivatedRaw(event._raw);
+    if (!parsed) return { raw: "", processed: "", isAppSwitch: false };
+    return handleAppSwitch(parsed.appName, parsed.windowTitle);
   }
 
   // Don't log keys if in protected apps
