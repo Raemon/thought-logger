@@ -1,20 +1,8 @@
 import path from "path";
 import fs from "node:fs/promises";
-import sumBy from "lodash/sumBy";
-import {
-  compareAsc,
-  differenceInHours,
-  eachDayOfInterval,
-  eachWeekOfInterval,
-  isSameDay,
-  isSameWeek,
-  max,
-  parse,
-  setDefaultOptions,
-  subSeconds,
-} from "date-fns";
+import { isSameDay, parse } from "date-fns";
 import { app } from "electron";
-import { Keylog, Screenshot, Summary, SummaryScopeTypes } from "../types/files";
+import { Screenshot } from "../types/files";
 import { Dirent } from "node:fs";
 import { Mutex } from "async-mutex";
 
@@ -24,8 +12,6 @@ import {
   ENCRYPTED_FILE_EXT,
   encryptUserData,
 } from "./encryption";
-
-setDefaultOptions({ weekStartsOn: 1 });
 
 const userDataPath = app.getPath("userData");
 
@@ -44,45 +30,6 @@ async function readFilesFromDirectory(path: string): Promise<Dirent[]> {
     files = [];
   }
   return files.filter((file) => file.isFile());
-}
-
-export async function getKeylogs(): Promise<Keylog[]> {
-  const keylogsPath = path.join(userDataPath, "files", "keylogs");
-  const keylogsByDate = new Map<number, Keylog>();
-  const keylogFiles = await readFilesFromDirectory(keylogsPath);
-
-  for (const file of keylogFiles) {
-    const fileName = file.name.endsWith(ENCRYPTED_FILE_EXT)
-      ? file.name.slice(0, -ENCRYPTED_FILE_EXT.length)
-      : file.name;
-    const result = fileName.match(/[^.]+/);
-    if (result === null) continue;
-    const dateString = result[0];
-    const date = parse(dateString, "yyyy-MM-dd", new Date());
-    if (isNaN(date.getTime())) continue;
-
-    const dateKey = date.getTime();
-
-    if (!keylogsByDate.has(dateKey)) {
-      keylogsByDate.set(dateKey, {
-        date,
-        appPath: null,
-        chronoPath: null,
-        rawPath: null,
-      });
-    }
-
-    const keylog = keylogsByDate.get(dateKey)!;
-    if (/\.processed\.by-app\./.test(fileName)) {
-      keylog.appPath = path.join(file.parentPath, fileName);
-    } else if (/\.processed\.chronological\./.test(fileName)) {
-      keylog.chronoPath = path.join(file.parentPath, fileName);
-    } else {
-      keylog.rawPath = path.join(file.parentPath, fileName);
-    }
-  }
-
-  return Array.from(keylogsByDate.values());
 }
 
 export async function getScreenshots(): Promise<Screenshot[]> {
@@ -108,7 +55,6 @@ export async function getScreenshots(): Promise<Screenshot[]> {
     if (!screenshotsByDate.has(dateKey)) {
       screenshotsByDate.set(dateKey, {
         imagePath: null,
-        summaryPath: null,
         date,
       });
     }
@@ -116,34 +62,10 @@ export async function getScreenshots(): Promise<Screenshot[]> {
     const screenshot = screenshotsByDate.get(dateKey)!;
     if (ext === ".jpg") {
       screenshot.imagePath = path.join(file.parentPath, fileName);
-    } else if (ext === ".json") {
-      screenshot.summaryPath = path.join(file.parentPath, fileName);
     }
   }
 
   return Array.from(screenshotsByDate.values());
-}
-
-export async function getScreenshotSummariesForDate(
-  dateString: string,
-): Promise<{ path: string; contents: string }[]> {
-  const screenshots = await getScreenshots();
-  const date = parse(dateString, "yyyy-MM-dd", new Date());
-  const screenshotsForDay = screenshots.filter((s) => isSameDay(date, s.date));
-  const summaryPaths = screenshotsForDay.map(
-    (screenshot) => screenshot.summaryPath,
-  );
-  const summaries: { path: string; contents: string }[] = [];
-
-  for (const summaryPath of summaryPaths) {
-    if (summaryPath === null) {
-      continue;
-    }
-    const contents = await readFile(summaryPath);
-    summaries.push({ path: summaryPath, contents });
-  }
-
-  return summaries;
 }
 
 export async function getScreenshotImagePathsForDate(
@@ -171,7 +93,7 @@ export async function getScreenshotImagePaths(): Promise<string[]> {
   const screenshots = await getScreenshots();
   const imagePaths: string[] = screenshots
     .map((screenshot) => screenshot.imagePath)
-    .filter((path) => path !== null);
+    .filter((path): path is string => path !== null);
 
   const availableImagePaths: string[] = [];
   for (const imagePath of imagePaths) {
@@ -186,196 +108,6 @@ export async function getScreenshotImagePaths(): Promise<string[]> {
   }
 
   return availableImagePaths;
-}
-
-export const MONTH_IN_SECONDS = 60 * 60 * 24 * 30;
-
-async function getCharCount<T>(
-  items: T[],
-  getPath: (item: T) => string | null,
-): Promise<number> {
-  const contents = await Promise.all(
-    items.map((item) => {
-      const path = getPath(item);
-      return path ? readFile(path) : Promise.resolve("");
-    }),
-  );
-  return sumBy(contents, (c) => c?.length ?? 0);
-}
-
-async function getSummaries(): Promise<Summary[]> {
-  const files = await readFilesFromDirectory(userDataPath);
-  const summaryFiles = files.filter((f) => /\.aisummary\./.test(f.name));
-  const summaries: Summary[] = [];
-
-  for (const summaryFile of summaryFiles) {
-    const fileName = summaryFile.name.replace(
-      new RegExp(`${ENCRYPTED_FILE_EXT}$`),
-      "",
-    );
-    const result = fileName.match(/[^.]+/);
-    if (!result) continue;
-    const dateString = result[0];
-
-    const contents = await readFile(
-      path.join(summaryFile.parentPath, fileName),
-    );
-
-    if (/[0-9]{4}-[0-9]{2}-[0-9]{2}/.test(fileName)) {
-      const date = parse(dateString, "yyyy-MM-dd", new Date());
-      summaries.push({
-        path: path.join(summaryFile.parentPath, fileName),
-        contents,
-        date,
-        keylogs: [],
-        screenshots: [],
-        loading: false,
-        scope: SummaryScopeTypes.Day,
-        keylogCharCount: 0,
-        screenshotSummaryCharCount: 0,
-      });
-    } else if (/[0-9]{4}-W[0-9]{2}/.test(fileName)) {
-      const date = parse(dateString, "YYYY-'W'ww", new Date(), {
-        useAdditionalWeekYearTokens: true,
-      });
-
-      summaries.push({
-        path: path.join(summaryFile.parentPath, fileName),
-        contents,
-        date,
-        keylogs: [],
-        loading: false,
-        scope: SummaryScopeTypes.Week,
-        screenshots: [],
-      });
-    } else {
-      throw new Error(`Invalid date format in filename ${fileName}`);
-    }
-  }
-
-  return summaries;
-}
-
-export async function getRecentSummaries(
-  ageInSeconds: number = MONTH_IN_SECONDS,
-): Promise<Summary[]> {
-  const summaries: Summary[] = [];
-  const existingSummaries = await getSummaries();
-  const keylogs: Keylog[] = await getKeylogs();
-  const screenshots: Screenshot[] = await getScreenshots();
-
-  const earliestDate = [...existingSummaries, ...keylogs, ...screenshots]
-    .map((o) => o.date)
-    .toSorted(compareAsc)[0];
-  const end = new Date();
-  const lowerBound = subSeconds(end, ageInSeconds);
-  const start =
-    ageInSeconds === Infinity ? earliestDate : max([lowerBound, earliestDate]);
-
-  for (const date of eachDayOfInterval({
-    start,
-    end,
-  })) {
-    const existingSummary = existingSummaries.find(
-      (s) => s.scope === SummaryScopeTypes.Day && isSameDay(date, s.date),
-    );
-    const matchingKeylogs = keylogs.filter((k) => isSameDay(date, k.date));
-    const matchingScreenshots = screenshots.filter((s) =>
-      isSameDay(date, s.date),
-    );
-    const keylogCharCount = await getCharCount(
-      matchingKeylogs,
-      (k) => k.chronoPath,
-    );
-    const screenshotSummaryCharCount = await getCharCount(
-      matchingScreenshots,
-      (s) => s.summaryPath,
-    );
-    const summary: Summary = existingSummary
-      ? {
-          ...existingSummary,
-          keylogs: matchingKeylogs,
-          screenshots: matchingScreenshots,
-          keylogCharCount,
-          screenshotSummaryCharCount,
-        }
-      : {
-          date,
-          path: null,
-          scope: SummaryScopeTypes.Day,
-          keylogs: matchingKeylogs,
-          screenshots: matchingScreenshots,
-          loading: false,
-          contents: null,
-          keylogCharCount,
-          screenshotSummaryCharCount,
-        };
-
-    summaries.push(summary);
-  }
-
-  for (const date of eachWeekOfInterval({
-    start,
-    end,
-  })) {
-    const existingSummary = existingSummaries.find(
-      (s) => s.scope === SummaryScopeTypes.Week && isSameWeek(date, s.date),
-    );
-    const matchingKeylogs = keylogs.filter((k) => isSameWeek(date, k.date));
-    const matchingScreenshots = screenshots.filter((s) =>
-      isSameWeek(date, s.date),
-    );
-    const keylogCharCount = await getCharCount(
-      matchingKeylogs,
-      (k) => k.chronoPath,
-    );
-    const screenshotSummaryCharCount = await getCharCount(
-      matchingScreenshots,
-      (s) => s.summaryPath,
-    );
-    const summary: Summary = existingSummary
-      ? {
-          ...existingSummary,
-          keylogs: matchingKeylogs,
-          screenshots: matchingScreenshots,
-          keylogCharCount,
-          screenshotSummaryCharCount,
-        }
-      : {
-          date,
-          path: null,
-          scope: SummaryScopeTypes.Week,
-          keylogs: matchingKeylogs,
-          screenshots: matchingScreenshots,
-          loading: false,
-          contents: null,
-          keylogCharCount,
-          screenshotSummaryCharCount,
-        };
-
-    summaries.push(summary);
-  }
-
-  return summaries;
-}
-
-export async function getRecentApps(): Promise<string[]> {
-  const apps = new Set<string>();
-  const now = new Date();
-
-  const keylogs = await getKeylogs().then((keylogs) =>
-    keylogs.filter((keylog) => differenceInHours(now, keylog.date) <= 24),
-  );
-
-  for (const keylog of keylogs) {
-    if (keylog.appPath === null) continue;
-    const content = await readFile(keylog.appPath);
-    const appRegex = /=== (.*) ===/g;
-    const matches = content.toLocaleString().matchAll(appRegex);
-    matches.forEach((m) => apps.add(m[1]));
-  }
-
-  return Array.from(apps);
 }
 
 const fileMutex = new Mutex();
@@ -464,21 +196,9 @@ export async function writeFile(
 }
 
 async function unencryptedFiles(): Promise<string[]> {
-  const summaries = await getSummaries();
-  const keylogs = await getKeylogs();
   const screenshots = await getScreenshots();
 
-  let files: string[] = keylogs
-    .flatMap((keylog) => [keylog.rawPath, keylog.appPath, keylog.chronoPath])
-    .filter((file) => file !== null);
-
-  files = files.concat(
-    screenshots
-      .flatMap((screenshot) => [screenshot.imagePath, screenshot.summaryPath])
-      .filter((file) => file !== null),
-  );
-
-  files = files.concat(summaries.map((s) => s.path).filter((f) => f !== null));
+  const files: string[] = screenshots.map((screenshot) => screenshot.imagePath).filter((file): file is string => file !== null);
 
   const unencryptedFiles = [];
   for (const file of files) {

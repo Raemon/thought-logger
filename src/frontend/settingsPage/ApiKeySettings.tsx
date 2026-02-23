@@ -49,18 +49,10 @@ const ApiKeySettings = () => {
   };
 
   return (
-    <div className="p-5">
-      <h3 className="text-xl mb-2.5">OpenRouter API Key</h3>
+    <div className="p-5 py-0">
+      <h3 className="text-xl mb-2.5 flex items-center gap-4">OpenRouter API Key {hasSecret ? <span className="text-green-500 text-sm">Configured</span> : <span className="text-red-500">Not Configured</span>}</h3>
 
-      <div>
-        {hasSecret !== null && (
-          <div style={{ color: hasSecret ? "#0a0" : "#a00" }}>
-            API key is {hasSecret ? "" : "not "}configured
-          </div>
-        )}
-      </div>
-
-      <div>
+      <div className="flex items-center gap-2">
         <input
           type="password"
           className="w-12 border-2 rounded p-1"

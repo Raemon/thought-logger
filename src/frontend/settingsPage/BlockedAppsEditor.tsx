@@ -27,7 +27,7 @@ const BlockedAppsEditor = () => {
   };
 
   return (
-    <div className="p-5">
+    <div className="p-5 py-0">
       <h3 className="text-xl mb-2.5">Blocked Apps</h3>
       <table style={{ borderCollapse: "collapse", marginBottom: 16 }}>
         <tbody>

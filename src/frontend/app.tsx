@@ -7,9 +7,8 @@ import { EncryptionLoader } from "./EncryptionLoader";
 import { LOG_FILE_ENCRYPTION } from "../constants/credentials";
 
 export function App() {
-  const [_, setHasLogs] = useState(false);
   const [recentErrors, setRecentErrors] = useState<string[]>([]);
-  const [defaultTab, setDefaultTab] = useState<"logs" | "settings">("settings");
+  const [defaultTab] = useState<"logs" | "settings">("settings");
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [encryptionComplete, setEncryptionComplete] = useState(false);
   const [shouldEncrypt, setShouldEncrypt] = useState(false);
@@ -67,14 +66,6 @@ export function App() {
         });
       }
     });
-
-    // Check if there are any log files
-    window.userData.getRecentLogs().then((logs) => {
-      if (logs.length > 0) {
-        setHasLogs(true);
-        setDefaultTab("logs");
-      }
-    });
   }, []);
 
   useEffect(() => {
@@ -121,7 +112,7 @@ export function App() {
         </div>
       ) : (
         <TabContainer defaultTab={defaultTab}>
-          <Tab id="logs" label="Logs">
+          <Tab id="logs" label="API">
             <FileInfo />
           </Tab>
           <Tab id="settings" label="Settings">

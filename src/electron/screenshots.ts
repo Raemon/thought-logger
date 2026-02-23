@@ -14,6 +14,7 @@ import { LOG_FILE_ENCRYPTION, OPEN_ROUTER } from "../constants/credentials";
 import { writeFile } from "./files";
 import { ENCRYPTED_FILE_EXT } from "./encryption";
 import path from "node:path";
+import { insertScreenshotSummaryLogEvent } from "./logeventsDb";
 
 const ScreenshotText = z.object({
   windows: z
@@ -45,17 +46,19 @@ const ScreenshotText = z.object({
     .describe("windows in the screenshot"),
   timestamp: z
     .string()
-    .optional()
     .describe("local timestamp when the summary was captured"),
 });
 
 type ScreenshotText = z.infer<typeof ScreenshotText>;
 
+const ScreenshotTextModelOutput = ScreenshotText.omit({ timestamp: true });
+type ScreenshotTextModelOutput = z.infer<typeof ScreenshotTextModelOutput>;
+
 async function extractTextFromImage(
   imageBuffer: Buffer,
   model: string,
   prompt: string,
-): Promise<ScreenshotText> {
+): Promise<ScreenshotTextModelOutput> {
   logger.debug("Extracting image text");
   const base64Image = imageBuffer.toString("base64");
   const imageUrl = `data:image/jpeg;base64,${base64Image}`;
@@ -77,7 +80,7 @@ async function extractTextFromImage(
             type: "text",
             text: useSchema
               ? prompt
-              : `${prompt}\n\nReturn a JSON object with keys: windows (array of {title, applicationName, url, exactText, frames: [{title, exactText}], images: [{description}]}).`,
+              : `${prompt}\n\nReturn a JSON object with key: windows (array of {title, applicationName, url, exactText, frames: [{title, exactText}], images: [{description}]}).`,
           },
           {
             type: "image_url",
@@ -95,7 +98,7 @@ async function extractTextFromImage(
             json_schema: {
               name: "screenshot_summary",
               strict: true,
-              schema: z.toJSONSchema(ScreenshotText),
+              schema: z.toJSONSchema(ScreenshotTextModelOutput),
             },
           },
         }
@@ -163,7 +166,7 @@ async function extractTextFromImage(
     choices: { message: { content: string } }[];
   };
   const result = JSON.parse(data.choices[0].message.content);
-  return ScreenshotText.parse(result);
+  return ScreenshotTextModelOutput.parse(result);
 }
 
 export async function parseScreenshot(
@@ -176,11 +179,12 @@ export async function parseScreenshot(
   const { screenshotModel, screenshotPrompt, blockedApps } = loadPreferences();
   const prompt = screenshotPrompt;
 
-  const extractedText = await extractTextFromImage(
+  const extractedTextModelOutput = await extractTextFromImage(
     img,
     screenshotModel,
     prompt,
   );
+  const extractedText: ScreenshotText = { ...extractedTextModelOutput, timestamp: "" };
   for (const window of extractedText.windows) {
     if (isProtectedApp(window.applicationName, blockedApps)) {
       window.exactText = "skipped";
@@ -190,15 +194,13 @@ export async function parseScreenshot(
   }
   extractedText.timestamp = new Date().toLocaleString();
   const firstWindow = extractedText.windows[0];
-  const encodedApp = encodeURIComponent(currentApplication);
-  const encodedTitle = firstWindow
-    ? encodeURIComponent(firstWindow.title.slice(0, 50))
-    : "unknown";
-  const jsonFilePath = imgPath.replace(
-    ".jpg",
-    `.${encodedApp}.${encodedTitle}.json`,
-  );
-  await writeFile(jsonFilePath, JSON.stringify(extractedText, null, 2));
+  await insertScreenshotSummaryLogEvent({
+    timestamp: Date.now(),
+    applicationName: firstWindow?.applicationName || currentApplication || "Unknown",
+    windowTitle: firstWindow?.title || "",
+    payload: extractedText,
+    meta: { imgPath, captureApplication: currentApplication },
+  });
 }
 
 async function takeScreenshot(quality: number) {

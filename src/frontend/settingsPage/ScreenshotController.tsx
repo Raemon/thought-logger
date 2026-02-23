@@ -82,22 +82,6 @@ export function ScreenshotController() {
           />
         </div>
         <div className="inline-flex justify-between space-x-4">
-          <label>
-            Number of words from screenshot description included in daily and
-            weekly summaries:
-          </label>
-          <input
-            className="w-12 text-right border-2"
-            type="number"
-            value={prefs.screenshotSummaryWindow}
-            onChange={(event) =>
-              updatePreferences({
-                screenshotSummaryWindow: Number(event.currentTarget.value),
-              })
-            }
-          />
-        </div>
-        <div className="inline-flex justify-between space-x-4">
           <label>Text Extraction Model:</label>
           <TypeaheadDropdown
             value={prefs.screenshotModel}

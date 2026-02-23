@@ -1,6 +1,8 @@
-import { systemPreferences } from "electron";
+import { app, systemPreferences } from "electron";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
 
-export type PermissionScope = "screen" | "keylogging";
+export type PermissionScope = "screen" | "accessibility" | "inputMonitoring";
 
 export type PermissionStatus =
   | "not-determined"
@@ -11,11 +13,24 @@ export type PermissionStatus =
 
 export function checkPermissions(): Record<PermissionScope, PermissionStatus> {
   if (process.platform === "darwin") {
+    const binaryPath = app.isPackaged
+      ? path.join(process.resourcesPath, "MacKeyServer")
+      : path.join(app.getAppPath(), "bin", "MacKeyServer");
+    const inputMonitoringCheck = spawnSync(
+      binaryPath,
+      ["--check-input-monitoring"],
+      { timeout: 1500 },
+    );
     return {
       // camera: systemPreferences.getMediaAccessStatus("camera"),
       // microphone: systemPreferences.getMediaAccessStatus("microphone"),
       screen: systemPreferences.getMediaAccessStatus("screen"),
-      keylogging: systemPreferences.isTrustedAccessibilityClient(false)
+      accessibility: systemPreferences.isTrustedAccessibilityClient(false)
+      ? "granted"
+      : "denied",
+      inputMonitoring: inputMonitoringCheck.error
+      ? "unknown"
+      : inputMonitoringCheck.status === 0
       ? "granted"
       : "denied",
     };
@@ -25,6 +40,7 @@ export function checkPermissions(): Record<PermissionScope, PermissionStatus> {
     // camera: "unknown",
     // microphone: "unknown",
     screen: "unknown",
-    keylogging: "unknown",
+    accessibility: "unknown",
+    inputMonitoring: "unknown",
   };
 }

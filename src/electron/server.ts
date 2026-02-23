@@ -9,141 +9,275 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types";
 import { z } from "zod";
 import logger from "../logging";
 import {
-  getScreenshotSummariesForDate,
   getScreenshotImagePathsForDate,
   readFile,
 } from "./files";
+import { getLogEventsSince } from "./logeventsDb";
+import { aggregateLogEventsByAppWindowAndGap } from "./logAggregation";
+import { buildHealthPastWeekHtml } from "./health";
 import { allEndpoints } from "../constants/endpoints";
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 
 const userDataPath = app.getPath("userData");
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-/**
- * Gets the path to a key log file for a specific date
- * @param date The date to get the log file for
- * @returns The path to the log file
- */
-function getKeyLogFileForDate(date: Date, suffix: string): string {
-  const year = date.getFullYear();
-  const month = new Intl.DateTimeFormat("en-US", { month: "2-digit" }).format(
-    date,
-  );
-  const dateStr = date.toLocaleDateString("en-CA"); // Format as YYYY-MM-DD
+const specialChars = new Set([
+  "⌃",
+  "⌘",
+  "⌥",
+  "←",
+  "→",
+  "↑",
+  "↓",
+  "⎋",
+  "↹",
+  "§",
+  "±",
+]);
 
-  const folderPath = path.join(
-    userDataPath,
-    "files",
-    "keylogs",
-    `${year}-${month}`,
-  );
-
-  return path.join(folderPath, `${dateStr}.${suffix}log`);
-}
-
-/**
- * Gets the path to today's key log file
- * @returns The path to today's log file
- */
-export function currentKeyLogFile({ raw = false }: { raw?: boolean }): string {
-  return getKeyLogFileForDate(
-    new Date(),
-    raw ? "" : "processed.chronological.",
-  );
-}
-
-/**
- * Gets the path to yesterday's key log file
- * @returns The path to yesterday's log file
- */
-function getYesterdayKeyLogFile({ raw = false }: { raw?: boolean }): string {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return getKeyLogFileForDate(yesterday, raw ? "" : "processed.chronological.");
-}
-
-/**
- * Gets the paths to all key log files from the past week
- * @returns Array of paths to log files from the past week
- */
-function getWeekKeyLogFiles(): string[] {
-  const files = [];
-  const today = new Date();
-
-  // Get log files for today and the past 6 days (7 days total)
-  for (let i = 0; i < 7; i++) {
-    const date = new Date();
-    date.setDate(today.getDate() - i);
-    files.push(getKeyLogFileForDate(date, "processed.chronological."));
+function processRawText(text: string): string {
+  let buffer = "";
+  for (const char of text) {
+    if (char === "⌫") {
+      buffer = buffer.slice(0, -1);
+    } else if (char === "⏎") {
+      buffer += "\n";
+    } else if (!specialChars.has(char)) {
+      buffer += char;
+    }
   }
-
-  return files;
+  return buffer;
 }
 
-/**
- * Fetches contents of log files for the week
- */
-async function getWeekContents({
-  raw = false,
-}: {
-  raw?: boolean;
-}): Promise<string> {
-  const filePaths = getWeekKeyLogFiles().map((file) => {
-    // If raw is true, remove the "processed.chronological." suffix
-    return raw ? file.replace("processed.chronological.", "") : file;
-  });
+function formatLocalTimestampForUrlParam(timestampMs: number): string {
+  const date = new Date(timestampMs);
+  const dateStr = date.toLocaleDateString("en-CA");
+  const timeStr = date
+    .toLocaleTimeString("en-US", {
+      hour12: true,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+    .replace(/:/g, ".")
+    .replace(" ", "");
+  return `${dateStr}_${timeStr}`;
+}
 
-  const contents = await Promise.all(
-    filePaths.map(async (filePath) => {
-      try {
-        return readFile(filePath);
-      } catch {
-        return `Unable to read file: ${filePath}\n`;
-      }
-    }),
+function parseLocalTimestampFromUrlParam(value: string): number | null {
+  if (/^\d+$/.test(value)) {
+    const timestampMs = Number(value);
+    if (!Number.isFinite(timestampMs)) return null;
+    return timestampMs;
+  }
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})_(\d{2})\.(\d{2})\.(\d{2})(AM|PM)$/,
   );
-  return contents.join("\n\n");
+  if (!match) return null;
+  const [, yyyy, mm, dd, hh, min, sec, ampm] = match;
+  const year = Number(yyyy);
+  const monthIndex = Number(mm) - 1;
+  const day = Number(dd);
+  const minute = Number(min);
+  const second = Number(sec);
+  const hour12 = Number(hh);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(monthIndex) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour12) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(second)
+  ) {
+    return null;
+  }
+  if (
+    monthIndex < 0 ||
+    monthIndex > 11 ||
+    day < 1 ||
+    day > 31 ||
+    hour12 < 1 ||
+    hour12 > 12 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59
+  ) {
+    return null;
+  }
+  const hour24 =
+    ampm === "AM"
+      ? hour12 === 12
+        ? 0
+        : hour12
+      : hour12 === 12
+        ? 12
+        : hour12 + 12;
+  const date = new Date(year, monthIndex, day, hour24, minute, second, 0);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== monthIndex ||
+    date.getDate() !== day ||
+    date.getHours() !== hour24 ||
+    date.getMinutes() !== minute ||
+    date.getSeconds() !== second
+  ) {
+    return null;
+  }
+  return date.getTime();
 }
 
-/**
- * Route handler for serving log files
- */
-async function handleLogFileRequest(
+function parseLogTypeParam(value: string | null):
+  | { ok: true; filter: "keylog" | "screenshotSummary" | null }
+  | { ok: false; error: string } {
+  if (!value) return { ok: true, filter: null };
+  if (value === "keylog") return { ok: true, filter: "keylog" };
+  if (value === "screenshot") return { ok: true, filter: "screenshotSummary" };
+  return { ok: false, error: `Invalid type: ${value}. Expected keylog or screenshot.` };
+}
+
+function parseAggregatedLogQueryParams({
+  url,
+  defaultEndTimestamp,
+  defaultStartTimestamp,
+  defaultDurationMs,
+}: {
+  url: URL;
+  defaultEndTimestamp: number;
+  defaultStartTimestamp: number;
+  defaultDurationMs: number;
+}):
+  | {
+      ok: true;
+      startTimestamp: number;
+      endTimestamp: number;
+      searchParam: string | null;
+      typeFilter: "keylog" | "screenshotSummary" | null;
+    }
+  | { ok: false; error: string } {
+  const startParam = url.searchParams.get("start");
+  const endParam = url.searchParams.get("end");
+  const searchParam = url.searchParams.get("search");
+  const typeParam = url.searchParams.get("type");
+  const parsedType = parseLogTypeParam(typeParam);
+  if (!parsedType.ok) return parsedType;
+  const parsedStart = startParam ? parseLocalTimestampFromUrlParam(startParam) : null;
+  const parsedEnd = endParam ? parseLocalTimestampFromUrlParam(endParam) : null;
+  if (startParam && parsedStart === null) {
+    return { ok: false, error: `Invalid start timestamp: ${startParam}` };
+  }
+  if (endParam && parsedEnd === null) {
+    return { ok: false, error: `Invalid end timestamp: ${endParam}` };
+  }
+  const endTimestamp = parsedEnd ?? defaultEndTimestamp;
+  const startTimestamp =
+    parsedStart ??
+    (parsedEnd !== null ? endTimestamp - defaultDurationMs : defaultStartTimestamp);
+  if (startTimestamp > endTimestamp) {
+    return { ok: false, error: "Invalid range: start is after end." };
+  }
+  return {
+    ok: true,
+    startTimestamp,
+    endTimestamp,
+    searchParam,
+    typeFilter: parsedType.filter,
+  };
+}
+
+async function handleAggregatedLogRequest(
   res: http.ServerResponse,
-  filePath: string,
-  description: string,
+  startTimestamp: number,
+  endTimestamp: number,
+  searchParam?: string | null,
+  typeFilter?: "keylog" | "screenshotSummary" | null,
 ) {
   try {
-    const data = await readFile(filePath);
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end(data);
+    const eventsAllSinceStart = await getLogEventsSince(startTimestamp);
+    const events = eventsAllSinceStart.filter((event) => event.timestamp <= endTimestamp);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    if (events.length === 0) {
+      res.end(JSON.stringify([], null, 2));
+      return;
+    }
+    const keylogEvents = events.filter((event) => event.eventType === "keylog");
+    const screenshotSummaryEvents = events.filter(
+      (event) => event.eventType === "screenshotSummary",
+    );
+    type LogResponseItem =
+      | {
+          type: "keylog";
+          start: string;
+          end: string;
+          appName: string;
+          windowTitle: string;
+          keylogs: string;
+          sortTimestamp: number;
+        }
+      | {
+          type: "screenshotSummary";
+          timestamp: string;
+          appName: string;
+          windowTitle: string;
+          screenshotSummary: unknown;
+          meta: unknown;
+          sortTimestamp: number;
+        };
+    const groups = aggregateLogEventsByAppWindowAndGap(keylogEvents).slice().sort((a, b) => b.endTimestamp - a.endTimestamp);
+    const responseKeylogs: LogResponseItem[] = groups.map((group) => {
+      const appName = group.applicationName || "Unknown";
+      const windowTitle = group.windowTitle || "";
+      const startTime = formatLocalTimestampForUrlParam(group.startTimestamp);
+      const endTime = formatLocalTimestampForUrlParam(group.endTimestamp);
+      return {
+        type: "keylog",
+        start: startTime,
+        end: endTime,
+        appName,
+        windowTitle,
+        keylogs: processRawText(group.keystrokes),
+        sortTimestamp: group.endTimestamp,
+      };
+    });
+    const responseScreenshots: LogResponseItem[] = screenshotSummaryEvents.map((event) => {
+      const appName = event.applicationName || "Unknown";
+      const windowTitle = event.windowTitle || "";
+      const timestamp = formatLocalTimestampForUrlParam(event.timestamp);
+      return {
+        type: "screenshotSummary",
+        timestamp,
+        appName,
+        windowTitle,
+        screenshotSummary: event.payload,
+        meta: event.meta,
+        sortTimestamp: event.timestamp,
+      };
+    });
+    const response = [...responseKeylogs, ...responseScreenshots].sort((a, b) => b.sortTimestamp - a.sortTimestamp).map((item) => {
+      const { sortTimestamp: _sortTimestamp, ...rest } = item;
+      return rest;
+    });
+    const responseByType = typeFilter ? response.filter((item) => item.type === typeFilter) : response;
+    if (searchParam) {
+      const search = searchParam.toLowerCase();
+      const filtered = responseByType.filter((item) => {
+        const appMatch = item.appName.toLowerCase().includes(search);
+        const titleMatch = item.windowTitle.toLowerCase().includes(search);
+        if (item.type === "keylog") {
+          return appMatch || titleMatch || item.keylogs.toLowerCase().includes(search);
+        }
+        const payloadText = JSON.stringify(item.screenshotSummary || "");
+        return appMatch || titleMatch || payloadText.toLowerCase().includes(search);
+      });
+      res.end(JSON.stringify(filtered, null, 2));
+    } else {
+      res.end(JSON.stringify(responseByType, null, 2));
+    }
   } catch {
-    res.writeHead(500, { "Content-Type": "text/plain" });
-    res.end(`Failed to read ${description} log file. ${filePath}`);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Failed to read log entries." }));
   }
-}
-
-async function handleScreenshotSummaryList(
-  res: http.ServerResponse,
-  dateString: string,
-) {
-  const summaries = await getScreenshotSummariesForDate(dateString);
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  if (summaries.length === 0) {
-    res.end(`No screenshot summaries for ${dateString}.`);
-    return;
-  }
-  const contents = summaries
-    .map((summary) => {
-      try {
-        const jsonData = JSON.parse(summary.contents);
-        return `${summary.path}:\n${JSON.stringify(jsonData, null, 2)}`;
-      } catch {
-        return `${summary.path}:\n${summary.contents}`;
-      }
-    })
-    .join("\n\n");
-  res.end(contents);
 }
 
 async function handleScreenshotImageListForDate(
@@ -277,20 +411,40 @@ async function handleMCPPostRequest(
       },
       async ({ date }) => {
         let text: string;
-
-        const parsedDate = new Date(date);
-
-        try {
-          const filePath = getKeyLogFileForDate(
-            parsedDate,
-            "processed.chronological.",
-          );
-          text = await readFile(filePath);
-        } catch (error) {
-          if (error instanceof Error) {
-            text = `Unable to fetch keylog data for ${date}: ${error.message}`;
-          } else {
-            throw error;
+        const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) {
+          text = `Unable to fetch keylog data for ${date}: invalid date format`;
+        } else {
+          const year = Number(match[1]);
+          const monthIndex = Number(match[2]) - 1;
+          const day = Number(match[3]);
+          const dayStart = new Date(year, monthIndex, day, 0, 0, 0, 0).getTime();
+          const dayEnd = dayStart + DAY_IN_MS - 1;
+          try {
+            const eventsAllSinceStart = await getLogEventsSince(dayStart);
+            const events = eventsAllSinceStart.filter((event) => event.timestamp <= dayEnd);
+            const keylogEvents = events.filter((event) => event.eventType === "keylog");
+            if (keylogEvents.length === 0) {
+              text = `No keylog data for ${date}.`;
+            } else {
+              const groups = aggregateLogEventsByAppWindowAndGap(keylogEvents).slice().sort((a, b) => a.startTimestamp - b.startTimestamp);
+              text = groups
+                .map((group) => {
+                  const appName = group.applicationName || "Unknown";
+                  const windowTitle = group.windowTitle || "";
+                  const startTime = formatLocalTimestampForUrlParam(group.startTimestamp);
+                  const endTime = formatLocalTimestampForUrlParam(group.endTimestamp);
+                  const processed = processRawText(group.keystrokes);
+                  return `[${startTime} - ${endTime}] ${appName}${windowTitle ? ` - ${windowTitle}` : ""}\n${processed}`;
+                })
+                .join("\n\n");
+            }
+          } catch (error) {
+            if (error instanceof Error) {
+              text = `Unable to fetch keylog data for ${date}: ${error.message}`;
+            } else {
+              throw error;
+            }
           }
         }
 
@@ -346,25 +500,84 @@ function handleIndexRequest(res: http.ServerResponse) {
  */
 export function startLocalServer(port = 8765): http.Server {
   const server = http.createServer(async (req, res) => {
-    switch (req.url) {
+    let url: URL;
+    try {
+      url = new URL(req.url || "/", "http://localhost");
+    } catch {
+      res.writeHead(400, { "Content-Type": "text/plain" });
+      res.end("Bad Request");
+      return;
+    }
+    const pathname = url.pathname;
+    switch (pathname) {
       case "/":
         handleIndexRequest(res);
         break;
-      case "/today":
-        await handleLogFileRequest(
+      case "/today": {
+        const now = Date.now();
+        const parsedQuery = parseAggregatedLogQueryParams({
+          url,
+          defaultEndTimestamp: now,
+          defaultStartTimestamp: now - DAY_IN_MS,
+          defaultDurationMs: DAY_IN_MS,
+        });
+        if (!parsedQuery.ok) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: parsedQuery.error }));
+          break;
+        }
+        await handleAggregatedLogRequest(
           res,
-          currentKeyLogFile({ raw: false }),
-          "today's",
+          parsedQuery.startTimestamp,
+          parsedQuery.endTimestamp,
+          parsedQuery.searchParam,
+          parsedQuery.typeFilter,
         );
         break;
+      }
 
-      case "/today/raw":
-        await handleLogFileRequest(
+      case "/log": {
+        const now = Date.now();
+        const parsedQuery = parseAggregatedLogQueryParams({
+          url,
+          defaultEndTimestamp: now,
+          defaultStartTimestamp: now - DAY_IN_MS,
+          defaultDurationMs: DAY_IN_MS,
+        });
+        if (!parsedQuery.ok) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: parsedQuery.error }));
+          break;
+        }
+        await handleAggregatedLogRequest(
           res,
-          currentKeyLogFile({ raw: true }),
-          "today's",
+          parsedQuery.startTimestamp,
+          parsedQuery.endTimestamp,
+          parsedQuery.searchParam,
+          parsedQuery.typeFilter,
         );
         break;
+      }
+
+      case "/log/raw": {
+        try {
+          const typeParam = url.searchParams.get("type");
+          const parsedType = parseLogTypeParam(typeParam);
+          if (!parsedType.ok) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: parsedType.error }));
+            break;
+          }
+          const events = await getLogEventsSince(Date.now() - DAY_IN_MS);
+          const filtered = parsedType.filter ? events.filter((event) => event.eventType === parsedType.filter) : events;
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(filtered, null, 2));
+        } catch {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Failed to read log entries." }));
+        }
+        break;
+      }
 
       case "/today/screenshots": {
         try {
@@ -388,32 +601,30 @@ export function startLocalServer(port = 8765): http.Server {
         break;
       }
 
-      case "/today/screenshots/summaries": {
-        try {
-          const dateString = new Date().toLocaleDateString("en-CA");
-          await handleScreenshotSummaryList(res, dateString);
-        } catch {
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("Failed to list today's screenshot summaries.");
+      case "/yesterday": {
+        const now = new Date();
+        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterdayMidnight = new Date(todayMidnight.getTime() - DAY_IN_MS);
+        const parsedQuery = parseAggregatedLogQueryParams({
+          url,
+          defaultEndTimestamp: todayMidnight.getTime(),
+          defaultStartTimestamp: yesterdayMidnight.getTime(),
+          defaultDurationMs: DAY_IN_MS,
+        });
+        if (!parsedQuery.ok) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: parsedQuery.error }));
+          break;
         }
+        await handleAggregatedLogRequest(
+          res,
+          parsedQuery.startTimestamp,
+          parsedQuery.endTimestamp,
+          parsedQuery.searchParam,
+          parsedQuery.typeFilter,
+        );
         break;
       }
-
-      case "/yesterday":
-        await handleLogFileRequest(
-          res,
-          getYesterdayKeyLogFile({ raw: false }),
-          "yesterday's",
-        );
-        break;
-
-      case "/yesterday/raw":
-        await handleLogFileRequest(
-          res,
-          getYesterdayKeyLogFile({ raw: true }),
-          "yesterday's",
-        );
-        break;
 
       case "/yesterday/screenshots": {
         try {
@@ -441,29 +652,43 @@ export function startLocalServer(port = 8765): http.Server {
         break;
       }
 
-      case "/yesterday/screenshots/summaries": {
+      case "/health": {
         try {
-          const date = new Date();
-          date.setDate(date.getDate() - 1);
-          const dateString = date.toLocaleDateString("en-CA");
-          await handleScreenshotSummaryList(res, dateString);
+          const html = await buildHealthPastWeekHtml({
+            getLogEventsSince,
+          });
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(html);
         } catch {
           res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("Failed to list yesterday's screenshot summaries.");
+          res.end("Failed to render /health.");
         }
         break;
       }
 
-      case "/week":
-        try {
-          const contents = await getWeekContents({ raw: false });
-          res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end(contents);
-        } catch {
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("Failed to read log files for the past week.");
+      case "/week": {
+        const WEEK_IN_MS = 7 * DAY_IN_MS;
+        const now = Date.now();
+        const parsedQuery = parseAggregatedLogQueryParams({
+          url,
+          defaultEndTimestamp: now,
+          defaultStartTimestamp: now - WEEK_IN_MS,
+          defaultDurationMs: WEEK_IN_MS,
+        });
+        if (!parsedQuery.ok) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: parsedQuery.error }));
+          break;
         }
+        await handleAggregatedLogRequest(
+          res,
+          parsedQuery.startTimestamp,
+          parsedQuery.endTimestamp,
+          parsedQuery.searchParam,
+          parsedQuery.typeFilter,
+        );
         break;
+      }
 
       case "/mcp":
         if (req.method == "POST") {
@@ -474,43 +699,22 @@ export function startLocalServer(port = 8765): http.Server {
 
         break;
 
-      case "/week/raw":
-        try {
-          const contents = await getWeekContents({ raw: true });
-          res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end(contents);
-        } catch {
-          res.writeHead(500, { "Content-Type": "text/plain" });
-          res.end("Failed to read raw log files for the past week.");
-        }
-        break;
-
       default: {
-        const screenshotFileMatch = req.url?.match(/^\/screenshot\/(.+)$/);
-        // Check if the URL matches the format /YYYY-MM-DD
-        const screenshotImageMatch = req.url?.match(
+        const screenshotFileMatch = pathname.match(/^\/screenshot\/(.+)$/);
+        const screenshotImageMatch = pathname.match(
           /^\/(\d{4}-\d{2}-\d{2})\/screenshots$/,
         );
-        const screenshotGalleryMatch = req.url?.match(
+        const screenshotGalleryMatch = pathname.match(
           /^\/(\d{4}-\d{2}-\d{2})\/screenshots\/all$/,
         );
-        const screenshotSummaryMatch = req.url?.match(
-          /^\/(\d{4}-\d{2}-\d{2})\/screenshots\/summaries$/,
-        );
-        const dateMatch = req.url?.match(/^\/(\d{4}-\d{2}-\d{2})$/);
 
         if (screenshotFileMatch) {
           await handleScreenshotImageRequest(res, screenshotFileMatch[1]);
         } else if (
           screenshotImageMatch ||
-          screenshotGalleryMatch ||
-          screenshotSummaryMatch ||
-          dateMatch
+          screenshotGalleryMatch
         ) {
-          const dateStr = (screenshotImageMatch ||
-            screenshotGalleryMatch ||
-            screenshotSummaryMatch ||
-            dateMatch)?.[1];
+          const dateStr = (screenshotImageMatch || screenshotGalleryMatch)?.[1];
 
           if (!dateStr) {
             res.writeHead(400, { "Content-Type": "text/plain" });
@@ -529,29 +733,17 @@ export function startLocalServer(port = 8765): http.Server {
               break;
             }
 
-            if (screenshotSummaryMatch) {
-              await handleScreenshotSummaryList(res, dateStr);
-            } else if (screenshotGalleryMatch) {
+            if (screenshotGalleryMatch) {
               await handleScreenshotImageGalleryForDate(res, dateStr);
             } else if (screenshotImageMatch) {
               await handleScreenshotImageListForDate(res, dateStr);
-            } else {
-              const filePath = getKeyLogFileForDate(
-                date,
-                "processed.chronological.",
-              );
-              await handleLogFileRequest(res, filePath, `log for ${dateStr}`);
             }
           } catch {
             res.writeHead(500, { "Content-Type": "text/plain" });
             res.end(
-              screenshotSummaryMatch
-                ? `Failed to retrieve screenshot summaries for ${dateStr}.`
-                : screenshotGalleryMatch
-                  ? `Failed to render screenshot gallery for ${dateStr}.`
-                  : screenshotImageMatch
-                    ? `Failed to retrieve screenshot images for ${dateStr}.`
-                    : `Failed to retrieve log file for ${dateStr}.`,
+              screenshotGalleryMatch
+                ? `Failed to render screenshot gallery for ${dateStr}.`
+                : `Failed to retrieve screenshot images for ${dateStr}.`,
             );
           }
         } else {
