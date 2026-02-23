@@ -489,6 +489,7 @@ export function startLocalServer(port = 8765): http.Server {
         try {
           const startParam = url.searchParams.get("start");
           const endParam = url.searchParams.get("end");
+          const searchParam = url.searchParams.get("search");
           const defaultEnd = Date.now();
           const parsedStart = startParam ? parseLocalTimestampFromUrlParam(startParam) : null;
           const parsedEnd = endParam ? parseLocalTimestampFromUrlParam(endParam) : null;
@@ -532,7 +533,15 @@ export function startLocalServer(port = 8765): http.Server {
               keylogs: processRawText(group.keystrokes),
             };
           });
-          res.end(JSON.stringify(response, null, 2));
+          if (searchParam) {
+            const search = searchParam.toLowerCase();
+            const filtered = response.filter((group) => {
+              return group.appName.toLowerCase().includes(search) || group.windowTitle.toLowerCase().includes(search) || group.keylogs.toLowerCase().includes(search);
+            });
+            res.end(JSON.stringify(filtered, null, 2));
+          } else {
+            res.end(JSON.stringify(response, null, 2));
+          }
         } catch {
           res.writeHead(500, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "Failed to read log entries." }));
