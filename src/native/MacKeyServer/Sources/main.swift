@@ -331,6 +331,23 @@ let eventMask =
     keyEventMask
     | mouseEventMask
 
+if CommandLine.arguments.contains("--check-input-monitoring") {
+    let testEventMask =
+        (1 << CGEventType.keyDown.rawValue)
+    if CGEvent.tapCreate(
+        tap: .cgSessionEventTap,
+        place: .headInsertEventTap,
+        options: .defaultTap,
+        eventsOfInterest: CGEventMask(testEventMask),
+        callback: myCGEventTapCallback,
+        userInfo: nil
+    ) != nil {
+        exit(0)
+    } else {
+        exit(1)
+    }
+}
+
 // Set up workspace notification observer before event loop
 NSWorkspace.shared.notificationCenter.addObserver(
     forName: NSWorkspace.didActivateApplicationNotification,

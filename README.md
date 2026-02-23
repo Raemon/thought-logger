@@ -59,7 +59,6 @@ thought-logger/
 │   │   └── paths.ts       # File path utilities
 │   ├── frontend/          # React UI components
 │   │   ├── app.tsx        # Main application component
-│   │   ├── Summary.tsx    # Data summary interface
 │   │   └── *Settings.tsx  # Various settings panels
 │   ├── native/            # Native code
 │   │   └── MacKeyServer/  # Swift keylogger for macOS

@@ -33,6 +33,11 @@ export function loadPreferences(): Preferences {
       parsed.screenshotPrompt = parsed.screenshotPrompt.default;
     }
 
+    if ("dailySummaryPrompt" in parsed) delete parsed.dailySummaryPrompt;
+    if ("weeklySummaryPrompt" in parsed) delete parsed.weeklySummaryPrompt;
+    if ("summaryModel" in parsed) delete parsed.summaryModel;
+    if ("screenshotSummaryWindow" in parsed) delete parsed.screenshotSummaryWindow;
+
     return { ...DEFAULT_PREFERENCES, ...parsed };
   } catch {
     return DEFAULT_PREFERENCES;

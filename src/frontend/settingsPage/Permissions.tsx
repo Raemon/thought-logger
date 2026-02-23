@@ -17,34 +17,46 @@ function usePermissions() {
 }
 
 export function Permissions() {
-  const [perm, refreshPermissions] = usePermissions();
+  const [perm, _refreshPermissions] = usePermissions();
+  const permissionRows = [
+    {
+      key: "screen",
+      label: "Screen Recording",
+      settingsUrl:
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+    },
+    {
+      key: "accessibility",
+      label: "Accessibility",
+      settingsUrl:
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+    },
+    {
+      key: "inputMonitoring",
+      label: "Input Monitoring",
+      settingsUrl:
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
+    },
+  ];
   return (
-    <div className="p-5">
+    <div className="p-5 py-0">
       <h3 className="text-xl mb-2.5">Permissions</h3>
-      {perm &&
-        Object.entries(perm).map(([k, v]) => (
-          <div key={k} style={{ textTransform: "capitalize" }}>
-            {k}:{" "}
-            {v === "granted" ? (
-              <span style={{ color: "#0a0" }}>granted</span>
-            ) : (
-              <span style={{ color: "#a00" }}>denied</span>
-            )}
-          </div>
-        ))}
-      <div style={{ fontSize: 12, marginTop: 12, marginBottom: 12 }}>
-        <em>
-          Keylogging requires both "accessibility" and "input monitoring"
-          permissions in the <b>System Preferences: Privacy & Security</b>.
-        </em>
-      </div>
-      <button
-        onClick={refreshPermissions}
-        style={{ marginTop: 12 }}
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold rounded px-2 py-0.5"
-      >
-        Refresh
-      </button>
+      <div className="flex gap-4">
+        {perm &&
+          permissionRows.map(({ key, label, settingsUrl }) => {
+            const status = perm[key] || "unknown";
+            const statusLabel =
+              status === "granted" ? "Enabled" : status === "denied" ? "Enable" : status;
+            return <div
+              key={key}
+              onClick={() => window.userData.openExternalUrl(settingsUrl)}
+              className="cursor-pointer border border-gray-300 rounded-md px-3 py-1.5"
+              style={{ color: status === "granted" ? "#0a0" : "#000" }}
+            >
+              {statusLabel} {label}
+            </div>
+          })}
+        </div>
     </div>
   );
 }
