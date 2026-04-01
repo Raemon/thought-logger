@@ -43,7 +43,7 @@
     "@vitest/browser": "^3.2.4",
     "async-mutex": "^0.5.0",
     "autoprefixer": "^10.4.21",
-    "electron": "33.3.1",
+    "electron": "38.4.0",
     "electron-builder": "^26.0.12",
     "electron-rebuild": "^3.0.0",
     "eslint": "^10.0.0",
